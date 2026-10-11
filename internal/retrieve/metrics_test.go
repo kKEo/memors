@@ -2,6 +2,7 @@ package retrieve
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/kKEo/memors/internal/embedding"
@@ -78,6 +79,27 @@ func TestSearchMetrics(t *testing.T) {
 	}
 	if v, _ := metric(reg, "memors_search_abstentions_total", "no_match"); v != 1 {
 		t.Fatalf("abstentions = %v", v)
+	}
+	// Excluding every match is an abstention of its own class, with a reason.
+	var excl []string
+	rows, err := db.Query(`SELECT id FROM documents`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		excl = append(excl, "memo://doc/"+id)
+	}
+	rows.Close()
+	resp, err = svc.Search(ctx, Request{Query: "ERR_CONN_RESET retry", ExcludeIDs: excl})
+	if err != nil || len(resp.Results) != 0 || !strings.HasPrefix(resp.Reason, "every match (") || resp.Hint == "" {
+		t.Fatalf("all excluded: %+v %v", resp, err)
+	}
+	if v, _ := metric(reg, "memors_search_abstentions_total", "excluded"); v != 1 {
+		t.Fatalf("excluded abstentions = %v", v)
 	}
 	// Without an embedder the search is degraded and says why.
 	store2 := kb.NewStore(db, nil)

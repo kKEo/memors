@@ -871,7 +871,7 @@ less and shipped two phases in a month, so treat these as ranges, not promises.
     loop, scoping by version, when to `remember`), shipped as a plain file now and through the
     MCP skills extension when the Go SDK supports it; `log replay` turns logged queries into an
     unlabelled eval candidate set. Completions for enum parameters are an optional ~20-line
-    item; prompts are not planned.
+    item; prompts are not planned (amended 2026-10-11: one prompt, `ask`, see §13).
   - A conformance test for `2026-07-28` on stdio; the golden covers all seven tools;
     `TestStructuredContentValidates` covers every output type; a test asserts that the README tool
     table is generated from `tools.golden.json`.
@@ -1434,7 +1434,9 @@ One reason each.
 - Any write path in the UI.
 - The six legacy journal tools behind a flag, or a journal importer (owner decision 5).
 - Raw weights (`alpha`, `rrf_k`, half-life) in the LLM-facing schema (D-K).
-- MCP prompts (no use case survives the redesign); cobra or a JavaScript framework; telemetry
+- MCP prompts beyond `ask` (amended 2026-10-11: `ask` turns a conversation into a cited chat over
+  the knowledge base; it only returns instructions, so the no-server-LLM rule holds); cobra or a
+  JavaScript framework; telemetry
   (anything that leaves the machine; local metrics are P10).
 - `VACUUM INTO` migration backups (nothing to migrate).
 

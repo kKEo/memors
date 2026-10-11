@@ -5,9 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"os"
-	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -164,11 +162,8 @@ func (s *Server) Live() live.Snapshot {
 	t := s.live
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	snap := live.Snapshot{Instance: t.instance, PID: os.Getpid(), Version: s.version, KBPath: s.kbPath,
+	snap := live.Snapshot{Instance: t.instance, PID: os.Getpid(), Version: s.version, KBPath: s.kbPath, KB: s.kbName(),
 		Started: t.started, Background: t.background, Sessions: []live.Session{}, InFlight: []live.Call{}}
-	if s.kbPath != "" {
-		snap.KB = strings.TrimSuffix(filepath.Base(s.kbPath), ".db")
-	}
 	if e := s.store.Embedder(); e != nil {
 		snap.Model = e.Info().ID
 	}

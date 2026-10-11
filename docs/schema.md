@@ -196,9 +196,10 @@ document revision.
 
 "Live" means `deleted_at IS NULL AND superseded_by IS NULL`. Every search arm applies that
 filter *inside* its SQL, before ranking. **Exception for versions:** when a search is scoped to a
-`version`, the filter becomes `deleted_at IS NULL AND version = ?`, so the revision for that
-version is found even though a newer version has superseded it. Without a version scope, only the
-latest revision of each source is live.
+`version`, the filter becomes `deleted_at IS NULL AND version = ?` and "the newest revision of
+that source with that version", so the revision for that version is found even though a newer
+version has superseded it, and an older revision of the same version is not. Without a version
+scope, only the latest revision of each source is live.
 
 ### 5.4 L2 — chunks and their three indexes
 

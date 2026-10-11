@@ -252,6 +252,32 @@ func TestScopeNamespaceVersionAndTrust(t *testing.T) {
 	}
 }
 
+// A version scope reaches a revision a newer version superseded, but a
+// re-ingest at the same version replaces the older revision of that version.
+func TestVersionScopeReturnsNewestRevisionOfThatVersion(t *testing.T) {
+	s := newStore(t, embedding.NewHashEmbedder(64))
+	seed(t, s) // interceptors at v1.8.0, revision 1
+	fixed := ingest(t, s, "grpc", "https://example.com/interceptors", "gRPC Interceptors", kb.KindDoc, "v1.8.0",
+		"# gRPC Interceptors\n\nInterceptors run in registration order (corrected). Put the auth interceptor before logging.\n")
+	ingest(t, s, "grpc", "https://example.com/interceptors", "gRPC Interceptors", kb.KindDoc, "v1.9.0",
+		"# gRPC Interceptors\n\nInterceptors now run in reverse registration order (changed in v1.9.0).\n")
+	svc := New(s, Default, false)
+
+	resp, err := svc.Search(context.Background(), Request{Query: "interceptors registration order", Scope: Scope{Version: "v1.8.0"}, Granularity: GranularityDocument})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, r := range resp.Results {
+		if strings.Contains(r.Title, "Interceptors") {
+			got = append(got, r.DocumentURI)
+		}
+	}
+	if len(got) != 1 || got[0] != fixed.URI {
+		t.Fatalf("v1.8.0 interceptors documents = %v, want only %s (revision %d)", got, fixed.URI, fixed.Revision)
+	}
+}
+
 func TestBudgetFormatsExcludeAndLog(t *testing.T) {
 	db, err := kb.Open(context.Background(), t.TempDir(), "t", kb.Options{})
 	if err != nil {

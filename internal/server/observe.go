@@ -76,7 +76,11 @@ func (s *Server) observe(next mcp.MethodHandler) mcp.MethodHandler {
 		var info *callInfo
 		if method == "tools/call" {
 			if p, ok := req.GetParams().(*mcp.CallToolParamsRaw); ok {
-				info = &callInfo{tool: p.Name, liveID: s.live.begin(req, p.Name)}
+				tool := p.Name
+				if !s.tools[tool] {
+					tool = "unknown" // the SDK rejects it; labels stay a bounded set
+				}
+				info = &callInfo{tool: tool, liveID: s.live.begin(req, tool)}
 				defer s.live.end(info.liveID)
 				ctx = context.WithValue(ctx, callInfoKey{}, info)
 			}
@@ -107,7 +111,7 @@ func (s *Server) observe(next mcp.MethodHandler) mcp.MethodHandler {
 			s.m.resources.With(kind, outcome).Inc()
 		case "prompts/get":
 			name := "unknown"
-			if p, ok := req.GetParams().(*mcp.GetPromptParams); ok && p.Name == "ask" {
+			if p, ok := req.GetParams().(*mcp.GetPromptParams); ok && s.prompts[p.Name] {
 				name = p.Name
 			}
 			s.m.prompts.With(name, outcome).Inc()

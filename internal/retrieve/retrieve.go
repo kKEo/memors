@@ -385,6 +385,7 @@ func (s *Service) Search(ctx context.Context, req Request) (*Response, error) {
 		for _, id := range req.ExcludeIDs {
 			ex[id] = true
 		}
+		matched := len(list)
 		kept := list[:0]
 		for _, c := range list {
 			if !ex[chunkURI(c.chunkID)] && !ex[docURI(c.docID)] {
@@ -392,6 +393,9 @@ func (s *Service) Search(ctx context.Context, req Request) (*Response, error) {
 			}
 		}
 		list = kept
+		if len(list) == 0 {
+			return s.abstain(ctx, req, queries, tr, start, fmt.Sprintf("every match (%d) is in exclude_ids", matched), "search without exclude_ids to see them again, or rephrase the query")
+		}
 	}
 
 	// Optional cross-encoder rerank of the top N (precise profile).
@@ -689,15 +693,18 @@ func (s *Service) loadMetaBatch(ctx context.Context, byChunk map[int64]*candidat
 // --- scope ---
 
 // scopeSQL builds the WHERE fragment applied inside every arm. It always
-// includes the live filter; a version scope replaces the "latest revision"
-// half of it so the revision for that version is reachable.
+// includes the live filter; a version scope replaces "latest revision" with
+// "latest revision of that version", so the version stays reachable after a
+// newer one superseded it.
 func scopeSQL(sc Scope, asOf *time.Time) (string, []any, error) {
 	var parts []string
 	var args []any
 	parts = append(parts, "d.deleted_at IS NULL") // forgotten: never, not even under as_of
 	switch {
 	case sc.Version != "":
-		parts = append(parts, "d.version = ?")
+		// A re-ingest at the same version supersedes the older revision of
+		// that version; only the newest one per source counts.
+		parts = append(parts, "d.version = ? AND d.revision = (SELECT MAX(v.revision) FROM documents v WHERE v.source_id = d.source_id AND v.version = d.version)")
 		args = append(args, sc.Version)
 	case asOf != nil:
 		// The revision that was current at T: created by then and not yet

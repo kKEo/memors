@@ -5,9 +5,19 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
-- **`ask` MCP prompt**: starts a chat answered from the knowledge base. The client's model runs
-  `search` and `read` and cites every claim by its `memo://` address; the server still runs no
-  LLM. Counted in `memors_mcp_prompt_gets_total`.
+- **`ask` MCP prompt**: turns a conversation into a chat answered from the knowledge base. The
+  client's model searches passages and facts, reads for depth, cites every claim by its `memo://`
+  address and says when the knowledge base has nothing; the server still runs no LLM. One
+  optional argument, a namespace; the questions follow in the conversation (Claude Code:
+  `/mcp__memors__ask`). Counted in `memors_mcp_prompt_gets_total`. The operator guide's
+  `memors:search_abstain_ratio:rate15m` rule now counts passage and document searches only,
+  since `ask` adds a fact search to every question.
+- Fixed: a `scope.version` search also returned older revisions ingested at the same version.
+  It now returns the newest revision of each source for that version.
+- Fixed: when `exclude_ids` removed every match, search returned no results and an empty
+  `reason`. It now says so, with the abstention class `excluded`.
+- Fixed: a call to a tool name the server does not have created new `tool` label values in the
+  tool-call metrics; it is now counted as `tool="unknown"`.
 - **Renamed: the project is now memors** (`github.com/kKEo/memors`, MCP registry
   `io.github.kKEo/memors`, guides at `kkeo.github.io/memors/`), **the server binary is
   `memors-mcp`** (`cmd/memors-mcp`, archives `memors-mcp_<version>_<os>_<arch>`) and **the menu-bar
