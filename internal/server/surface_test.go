@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kKEo/memors/internal/embedding"
@@ -330,10 +332,13 @@ func TestCompactSubmitRoundTrip(t *testing.T) {
 	}
 }
 
-// The ask prompt hands the client's model the search-then-read loop for a
-// question; the server writes no answer.
+// The ask prompt starts a chat: the client's model gets the search, read and
+// cite rules, and the question follows in the conversation. Its only
+// argument is one word, because Claude Code passes prompt arguments as
+// whitespace-separated words in declaration order.
 func TestAskPrompt(t *testing.T) {
-	cs, _ := newTestSession(t)
+	cs, _, _ := newObservedSession(t, WithKBPath("/home/me/.memors-mcp/kb/work.db"))
+	ingestDoc(t, cs)
 	ctx := context.Background()
 
 	list, err := cs.ListPrompts(ctx, nil)
@@ -343,39 +348,53 @@ func TestAskPrompt(t *testing.T) {
 	if len(list.Prompts) != 1 || list.Prompts[0].Name != "ask" {
 		t.Fatalf("prompts: %+v", list.Prompts)
 	}
-	for _, a := range list.Prompts[0].Arguments {
-		if (a.Name == "question") != a.Required {
-			t.Errorf("argument %s required = %v", a.Name, a.Required)
-		}
+	args := list.Prompts[0].Arguments
+	if len(args) != 1 || args[0].Name != "namespace" || args[0].Required {
+		t.Fatalf("ask must take one optional namespace argument: %+v", args)
 	}
 
-	res, err := cs.GetPrompt(ctx, &mcp.GetPromptParams{Name: "ask", Arguments: map[string]string{
-		"question": "  How do interceptors chain?  ", "namespace": "grpc", "version": "v1.8.0",
-	}})
+	text := func(res *mcp.GetPromptResult) string {
+		t.Helper()
+		if len(res.Messages) != 1 || res.Messages[0].Role != "user" {
+			t.Fatalf("messages: %+v", res.Messages)
+		}
+		return res.Messages[0].Content.(*mcp.TextContent).Text
+	}
+	res, err := cs.GetPrompt(ctx, &mcp.GetPromptParams{Name: "ask"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(res.Messages) != 1 || res.Messages[0].Role != "user" {
-		t.Fatalf("messages: %+v", res.Messages)
-	}
-	text := res.Messages[0].Content.(*mcp.TextContent).Text
-	for _, want := range []string{"Question: How do interceptors chain?\n", "`search`", "`read`", "memo://", `namespaces: ["grpc"]`, `version: "v1.8.0"`} {
-		if !strings.Contains(text, want) {
-			t.Errorf("prompt lacks %q:\n%s", want, text)
+	all := text(res)
+	for _, want := range []string{
+		"knowledge base `work` only",
+		"`search`", `granularity: "fact"`, "`read`", "memo://",
+		"only when search returns no results and gives a `reason`",
+		"do not fill the gap from general knowledge",
+		"`exclude_ids` only to get more results for the same question",
+		"call `status`",
+	} {
+		if !strings.Contains(all, want) {
+			t.Errorf("prompt lacks %q:\n%s", want, all)
 		}
 	}
-	if strings.Contains(text, "library:") {
-		t.Errorf("unset library still scoped:\n%s", text)
+	if strings.Contains(all, "scope: {") {
+		t.Errorf("unscoped prompt carries a scope:\n%s", all)
 	}
 
-	if _, err := cs.GetPrompt(ctx, &mcp.GetPromptParams{Name: "ask", Arguments: map[string]string{"question": "  "}}); err == nil {
-		t.Fatal("blank question should be an error")
-	}
-	long, err := cs.GetPrompt(ctx, &mcp.GetPromptParams{Name: "ask", Arguments: map[string]string{"question": strings.Repeat("x", 10_000)}})
+	res, err = cs.GetPrompt(ctx, &mcp.GetPromptParams{Name: "ask", Arguments: map[string]string{"namespace": " grpc "}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := len(long.Messages[0].Content.(*mcp.TextContent).Text); n > 4096 {
-		t.Fatalf("long question not cut: %d bytes", n)
+	if got := text(res); !strings.Contains(got, `scope: {"namespaces":["grpc"]}`) {
+		t.Errorf("namespace scope missing:\n%s", got)
+	}
+
+	// A word that is not a namespace (say, the first word of a question
+	// typed after the command) is invalid params, and the message lists
+	// the namespaces there are.
+	_, err = cs.GetPrompt(ctx, &mcp.GetPromptParams{Name: "ask", Arguments: map[string]string{"namespace": "How"}})
+	var werr *jsonrpc.Error
+	if !errors.As(err, &werr) || werr.Code != jsonrpc.CodeInvalidParams || !strings.Contains(werr.Message, "namespaces: grpc") {
+		t.Fatalf("unknown namespace: %v", err)
 	}
 }

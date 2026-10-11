@@ -119,11 +119,28 @@ func TestMiddlewareCountsToolCallsAndErrors(t *testing.T) {
 	if v := counter(reg, "memors_mcp_resource_reads_total", "index", "ok"); v != 1 {
 		t.Fatalf("resource reads = %v", v)
 	}
-	if _, err := cs.GetPrompt(context.Background(), &mcp.GetPromptParams{Name: "ask", Arguments: map[string]string{"question": "q"}}); err != nil {
+	if _, err := cs.GetPrompt(context.Background(), &mcp.GetPromptParams{Name: "ask"}); err != nil {
 		t.Fatal(err)
 	}
 	if v := counter(reg, "memors_mcp_prompt_gets_total", "ask", "ok"); v != 1 {
 		t.Fatalf("prompt gets = %v", v)
+	}
+	// Names the server does not have are labelled unknown: a client must
+	// not be able to mint metric series.
+	if _, err := cs.GetPrompt(context.Background(), &mcp.GetPromptParams{Name: "no-such-prompt"}); err == nil {
+		t.Fatal("unknown prompt should fail")
+	}
+	if v := counter(reg, "memors_mcp_prompt_gets_total", "unknown", "error"); v != 1 {
+		t.Fatalf("unknown prompt gets = %v", v)
+	}
+	if _, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "no_such_tool"}); err == nil {
+		t.Fatal("unknown tool should fail")
+	}
+	if v := counter(reg, "memors_mcp_tool_calls_total", "unknown", "error"); v != 1 {
+		t.Fatalf("unknown tool calls = %v", v)
+	}
+	if v := counter(reg, "memors_mcp_tool_calls_total", "no_such_tool", "error"); v != -1 {
+		t.Fatalf("client-chosen tool name became a label")
 	}
 }
 

@@ -136,11 +136,15 @@ The generic shape is the same everywhere: a command, optional args and an enviro
 | env | `MEMORS_KB`, and optionally `MEMORS_HOME`, `MEMORS_MODEL`, `MEMORS_PROFILE`, `MEMORS_QUERY_LOG`, `MEMORS_LOG_FORMAT`, `MEMORS_LOG_LEVEL` |
 
 The server implements protocol version `2026-07-28`: stateless, with `server/discover` in
-place of `initialize`. It advertises tools, resources and one prompt, `ask`, which starts a
-chat answered from the knowledge base with `memo://` citations. The client's model writes the
-answer; the prompt only tells it how to search, read and cite. The server does not advertise
-`logging`. The `promote` tool uses elicitation when the client supports it, and otherwise
-returns the CLI command a human can run.
+place of `initialize`. It advertises tools, resources and one prompt, `ask`, which turns the
+conversation into a chat answered from the knowledge base with `memo://` citations. The
+client's model writes the answers; the prompt only tells it how to search, read and cite. Its
+one optional argument is a namespace, checked against the knowledge base. The questions follow
+in the conversation: Claude Code passes the words after a prompt command as the prompt's
+arguments, one word each, in order, so a question cannot be an argument. In Claude Code the
+command is `/mcp__<server name>__ask [namespace]`. The server does not advertise `logging`. The
+`promote` tool uses elicitation when the client supports it, and otherwise returns the CLI
+command a human can run.
 
 ## Teaching the agent
 

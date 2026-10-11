@@ -52,12 +52,15 @@ groups:
         expr: histogram_quantile(0.95, sum by (kb, le) (rate(memors_search_duration_seconds_bucket[5m])))
       - record: memors:search_abstain_ratio:rate15m
         expr: |
-          sum by (kb) (rate(memors_search_total{outcome="abstain"}[15m]))
+          sum by (kb) (rate(memors_search_total{outcome="abstain", granularity=~"chunk|document"}[15m]))
           /
-          sum by (kb) (rate(memors_search_total[15m]))
+          sum by (kb) (rate(memors_search_total{granularity=~"chunk|document"}[15m]))
       - record: memors:arm_latency_seconds:p95_5m
         expr: histogram_quantile(0.95, sum by (kb, arm, le) (rate(memors_search_arm_duration_seconds_bucket[5m])))
 ```
+
+The abstain ratio counts passage and document searches only. A fact or page search finds nothing
+whenever no fact or page matches, and the `ask` prompt runs a fact search for every question.
 
 ## Alerts
 

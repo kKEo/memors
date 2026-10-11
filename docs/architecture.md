@@ -326,5 +326,7 @@ HTTP transport for MCP (OD-11), a server-side LLM. The graph arm and `explore`
 arrived in 1.1, compaction and pages (`compact`, `submit`, `granularity=page`) in 1.2, the
 read-only web UI in 1.3, all as additive changes; the tool count is ten. The UI's HTTP server
 is not an MCP transport: it has no tools and no mutating route. One MCP prompt, `ask`, came
-after 1.4: it returns instructions for the client's model (search, read, cite every claim by
-its `memo://` address, abstain when search does) and generates nothing itself. The MCP `profile` parameter. Importing v0 journal files.
+after 1.4. It returns instructions for the client's model and generates nothing itself: search
+passages and facts, read for depth, cite every claim by its `memo://` address, and say the
+knowledge base has nothing only when search returns nothing with a `reason`. Its one argument
+is an optional namespace; the questions follow in the conversation. The MCP `profile` parameter. Importing v0 journal files.

@@ -90,6 +90,8 @@ func abstainClass(reason string) string {
 		return "no_page"
 	case strings.HasPrefix(reason, "no arm matched"), strings.HasPrefix(reason, "nothing matched"):
 		return "no_match"
+	case strings.HasPrefix(reason, "every match"):
+		return "excluded"
 	}
 	return "other"
 }

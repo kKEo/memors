@@ -1,6 +1,6 @@
 # Metric catalogue
 
-Every series memors-mcp exposes, as of v1.4. Types: **C** counter, **G** gauge, **H** histogram.
+Every series memors-mcp exposes on `master`: v1.4 plus the unreleased section of the changelog. Types: **C** counter, **G** gauge, **H** histogram.
 A histogram exposes `_bucket{le}`, `_sum` and `_count`. A family with no observations yet
 shows only its `# HELP` and `# TYPE` lines.
 
@@ -28,6 +28,9 @@ Bucket sets:
 | `memors_mcp_prompt_gets_total` | C | `prompt` = `ask`, `unknown`; `outcome` = `ok`, `error` | Prompts fetched by clients |
 | `memors_mcp_sessions_total` | C | `client` | Sessions started, by client name |
 
+`tool` is one of the ten tool names, or `unknown` when a client calls a tool the server does
+not have; such a call has `outcome="error"`. Clients cannot add label values.
+
 ## Search
 
 | Metric | Type | Labels | Meaning |
@@ -40,7 +43,7 @@ Bucket sets:
 | `memors_search_truncated_results_total` | C | — | Ranked results left out by the token budget |
 | `memors_search_cutoff_total` | C | `kind` = `gap`, `budget`, `limit`, `none` | Why lists ended |
 | `memors_search_degraded_total` | C | `reason` = `no_embedder`, `query_embed_failed`, `reranker_failed`, `other` | Searches served without a capability |
-| `memors_search_abstentions_total` | C | `reason` | Searches that returned nothing on purpose |
+| `memors_search_abstentions_total` | C | `reason` = `no_match`, `no_arm`, `no_fact`, `no_page`, `excluded`, `other` | Searches that returned nothing on purpose. `excluded`: every match was in `exclude_ids` |
 | `memors_search_entities_matched` | H count | — | Known entities named per query |
 | `memors_search_rerank_duration_seconds` | H latency | `model` | Cross-encoder time, only with the reranker |
 | `memors_graph_cache_total` | C | `event` = `hit`, `build`, `build_asof` | In-memory mention-graph cache |

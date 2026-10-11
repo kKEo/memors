@@ -12,16 +12,26 @@ Claude searches and reads the most relevant passages. It then answers and names 
 
 ## Starting a chat
 
-memors-mcp offers a ready-made starter, **ask**, that keeps Claude to the memory for the whole
-conversation:
+memors-mcp offers a ready-made starter, **ask**, that keeps Claude to the memory for the rest of
+the conversation:
 
-- In Claude Code, type `/mcp__memors__ask` followed by your question.
-- In Claude Desktop, click **+**, choose memors, then **ask**, and type your question.
+- **Claude Code:** type `/mcp__memors__ask` and press Enter. Claude says in a sentence what the
+  memory holds and asks what you want to know; then ask your questions as usual. Put the
+  question in a message of its own: a word after the command is read as a shelf name, so
+  `/mcp__memors__ask billing` keeps the chat to the billing shelf.
+- **Claude Desktop:** click **+**, choose memors, then **ask**. Leave the shelf empty to search
+  everything, and type your question in the message.
+
+The middle of the command is the name memors-mcp was connected under. A memory added as
+`memors-client-b` (see [Keeping work separate](separate.md)) starts with
+`/mcp__memors-client-b__ask`, and one connected from the menu-bar app as `memors-work` with
+`/mcp__memors-work__ask`. In the list that appears when you type `/`, they show as
+`memors-client-b:ask (MCP)` and so on.
 
 Claude then answers only from what the memory holds. Every statement ends with a footnote
 naming the saved item and its `memo://` address. If the memory has nothing on a point, Claude
 says so instead of guessing, and it tells you when an answer rests only on something Claude
-saved itself. Follow-up questions in the same conversation work the same way.
+saved itself. To narrow a question, say so in the chat, for example "only version 1.64".
 
 ## What comes back
 

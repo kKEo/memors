@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -41,6 +42,9 @@ type Server struct {
 	version  string
 	kbPath   string
 	live     *tracker
+	// tools and prompts hold the registered names. Metrics label a call by
+	// name, and a client can send any name.
+	tools, prompts map[string]bool
 }
 
 // Option configures New.
@@ -55,12 +59,22 @@ func WithRegistry(r *obs.Registry) Option { return func(s *Server) { s.registry 
 // WithKBPath names the knowledge-base file on the live page.
 func WithKBPath(p string) Option { return func(s *Server) { s.kbPath = p } }
 
+// kbName is the knowledge base's name (MEMORS_KB), or "" when the path is
+// unknown.
+func (s *Server) kbName() string {
+	if s.kbPath == "" {
+		return ""
+	}
+	return strings.TrimSuffix(filepath.Base(s.kbPath), ".db")
+}
+
 // WithCallLog turns on per-tool-call rows in the knowledge base's opt-in log.
 func WithCallLog(on bool) Option { return func(s *Server) { s.callLog = on } }
 
 // New builds the MCP server. version is the build's git tag.
 func New(store *kb.Store, search *retrieve.Service, version string, opts ...Option) *Server {
-	srv := &Server{store: store, search: search, actor: "mcp", version: version, live: newTracker(time.Now())}
+	srv := &Server{store: store, search: search, actor: "mcp", version: version, live: newTracker(time.Now()),
+		tools: map[string]bool{}, prompts: map[string]bool{}}
 	for _, o := range opts {
 		o(srv)
 	}
@@ -73,7 +87,8 @@ func New(store *kb.Store, search *retrieve.Service, version string, opts ...Opti
 	srv.mcp = mcp.NewServer(&mcp.Implementation{Name: "memors-mcp", Version: version}, &mcp.ServerOptions{
 		// Diagnostics go to stderr through slog; the deprecated MCP
 		// `logging` capability (SEP-2577, decision D-O) is not advertised.
-		// Tools and resources are still inferred from what is registered.
+		// Tools, resources and prompts are still inferred from what is
+		// registered.
 		Capabilities: &mcp.ServerCapabilities{},
 		Logger:       slog.New(obs.MinLevel(srv.logger.With("component", "mcp-sdk").Handler(), slog.LevelWarn)),
 		// Cache hints (2026-07-28 ttlMs): the tool list is stable for an
@@ -485,9 +500,15 @@ type ExploreOut struct {
 	Neighbours []kb.Neighbour `json:"neighbours" jsonschema:"Entities that share passages with it, with evidence addresses"`
 }
 
+// addTool registers a tool and remembers its name (see Server.tools).
+func addTool[In, Out any](s *Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out]) {
+	s.tools[t.Name] = true
+	mcp.AddTool(s.mcp, t, h)
+}
+
 func (s *Server) registerTools() {
 	closed := boolPtr(false)
-	mcp.AddTool(s.mcp, &mcp.Tool{
+	addTool(s, &mcp.Tool{
 		Name:  "ingest",
 		Title: "Add a document to the knowledge base",
 		Description: "Store a document you fetched or wrote (markdown), split into searchable passages. Identical content is a no-op; changed content or a new version becomes a new revision. The server never fetches URLs. " +
@@ -495,7 +516,7 @@ func (s *Server) registerTools() {
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: true, DestructiveHint: boolPtr(false), OpenWorldHint: closed},
 	}, observeTool(s, s.handleIngest))
 
-	mcp.AddTool(s.mcp, &mcp.Tool{
+	addTool(s, &mcp.Tool{
 		Name:  "search",
 		Title: "Search the knowledge base",
 		Description: "Find passages by words, exact identifiers and meaning, fused into one ranked list. Start concise, then read what you need. " +
@@ -504,14 +525,14 @@ func (s *Server) registerTools() {
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: closed},
 	}, observeTool(s, s.handleSearch))
 
-	mcp.AddTool(s.mcp, &mcp.Tool{
+	addTool(s, &mcp.Tool{
 		Name:        "read",
 		Title:       "Read a passage or document",
 		Description: "Dereference a memo:// address from a search result and return its text with provenance. Use granularity=section to see a passage with its neighbours, or document for the whole text under a token budget. Example: read(uri: \"memo://chunk/812\", granularity: \"section\").",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: closed},
 	}, observeTool(s, s.handleRead))
 
-	mcp.AddTool(s.mcp, &mcp.Tool{
+	addTool(s, &mcp.Tool{
 		Name:  "remember",
 		Title: "Record a fact",
 		Description: "Store one atomic fact with where it came from and when it is true. Facts are only ever added: to correct one, pass supersedes with the old fact's address and the old one is kept as history. " +
@@ -519,7 +540,7 @@ func (s *Server) registerTools() {
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: false, DestructiveHint: boolPtr(false), OpenWorldHint: closed},
 	}, observeTool(s, s.handleRemember))
 
-	mcp.AddTool(s.mcp, &mcp.Tool{
+	addTool(s, &mcp.Tool{
 		Name:  "forget",
 		Title: "Retire a document or fact",
 		Description: "Remove a record from search for good, with a reason. The record becomes a tombstone: reading its address says when and why it was forgotten. Tool calls may forget records written by tools (trust agent); records a human wrote or curated need the human: the result then carries the command to run. " +
@@ -527,35 +548,35 @@ func (s *Server) registerTools() {
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: true, DestructiveHint: boolPtr(true), OpenWorldHint: closed},
 	}, observeTool(s, s.handleForget))
 
-	mcp.AddTool(s.mcp, &mcp.Tool{
+	addTool(s, &mcp.Tool{
 		Name:        "promote",
 		Title:       "Ask to raise a record's trust",
 		Description: "Request that a document, source or fact be trusted more (user or curated). Trust cannot be raised by a tool call alone: on clients that can show a dialog the human is asked directly, with the excerpt and where it came from; otherwise the result carries the command the human runs. Example: promote(uri: \"memo://fact/01a0...\", to: \"user\").",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: closed},
 	}, observeTool(s, s.handlePromote))
 
-	mcp.AddTool(s.mcp, &mcp.Tool{
+	addTool(s, &mcp.Tool{
 		Name:        "explore",
 		Title:       "Explore an entity's neighbourhood",
 		Description: "Walk the graph index from one named thing: the passages that mention it and the other things those passages mention, each with evidence addresses to read. Use it after a search names something you want the context of, or to see how two things connect. Example: explore(entity: \"Ledger Store\", hops: 1).",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: closed},
 	}, observeTool(s, s.handleExplore))
 
-	mcp.AddTool(s.mcp, &mcp.Tool{
+	addTool(s, &mcp.Tool{
 		Name:        "compact",
 		Title:       "Propose compaction work",
 		Description: "Scan the knowledge base for tidying work you can do: entities with several passages and no page (write one), stale pages (rebuild), two live facts that disagree (pick one), near-duplicate names (merge or keep apart), near-duplicate passages. Each item carries the passages and facts you need. The server never writes a page itself. Example: compact(namespace: \"platform\", kinds: [\"page\", \"conflict\"], lint: true).",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: false, IdempotentHint: true, OpenWorldHint: closed},
 	}, observeTool(s, s.handleCompact))
 
-	mcp.AddTool(s.mcp, &mcp.Tool{
+	addTool(s, &mcp.Tool{
 		Name:        "submit",
 		Title:       "Submit the result of a work item",
 		Description: "Hand back a page you wrote, a conflict decision or a merge decision. Pages are stored as derived (is_inference) with the passages they cite; the omission check reports facts the page left out. dry_run shows the diff first. Example: submit(item_id: \"01a1…\", content: \"# Ledger Store\\n\\nAppend-only … (memo://chunk/812)\", dry_run: true).",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: false, IdempotentHint: false, OpenWorldHint: closed},
 	}, observeTool(s, s.handleSubmit))
 
-	mcp.AddTool(s.mcp, &mcp.Tool{
+	addTool(s, &mcp.Tool{
 		Name:        "status",
 		Title:       "Knowledge base status",
 		Description: "Counts per namespace, the embedding model in use, pending vectors and background jobs. degraded=true means search is keyword-only right now. Example: status() before the first search of a session, to learn which namespaces exist.",
