@@ -86,6 +86,7 @@ func TestSearchMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
@@ -93,7 +94,9 @@ func TestSearchMetrics(t *testing.T) {
 		}
 		excl = append(excl, "memo://doc/"+id)
 	}
-	rows.Close()
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
 	resp, err = svc.Search(ctx, Request{Query: "ERR_CONN_RESET retry", ExcludeIDs: excl})
 	if err != nil || len(resp.Results) != 0 || !strings.HasPrefix(resp.Reason, "every match (") || resp.Hint == "" {
 		t.Fatalf("all excluded: %+v %v", resp, err)
