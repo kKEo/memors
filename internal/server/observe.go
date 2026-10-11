@@ -29,6 +29,7 @@ type mcpMetrics struct {
 	toolErrors   *obs.CounterVec
 	elicitations *obs.CounterVec
 	resources    *obs.CounterVec
+	prompts      *obs.CounterVec
 	sessions     *obs.CounterVec
 }
 
@@ -43,6 +44,7 @@ func (s *Server) registerMetrics() {
 		toolErrors:   r.Counter("memors_mcp_tool_errors_total", "Tool errors by class (not_found, forgotten, needs_human, canceled, invalid_args, internal).", "tool", "class"),
 		elicitations: r.Counter("memors_mcp_elicitations_total", "Human questions asked by tools, by outcome (asked, accept, decline, cancel, unsupported).", "tool", "outcome"),
 		resources:    r.Counter("memors_mcp_resource_reads_total", "Resource reads, by address kind and outcome.", "kind", "outcome"),
+		prompts:      r.Counter("memors_mcp_prompt_gets_total", "Prompt requests, by prompt and outcome.", "prompt", "outcome"),
 		sessions:     r.Counter("memors_mcp_sessions_total", "Sessions initialised, by client name.", "client"),
 	}
 }
@@ -103,6 +105,12 @@ func (s *Server) observe(next mcp.MethodHandler) mcp.MethodHandler {
 				kind = resourceKind(p.URI)
 			}
 			s.m.resources.With(kind, outcome).Inc()
+		case "prompts/get":
+			name := "unknown"
+			if p, ok := req.GetParams().(*mcp.GetPromptParams); ok && p.Name == "ask" {
+				name = p.Name
+			}
+			s.m.prompts.With(name, outcome).Inc()
 		case "tools/call":
 			if info != nil {
 				s.recordToolCall(ctx, req, info, res, err, t)

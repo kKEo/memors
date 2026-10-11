@@ -10,6 +10,19 @@ Ask the way you would ask a colleague, and mention memors so Claude checks the m
 
 Claude searches and reads the most relevant passages. It then answers and names its sources.
 
+## Starting a chat
+
+memors-mcp offers a ready-made starter, **ask**, that keeps Claude to the memory for the whole
+conversation:
+
+- In Claude Code, type `/mcp__memors__ask` followed by your question.
+- In Claude Desktop, click **+**, choose memors, then **ask**, and type your question.
+
+Claude then answers only from what the memory holds. Every statement ends with a footnote
+naming the saved item and its `memo://` address. If the memory has nothing on a point, Claude
+says so instead of guessing, and it tells you when an answer rests only on something Claude
+saved itself. Follow-up questions in the same conversation work the same way.
+
 ## What comes back
 
 Each result carries:

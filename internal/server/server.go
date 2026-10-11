@@ -90,6 +90,7 @@ func New(store *kb.Store, search *retrieve.Service, version string, opts ...Opti
 	})
 	srv.registerTools()
 	srv.registerResources()
+	srv.registerPrompts()
 	srv.registerMetrics()
 	srv.mcp.AddReceivingMiddleware(srv.observe)
 	return srv
