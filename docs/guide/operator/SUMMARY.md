@@ -11,7 +11,7 @@
   - [Release archives](install/release.md)
   - [Build from source](install/source.md)
   - [Connecting MCP clients](install/clients.md)
-  - [memors-tray (macOS menu bar)](install/tray.md)
+  - [MemoRS Tray (macOS menu bar)](install/tray.md)
   - [Knowledge bases and MEMORS_HOME](install/layout.md)
   - [Upgrading and migrations](install/upgrading.md)
   - [Air-gapped installs](install/air-gapped.md)

@@ -194,7 +194,7 @@ func (s *Server) Handler() http.Handler {
 // enter trades the secret in the link for the session cookie.
 func (s *Server) enter(w http.ResponseWriter, r *http.Request) {
 	if subtle.ConstantTimeCompare([]byte(r.URL.Query().Get("k")), []byte(s.secret)) != 1 {
-		http.Error(w, "Open this page from memors-tray's menu.", http.StatusForbidden)
+		http.Error(w, "Open this page from the MemoRS Tray menu.", http.StatusForbidden)
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: s.secret, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
@@ -205,7 +205,7 @@ func (s *Server) authed(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(cookieName)
 		if err != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(s.secret)) != 1 {
-			http.Error(w, "Open this page from memors-tray's menu.", http.StatusForbidden)
+			http.Error(w, "Open this page from the MemoRS Tray menu.", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)

@@ -10,8 +10,8 @@
 | `$MEMORS_HOME/profiles.json` | You | yours | Optional profile overrides |
 | `$MEMORS_HOME/http-token` | `serve --http` in token mode, `memors-mcp http-token` | `0600` | The HTTP bearer token |
 | `$MEMORS_HOME/run/` | First `serve --http` | `0700` | Run files of the HTTP servers running now |
-| `$MEMORS_HOME/tray.json`, `tray.lock`, `logs/` | memors-tray (macOS app), if you use it | `0600` / `0700` | Its settings, its single-instance lock, and the logs of the servers it starts; see [memors-tray](../install/tray.md) |
-| `$MEMORS_HOME/run/serve-<pid>.json` | `serve --http`, while it serves | `0600` | Where and how to reach that server: URL, bound address, auth mode, token file path (never the token), knowledge base, version, instance id. Removed when the server stops; a server killed with `SIGKILL` leaves it behind, and memors-tray deletes it once the process is gone |
+| `$MEMORS_HOME/tray.json`, `tray.lock`, `logs/` | MemoRS Tray (macOS app), if you use it | `0600` / `0700` | Its settings, its single-instance lock, and the logs of the servers it starts; see [MemoRS Tray](../install/tray.md) |
+| `$MEMORS_HOME/run/serve-<pid>.json` | `serve --http`, while it serves | `0600` | Where and how to reach that server: URL, bound address, auth mode, token file path (never the token), knowledge base, version, instance id. Removed when the server stops; a server killed with `SIGKILL` leaves it behind, and MemoRS Tray deletes it once the process is gone |
 | `~/.cache/memors-mcp/models/<org>_<model>/` | First use of a model | `0755` | Model files from Hugging Face |
 | `~/.cache/memors-mcp/models/<org>_<model>.ok` | Completed download | — | Marker; without it the download is redone |
 

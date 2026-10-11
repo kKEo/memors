@@ -95,7 +95,7 @@ jobs:
       - name: app bundle
         run: |
           make tray-app
-          codesign --verify --strict tray/dist/memors-tray.app
-          lipo -archs tray/dist/memors-tray.app/Contents/MacOS/memors-tray | grep -q 'x86_64 arm64'
-          tray/dist/memors-tray.app/Contents/MacOS/memors-tray -version
+          codesign --verify --strict "tray/dist/MemoRS Tray.app"
+          lipo -archs "tray/dist/MemoRS Tray.app/Contents/MacOS/memors-tray" | grep -q 'x86_64 arm64'
+          "tray/dist/MemoRS Tray.app/Contents/MacOS/memors-tray" -version
           ls tray/dist/*.zip tray/dist/*.sha256

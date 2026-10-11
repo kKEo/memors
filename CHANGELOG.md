@@ -8,12 +8,13 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 - **Renamed: the project is now memors** (`github.com/kKEo/memors`, MCP registry
   `io.github.kKEo/memors`, guides at `kkeo.github.io/memors/`), **the server binary is
   `memors-mcp`** (`cmd/memors-mcp`, archives `memors-mcp_<version>_<os>_<arch>`) and **the menu-bar
-  app is memors-tray**. Breaking, with no fallback to the old names:
+  app is MemoRS Tray** (`MemoRS Tray.app`, executable `memors-tray`, release asset
+  `memors-tray_<version>_darwin_universal.zip`). Breaking, with no fallback to the old names:
   - environment variables `MEMO_*` → `MEMORS_*`;
   - base directory `~/.memo-mcp` → `~/.memors-mcp` (move it) and model cache
     `~/.cache/memo-mcp/models` → `~/.cache/memors-mcp/models`;
   - metrics `memo_*` → `memors_*` (recording rules and alerts in the operator guide follow);
-  - memors-tray's bundle ID and LaunchAgent are `io.github.kkeo.memors-tray`, adopting memo-tray's
+  - MemoRS Tray's bundle ID and LaunchAgent are `io.github.kkeo.memors-tray`, adopting memo-tray's
     "open at login" agent on first start; the `tray.json` key `memo_binary` is now `memors_binary`;
   - the web UI session cookie is renamed (one more login per browser);
   - the deprecated `JOURNAL_TOKEN` / `JOURNAL_PATH` aliases are removed.
@@ -31,7 +32,7 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
   guide shows how memors-mcp fits in, a copy per session against one shared server, a corrected
   fact's history, trust levels, and shelves against separate memories. The operator guide and
   the README show the processes and files, the data layers, the search pipeline, the ingest
-  write path, the two clocks, the `serve --http` setups and memors-tray. The operator guide now
+  write path, the two clocks, the `serve --http` setups and MemoRS Tray. The operator guide now
   says that `as_of` filters on recorded time only, as the code does; valid time is shown, and
   `lint` flags expired facts.
 - CI: the Windows test job is disabled for now; release archives for Windows are still built.
@@ -55,15 +56,15 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
   `--behind-proxy` for a TLS-terminating proxy, and `--public-url`. Plain HTTP on a
   non-loopback address and unauthenticated exposure are refused.
 - Fix MCP registry publishing: `server.json` no longer sets `registryBaseUrl` on the MCPB package.
-- memors-tray setup assistant and settings window. **Install or Update memors-mcp…** (and
+- MemoRS Tray setup assistant and settings window. **Install or Update memors-mcp…** (and
   **Install memors-mcp…**, opened by itself on first launch when memors-mcp is missing) downloads
   the latest release for this Mac from GitHub, checks it against the release's `checksums.txt`,
   tries it and installs it atomically (default `~/.local/bin`), then sets up a knowledge base
-  (name, embedding model, token, start with memors-tray) and shows the `claude mcp add` line.
+  (name, embedding model, token, start with MemoRS Tray) and shows the `claude mcp add` line.
   **Settings…** edits `tray.json` in a form: open at login (LaunchAgent), stop servers on quit,
   memors-mcp location and version, embedding model, servers (address, token, autostart, add and
-  remove), extra environment. memors-tray contacts GitHub only while the install step is open.
-- **memors-tray**, an optional macOS menu-bar app (`tray/`, its own Go module; the only cgo build,
+  remove), extra environment. MemoRS Tray contacts GitHub only while the install step is open.
+- **MemoRS Tray**, an optional macOS menu-bar app (`tray/`, its own Go module; the only cgo build,
   memors-mcp stays pure Go): lists the running `serve --http` servers from their run files with
   the agents connected to each (● active, ○ quiet; the count next to the icon), opens a
   server's **Live** page in a native window that logs itself in, and starts, stops and restarts

@@ -24,7 +24,7 @@ const LegacyLabel = "io.github.kkeo.memo-tray"
 
 // ErrTranslocated means macOS is running memors-tray from a temporary copy
 // (App Translocation), a path that will not exist at the next login.
-var ErrTranslocated = errors.New("macOS is running memors-tray from a temporary location; move memors-tray.app to Applications and open it from there")
+var ErrTranslocated = errors.New("macOS is running MemoRS Tray from a temporary location; move MemoRS Tray.app to Applications and open it from there")
 
 // Agent manages the LaunchAgent for one user.
 type Agent struct {

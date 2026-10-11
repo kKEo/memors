@@ -94,7 +94,7 @@ static NSMenuItem *item(NSString *title, SEL action, NSString *key, NSEventModif
 static void installMenu(void) {
 	NSMenu *main = [[NSMenu alloc] init];
 	NSMenuItem *appItem = [[NSMenuItem alloc] init];
-	appItem.submenu = [[NSMenu alloc] initWithTitle:@"memors-tray"];
+	appItem.submenu = [[NSMenu alloc] initWithTitle:@"MemoRS Tray"];
 	[main addItem:appItem];
 
 	NSMenu *edit = [[NSMenu alloc] initWithTitle:@"Edit"];

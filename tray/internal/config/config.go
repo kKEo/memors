@@ -224,7 +224,7 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("server %q: addr %q: bad port", s.KB, s.Addr)
 		}
 		if ip := net.ParseIP(host); host != "localhost" && (ip == nil || !ip.IsLoopback()) {
-			return fmt.Errorf("server %q: addr %q: memors-tray starts loopback servers only", s.KB, s.Addr)
+			return fmt.Errorf("server %q: addr %q: MemoRS Tray starts loopback servers only", s.KB, s.Addr)
 		}
 		if addrs[s.Addr] {
 			return fmt.Errorf("server %q: addr %s used twice", s.KB, s.Addr)
@@ -246,7 +246,7 @@ func validEnv(env map[string]string) error {
 			return fmt.Errorf("env: %q is not a variable name", k)
 		}
 		if Reserved(k) {
-			return fmt.Errorf("env: %s is set by memors-tray itself", k)
+			return fmt.Errorf("env: %s is set by MemoRS Tray itself", k)
 		}
 	}
 	return nil

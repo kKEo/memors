@@ -72,7 +72,7 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 	if r.PostForm.Get("rev") != rev {
 		d := s.settingsFrom(r.Context(), cur)
 		d.Rev = rev
-		d.Notice = "tray.json changed while this form was open (memors-tray adds a server when you start a new knowledge base). Nothing was saved: check the values below and save again."
+		d.Notice = "tray.json changed while this form was open (MemoRS Tray adds a server when you start a new knowledge base). Nothing was saved: check the values below and save again."
 		w.WriteHeader(http.StatusConflict)
 		s.render(w, "settings.html", page{Title: "Settings", Data: d})
 		return

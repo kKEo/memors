@@ -198,7 +198,7 @@ func TestUnreachableAfterRepeatedFailures(t *testing.T) {
 	h.liveErr["http://127.0.0.1:8765"] = client.ErrNotSupported
 	h.a.polls = map[string]*poll{}
 	h.tick()
-	if !strings.Contains(h.menuText(), "too old for memors-tray") {
+	if !strings.Contains(h.menuText(), "too old for MemoRS Tray") {
 		t.Errorf("old server not flagged at once:\n%s", h.menuText())
 	}
 }
@@ -254,7 +254,7 @@ func TestStartAssignsAndSavesAnAddress(t *testing.T) {
 		t.Errorf("tray.json = %+v, %v", cfg, err)
 	}
 	h.tick()
-	if !strings.Contains(h.menuText(), "crportal · starting") || !strings.Contains(h.menuText(), "Quit memors-tray (stops 1 server)") {
+	if !strings.Contains(h.menuText(), "crportal · starting") || !strings.Contains(h.menuText(), "Quit MemoRS Tray (stops 1 server)") {
 		t.Errorf("menu:\n%s", h.menuText())
 	}
 	// Its run file appears: the same row, now running and managed.

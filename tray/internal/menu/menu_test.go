@@ -43,7 +43,7 @@ Start Server
 Settings…
 Install or Update memors-mcp…
 ---
-Quit memors-tray
+Quit MemoRS Tray
 `
 	if got != want {
 		t.Errorf("got\n%s\nwant\n%s", got, want)
@@ -77,7 +77,7 @@ Start Server
 Settings…
 Install or Update memors-mcp…
 ---
-Quit memors-tray (stops 1 server)
+Quit MemoRS Tray (stops 1 server)
 `
 	if got != want {
 		t.Errorf("got\n%s\nwant\n%s", got, want)

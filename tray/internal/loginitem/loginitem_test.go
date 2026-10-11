@@ -12,7 +12,7 @@ import (
 )
 
 func TestEnableDisable(t *testing.T) {
-	a := Agent{Home: t.TempDir(), Executable: "/Applications/memors-tray & co.app/Contents/MacOS/memors-tray"}
+	a := Agent{Home: t.TempDir(), Executable: "/Applications/MemoRS Tray & co.app/Contents/MacOS/memors-tray"}
 	if a.Enabled() || a.Program() != "" {
 		t.Fatal("enabled before Enable")
 	}
@@ -23,7 +23,7 @@ func TestEnableDisable(t *testing.T) {
 		t.Fatalf("after Enable: enabled=%v program=%q", a.Enabled(), a.Program())
 	}
 	b, _ := os.ReadFile(a.Path())
-	for _, want := range []string{"<string>io.github.kkeo.memors-tray</string>", "memors-tray &amp; co.app", "<key>RunAtLoad</key>\n\t<true/>"} {
+	for _, want := range []string{"<string>io.github.kkeo.memors-tray</string>", "MemoRS Tray &amp; co.app", "<key>RunAtLoad</key>\n\t<true/>"} {
 		if !strings.Contains(string(b), want) {
 			t.Errorf("plist lacks %q:\n%s", want, b)
 		}
@@ -37,7 +37,7 @@ func TestEnableDisable(t *testing.T) {
 		}
 	}
 
-	moved := Agent{Home: a.Home, Executable: "/Users/me/Applications/memors-tray.app/Contents/MacOS/memors-tray"}
+	moved := Agent{Home: a.Home, Executable: "/Users/me/Applications/MemoRS Tray.app/Contents/MacOS/memors-tray"}
 	if err := moved.Repair(); err != nil || moved.Program() != moved.Executable {
 		t.Errorf("Repair: %v, program %q", err, moved.Program())
 	}
@@ -53,7 +53,7 @@ func TestEnableDisable(t *testing.T) {
 }
 
 func TestEnableRefusesTemporaryLocations(t *testing.T) {
-	a := Agent{Home: t.TempDir(), Executable: "/private/var/folders/x/AppTranslocation/ABC/d/memors-tray.app/Contents/MacOS/memors-tray"}
+	a := Agent{Home: t.TempDir(), Executable: "/private/var/folders/x/AppTranslocation/ABC/d/MemoRS Tray.app/Contents/MacOS/memors-tray"}
 	if err := a.Enable(); !errors.Is(err, ErrTranslocated) || a.Enabled() {
 		t.Errorf("translocated: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestEnableRefusesTemporaryLocations(t *testing.T) {
 
 // memo-tray's LaunchAgent gives way to memors-tray's, keeping "open at login" on.
 func TestAdoptLegacy(t *testing.T) {
-	a := Agent{Home: t.TempDir(), Executable: "/Applications/memors-tray.app/Contents/MacOS/memors-tray"}
+	a := Agent{Home: t.TempDir(), Executable: "/Applications/MemoRS Tray.app/Contents/MacOS/memors-tray"}
 	if err := a.AdoptLegacy(); err != nil || a.Enabled() {
 		t.Fatalf("without a legacy agent: %v, enabled=%v", err, a.Enabled())
 	}
@@ -76,7 +76,7 @@ func TestAdoptLegacy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	translocated := Agent{Home: a.Home, Executable: "/private/var/folders/x/AppTranslocation/ABC/d/memors-tray.app/Contents/MacOS/memors-tray"}
+	translocated := Agent{Home: a.Home, Executable: "/private/var/folders/x/AppTranslocation/ABC/d/MemoRS Tray.app/Contents/MacOS/memors-tray"}
 	if err := translocated.AdoptLegacy(); err != nil || a.Enabled() {
 		t.Fatalf("translocated: %v, enabled=%v", err, a.Enabled())
 	}

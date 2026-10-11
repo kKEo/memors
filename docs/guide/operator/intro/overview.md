@@ -13,7 +13,7 @@ binary runs in three roles, which are **separate processes** that share only the
 
 Each MCP client session usually starts its own server process. Alternatively,
 `memors-mcp serve --http` runs one long-lived server that many clients share over HTTP; an
-operator, a service manager or [memors-tray](../install/tray.md) starts it. See
+operator, a service manager or [MemoRS Tray](../install/tray.md) starts it. See
 [One shared server over HTTP](../install/clients.md#one-shared-server-over-http). Several
 processes can hold the same file open at once; SQLite WAL mode and a 5-second busy timeout
 serialise writers.

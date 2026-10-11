@@ -53,8 +53,8 @@ func TestValidate(t *testing.T) {
 		{"no port", Config{Servers: []Server{{KB: "a", Addr: "127.0.0.1"}}}, "addr"},
 		{"bad port", Config{Servers: []Server{{KB: "a", Addr: "127.0.0.1:99999"}}}, "bad port"},
 		{"bad auth", Config{Servers: []Server{{KB: "a", Addr: "127.0.0.1:1", Auth: "basic"}}}, "none or token"},
-		{"reserved env", Config{Env: map[string]string{"MEMORS_HTTP_AUTH": "none"}}, "set by memors-tray"},
-		{"reserved server env", Config{Servers: []Server{{KB: "a", Addr: "127.0.0.1:1", Env: map[string]string{"MEMORS_KB": "b"}}}}, "set by memors-tray"},
+		{"reserved env", Config{Env: map[string]string{"MEMORS_HTTP_AUTH": "none"}}, "set by MemoRS Tray"},
+		{"reserved server env", Config{Servers: []Server{{KB: "a", Addr: "127.0.0.1:1", Env: map[string]string{"MEMORS_KB": "b"}}}}, "set by MemoRS Tray"},
 		{"bad env name", Config{Env: map[string]string{"A=B": "x"}}, "variable name"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
