@@ -329,3 +329,53 @@ func TestCompactSubmitRoundTrip(t *testing.T) {
 		t.Fatalf("status pages: %+v", st.Pages)
 	}
 }
+
+// The ask prompt hands the client's model the search-then-read loop for a
+// question; the server writes no answer.
+func TestAskPrompt(t *testing.T) {
+	cs, _ := newTestSession(t)
+	ctx := context.Background()
+
+	list, err := cs.ListPrompts(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Prompts) != 1 || list.Prompts[0].Name != "ask" {
+		t.Fatalf("prompts: %+v", list.Prompts)
+	}
+	for _, a := range list.Prompts[0].Arguments {
+		if (a.Name == "question") != a.Required {
+			t.Errorf("argument %s required = %v", a.Name, a.Required)
+		}
+	}
+
+	res, err := cs.GetPrompt(ctx, &mcp.GetPromptParams{Name: "ask", Arguments: map[string]string{
+		"question": "  How do interceptors chain?  ", "namespace": "grpc", "version": "v1.8.0",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Messages) != 1 || res.Messages[0].Role != "user" {
+		t.Fatalf("messages: %+v", res.Messages)
+	}
+	text := res.Messages[0].Content.(*mcp.TextContent).Text
+	for _, want := range []string{"Question: How do interceptors chain?\n", "`search`", "`read`", "memo://", `namespaces: ["grpc"]`, `version: "v1.8.0"`} {
+		if !strings.Contains(text, want) {
+			t.Errorf("prompt lacks %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "library:") {
+		t.Errorf("unset library still scoped:\n%s", text)
+	}
+
+	if _, err := cs.GetPrompt(ctx, &mcp.GetPromptParams{Name: "ask", Arguments: map[string]string{"question": "  "}}); err == nil {
+		t.Fatal("blank question should be an error")
+	}
+	long, err := cs.GetPrompt(ctx, &mcp.GetPromptParams{Name: "ask", Arguments: map[string]string{"question": strings.Repeat("x", 10_000)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(long.Messages[0].Content.(*mcp.TextContent).Text); n > 4096 {
+		t.Fatalf("long question not cut: %d bytes", n)
+	}
+}

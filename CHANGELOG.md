@@ -5,6 +5,9 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **`ask` MCP prompt**: starts a chat answered from the knowledge base. The client's model runs
+  `search` and `read` and cites every claim by its `memo://` address; the server still runs no
+  LLM. Counted in `memors_mcp_prompt_gets_total`.
 - **Renamed: the project is now memors** (`github.com/kKEo/memors`, MCP registry
   `io.github.kKEo/memors`, guides at `kkeo.github.io/memors/`), **the server binary is
   `memors-mcp`** (`cmd/memors-mcp`, archives `memors-mcp_<version>_<os>_<arch>`) and **the menu-bar

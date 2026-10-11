@@ -136,8 +136,10 @@ The generic shape is the same everywhere: a command, optional args and an enviro
 | env | `MEMORS_KB`, and optionally `MEMORS_HOME`, `MEMORS_MODEL`, `MEMORS_PROFILE`, `MEMORS_QUERY_LOG`, `MEMORS_LOG_FORMAT`, `MEMORS_LOG_LEVEL` |
 
 The server implements protocol version `2026-07-28`: stateless, with `server/discover` in
-place of `initialize`. It advertises tools and resources. It does not advertise `logging` or
-`prompts`. The `promote` tool uses elicitation when the client supports it, and otherwise
+place of `initialize`. It advertises tools, resources and one prompt, `ask`, which starts a
+chat answered from the knowledge base with `memo://` citations. The client's model writes the
+answer; the prompt only tells it how to search, read and cite. The server does not advertise
+`logging`. The `promote` tool uses elicitation when the client supports it, and otherwise
 returns the CLI command a human can run.
 
 ## Teaching the agent

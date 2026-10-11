@@ -25,6 +25,9 @@ another agent, or by the human; nothing is fetched by the server. Seven tools, o
 5. **Use `exclude_ids` on the second page.** The server is stateless; pass the addresses you have
    already read and the next call skips them.
 
+A human may start the conversation with the `ask` prompt. It asks for exactly this loop, with
+every claim in the answer cited by its `memo://` address; keep to it for the follow-ups too.
+
 ## Writing
 
 - `ingest` stores a document you fetched or wrote, as markdown, with `source.uri`, `source.kind`

@@ -119,10 +119,16 @@ func TestMiddlewareCountsToolCallsAndErrors(t *testing.T) {
 	if v := counter(reg, "memors_mcp_resource_reads_total", "index", "ok"); v != 1 {
 		t.Fatalf("resource reads = %v", v)
 	}
+	if _, err := cs.GetPrompt(context.Background(), &mcp.GetPromptParams{Name: "ask", Arguments: map[string]string{"question": "q"}}); err != nil {
+		t.Fatal(err)
+	}
+	if v := counter(reg, "memors_mcp_prompt_gets_total", "ask", "ok"); v != 1 {
+		t.Fatalf("prompt gets = %v", v)
+	}
 }
 
 // The server does not advertise the deprecated MCP logging capability; tools
-// and resources are still there.
+// and resources are still there, and so are prompts.
 func TestServerDoesNotAdvertiseLogging(t *testing.T) {
 	cs, _ := newTestSession(t)
 	caps := cs.InitializeResult().Capabilities
@@ -130,8 +136,8 @@ func TestServerDoesNotAdvertiseLogging(t *testing.T) {
 	if caps == nil || strings.Contains(string(raw), `"logging"`) {
 		t.Fatalf("logging capability advertised: %s", raw)
 	}
-	if caps.Tools == nil || caps.Resources == nil {
-		t.Fatalf("tools/resources capabilities missing: %+v", caps)
+	if caps.Tools == nil || caps.Resources == nil || caps.Prompts == nil {
+		t.Fatalf("tools/resources/prompts capabilities missing: %+v", caps)
 	}
 }
 

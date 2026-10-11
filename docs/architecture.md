@@ -294,7 +294,7 @@ map onto OpenTelemetry names by replacing `_` with `.`. Labels are bounded enums
 | `memors_mcp_tool_calls_total`, `memors_mcp_tool_call_duration_seconds`, `memors_mcp_tool_result_tokens` | tool, outcome (ok, tool_error, input_required, error) | tool calls and their size |
 | `memors_mcp_tool_errors_total` | tool, class (not_found, forgotten, needs_human, canceled, invalid_args, internal) | why tool calls failed |
 | `memors_mcp_elicitations_total` | tool, outcome (asked, accept, decline, cancel, unsupported) | human questions |
-| `memors_mcp_resource_reads_total`, `memors_mcp_sessions_total` | kind, outcome; client | resources and sessions |
+| `memors_mcp_resource_reads_total`, `memors_mcp_prompt_gets_total`, `memors_mcp_sessions_total` | kind, outcome; prompt, outcome; client | resources, prompts and sessions |
 | `memors_search_total`, `memors_search_duration_seconds`, `memors_search_results` | mode_requested, mode_resolved, granularity, outcome | searches |
 | `memors_search_arm_duration_seconds`, `memors_search_arm_candidates` | arm | each retrieval arm |
 | `memors_search_cutoff_total`, `memors_search_truncated_results_total`, `memors_search_abstentions_total`, `memors_search_degraded_total` | kind; reason | how lists ended and why nothing came back |
@@ -322,7 +322,9 @@ argument summary (never `content`, `statement`, `reason` or `context`). `memors-
 
 ## 12. Not in 1.0
 
-HTTP transport for MCP (OD-11), a server-side LLM, prompts. The graph arm and `explore`
+HTTP transport for MCP (OD-11), a server-side LLM. The graph arm and `explore`
 arrived in 1.1, compaction and pages (`compact`, `submit`, `granularity=page`) in 1.2, the
 read-only web UI in 1.3, all as additive changes; the tool count is ten. The UI's HTTP server
-is not an MCP transport: it has no tools and no mutating route. The MCP `profile` parameter. Importing v0 journal files.
+is not an MCP transport: it has no tools and no mutating route. One MCP prompt, `ask`, came
+after 1.4: it returns instructions for the client's model (search, read, cite every claim by
+its `memo://` address, abstain when search does) and generates nothing itself. The MCP `profile` parameter. Importing v0 journal files.

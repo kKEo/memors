@@ -25,6 +25,7 @@ Bucket sets:
 | `memors_mcp_tool_errors_total` | C | `tool`, `class` = `not_found`, `forgotten`, `needs_human`, `canceled`, `invalid_args`, `internal` | Why calls failed |
 | `memors_mcp_elicitations_total` | C | `tool`, `outcome` = `asked`, `accept`, `decline`, `cancel`, `unsupported` | Human approval dialogs |
 | `memors_mcp_resource_reads_total` | C | `kind` = `doc`, `chunk`, `source`, `fact`, `entity`, `page`, `index`, `ns_index`, `unknown`; `outcome` = `ok`, `error` | `memo://` resource reads |
+| `memors_mcp_prompt_gets_total` | C | `prompt` = `ask`, `unknown`; `outcome` = `ok`, `error` | Prompts fetched by clients |
 | `memors_mcp_sessions_total` | C | `client` | Sessions started, by client name |
 
 ## Search
