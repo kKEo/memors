@@ -130,7 +130,7 @@ func Build(in Input) []Item {
 		Item{Key: "settings", Title: "Settings…", Action: Action{Kind: OpenSettings}},
 		Item{Key: "setup", Title: "Install or Update memors-mcp…", Tooltip: in.Memors, Action: Action{Kind: OpenSetup}},
 		sep("quit"))
-	quit := "Quit memors-tray"
+	quit := "Quit MemoRS Tray"
 	if in.StopsOnQuit > 0 {
 		quit += fmt.Sprintf(" (stops %d server%s)", in.StopsOnQuit, plural(in.StopsOnQuit))
 	}

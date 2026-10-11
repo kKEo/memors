@@ -7,7 +7,7 @@ again. Each MCP session starts its own process, so a new binary is picked up on 
 
 ## Upgrading from memo-mcp
 
-memo-mcp was renamed to memors-mcp, and memo-tray to memors-tray. Knowledge-base files,
+memo-mcp was renamed to memors-mcp, and memo-tray to MemoRS Tray. Knowledge-base files,
 `memo://` addresses, tool names and the export format are unchanged. The names around them
 changed, and the old ones are not read any more:
 
@@ -18,7 +18,7 @@ changed, and the old ones are not read any more:
 | `~/.cache/memo-mcp/models` | `~/.cache/memors-mcp/models` |
 | `MEMO_*` variables | `MEMORS_*`, same suffixes |
 | `memo_*` metrics | `memors_*`, same suffixes |
-| memo-tray.app, bundle ID and LaunchAgent `io.github.kkeo.memo-tray` | memors-tray.app, `io.github.kkeo.memors-tray` |
+| memo-tray.app, bundle ID and LaunchAgent `io.github.kkeo.memo-tray` | MemoRS Tray.app, `io.github.kkeo.memors-tray` |
 | `tray.json` key `memo_binary` | `memors_binary` |
 | `github.com/kKEo/memory-find` | `github.com/kKEo/memors` |
 
@@ -31,9 +31,9 @@ changed, and the old ones are not read any more:
    `MEMORS_*`. The server key (`memo`) may stay; these guides now use `memors`
    ([Connecting clients](clients.md)).
 5. If `tray.json` sets `memo_binary`, rename the key to `memors_binary`, or delete it and let
-   memors-tray find `memors-mcp` by itself.
-6. Install memors-tray by hand ([memors-tray](tray.md)): memo-tray cannot update itself to the
-   renamed release archives. Delete memo-tray.app. "Open at login" carries over on the first start.
+   MemoRS Tray find `memors-mcp` by itself.
+6. Install MemoRS Tray by hand, as described on [its page](tray.md): memo-tray cannot update
+   itself to the renamed release archives. Delete memo-tray.app. "Open at login" carries over on the first start.
 7. Rename `memo_` to `memors_` in Prometheus recording rules, alerts and dashboards
    ([Prometheus](../monitoring/prometheus.md)).
 8. Browsers log in to the web UI once more: the session cookie was renamed.

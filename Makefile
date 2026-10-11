@@ -94,15 +94,16 @@ lint:
 # the CI planned in docs/roadmap.md (P0 minimal, P6 full matrix).
 check: fmt vet lint test-race
 
-# memors-tray, the macOS menu-bar app, is its own Go module under tray/ and
-# the only cgo build in the repository; memors-mcp itself stays pure Go.
+# MemoRS Tray (executable memors-tray), the macOS menu-bar app, is its own Go
+# module under tray/ and the only cgo build in the repository; memors-mcp
+# itself stays pure Go.
 tray:
 	cd tray && CGO_ENABLED=1 go build -ldflags "-s -w -X main.version=$(VERSION)" -o memors-tray ./cmd/memors-tray
 
 tray-test:
 	cd tray && go vet ./... && go test ./... -race -count=1
 
-# tray-app builds tray/dist/memors-tray.app (universal, ad-hoc signed) and its
+# tray-app builds "tray/dist/MemoRS Tray.app" (universal, ad-hoc signed) and its
 # release zip.
 tray-app:
 	./tray/scripts/build-app.sh $(VERSION)

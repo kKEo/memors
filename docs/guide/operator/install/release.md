@@ -15,7 +15,7 @@ Every tag `vX.Y.Z` publishes five archives and a checksum file on the
 Each archive contains the binary, `LICENSE`, `README.md` and `SKILL.md`.
 
 The optional macOS menu-bar app comes as one more asset, `memors-tray_X.Y.Z_darwin_universal.zip`,
-with its own `.sha256` file; see [memors-tray](tray.md).
+with its own `.sha256` file; see [MemoRS Tray](tray.md).
 
 ## Install
 
@@ -45,7 +45,7 @@ directly.
 
 ## What the binary needs at runtime
 
-- No shared libraries, no CGo, no interpreter. (This is the memors-mcp binary. memors-tray, the
+- No shared libraries, no CGo, no interpreter. (This is the memors-mcp binary. MemoRS Tray, the
   separate macOS app, links AppKit and WebKit.)
 - A writable `MEMORS_HOME`, by default `~/.memors-mcp`, and a writable `~/.cache/memors-mcp/models`.
 - About 200 MB of disk for the default model, plus the knowledge-base files. See

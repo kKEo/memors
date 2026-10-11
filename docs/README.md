@@ -3,8 +3,8 @@
 What is current, what is history, and where to start. Dates are the last substantive revision.
 
 The project was renamed to **memors** on 2026-10-10: `memo-mcp` is now `memors-mcp`, `memo-tray`
-is `memors-tray`, `MEMO_*` is `MEMORS_*` and `~/.memo-mcp` is `~/.memors-mcp`; `memo://` addresses
-did not change. The guides, `architecture.md` and the changelog's open section use the new names.
+is MemoRS Tray (executable `memors-tray`), `MEMO_*` is `MEMORS_*` and `~/.memo-mcp` is
+`~/.memors-mcp`; `memo://` addresses did not change. The guides, `architecture.md` and the changelog's open section use the new names.
 The roadmap, research, schema, eval reports, spike notes, history and the articles keep the names
 they were written with.
 

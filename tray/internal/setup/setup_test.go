@@ -295,7 +295,7 @@ func TestSettingsRefusesBadInput(t *testing.T) {
 		want string
 	}{
 		{url.Values{"new_kb": {"a b"}}, "not a valid knowledge-base name"},
-		{url.Values{"env": {"MEMORS_HTTP_AUTH=none"}}, "set by memors-tray"},
+		{url.Values{"env": {"MEMORS_HTTP_AUTH=none"}}, "set by MemoRS Tray"},
 		{url.Values{"env": {"MEMORS_MODEL=potion"}}, "embedding model with the field above"},
 		{url.Values{"env": {"no equals sign"}}, "NAME=value"},
 		{url.Values{"memors_mode": {"path"}, "memors_path": {"relative/memors-mcp"}}, "full path"},

@@ -1,10 +1,11 @@
 #!/bin/sh
-# Builds memors-tray.app: one universal binary (arm64 + x86_64), the bundle
-# around it, ad-hoc signed, zipped with a SHA-256 file next to it.
+# Builds MemoRS Tray.app (executable memors-tray): one universal binary
+# (arm64 + x86_64), the bundle around it, ad-hoc signed, zipped with a
+# SHA-256 file next to it.
 #
 #   tray/scripts/build-app.sh [version]      (macOS with Xcode command-line tools)
 #
-# Output: tray/dist/memors-tray.app and tray/dist/memors-tray_<version>_darwin_universal.zip.
+# Output: "tray/dist/MemoRS Tray.app" and tray/dist/memors-tray_<version>_darwin_universal.zip.
 # The app is not notarized: on first open macOS asks you to allow it
 # (System Settings > Privacy & Security > Open Anyway).
 set -eu
@@ -19,7 +20,8 @@ case "$SHORT" in
 esac
 
 OUT=dist
-APP=$OUT/memors-tray.app
+NAME="MemoRS Tray"
+APP="$OUT/$NAME.app"
 rm -rf "$OUT"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
@@ -58,5 +60,5 @@ codesign --force --sign - --timestamp=none "$APP"
 codesign --verify --strict "$APP"
 
 ZIP="memors-tray_${VERSION#v}_darwin_universal.zip"
-(cd "$OUT" && ditto -c -k --keepParent memors-tray.app "$ZIP" && shasum -a 256 "$ZIP" >"$ZIP.sha256")
+(cd "$OUT" && ditto -c -k --keepParent "$NAME.app" "$ZIP" && shasum -a 256 "$ZIP" >"$ZIP.sha256")
 echo "$OUT/$ZIP"

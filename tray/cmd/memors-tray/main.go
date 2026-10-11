@@ -47,7 +47,7 @@ func main() {
 			fmt.Println("memors-tray", buildVersion())
 			return
 		default:
-			fmt.Fprintln(os.Stderr, "usage: memors-tray [-version]\n\nmemors-tray runs in the menu bar; open memors-tray.app, or run it without arguments.")
+			fmt.Fprintln(os.Stderr, "usage: memors-tray [-version]\n\nMemoRS Tray runs in the menu bar; open MemoRS Tray.app, or run it without arguments.")
 			os.Exit(2)
 		}
 	}
@@ -157,7 +157,7 @@ func run() int {
 		a.Shutdown()
 	}
 	systray.Run(func() {
-		ui.Ready(icon.Template(), "memors-tray: memors-mcp servers and their agents")
+		ui.Ready(icon.Template(), "MemoRS Tray: memors-mcp servers and their agents")
 		go func() {
 			for range systray.TrayOpenedCh {
 				a.MenuOpened()

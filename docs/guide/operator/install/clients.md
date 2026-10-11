@@ -38,12 +38,12 @@ background backfill, and tool and ingest latency since start. The standalone `me
 reads the knowledge-base file alone and has no Live page.
 
 Start the server yourself (a terminal, `launchd` or a `systemd --user` unit), or from the macOS
-menu-bar app, [memors-tray](tray.md). Clients do not start it, and its logs go to its own
+menu-bar app, [MemoRS Tray](tray.md). Clients do not start it, and its logs go to its own
 stderr.
 
 ### For companion apps
 
-Two routes exist for local tools such as memors-tray rather than for people:
+Two routes exist for local tools such as MemoRS Tray rather than for people:
 
 - `GET /live.json`: the Live page's client list as JSON (schema 1): the server's instance id,
   pid, version, knowledge base and model, every client with its name, version, `open` and

@@ -404,7 +404,7 @@ func (a *App) merge(now time.Time, entries []runfile.Entry) ([]view, string) {
 		case supervisor.Running:
 			v.State = menu.Starting
 			if now.Sub(c.Started) > runFileWait {
-				v.Detail = "no run file yet: is memors-mcp older than memors-tray?"
+				v.Detail = "no run file yet: is memors-mcp older than MemoRS Tray?"
 			}
 		case supervisor.Stopping:
 			v.State = menu.Stopping
@@ -522,7 +522,7 @@ func (a *App) handle(ctx context.Context, act menu.Action) {
 		a.quitting = true
 		a.d.Quit()
 	case menu.OpenSettings:
-		a.openPage(settingsWindow, "memors-tray Settings", "/settings")
+		a.openPage(settingsWindow, "MemoRS Tray Settings", "/settings")
 	case menu.OpenSetup:
 		a.openPage(setupWindow, "Set up memors-mcp", "/wizard")
 	case reloadAction:
