@@ -111,6 +111,12 @@ func run() int {
 			}
 		},
 		Logf: logf,
+		Connection: func(server string) (menu.ServerView, bool) {
+			if a == nil {
+				return menu.ServerView{}, false
+			}
+			return a.Connection(server)
+		},
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "memors-tray:", err)

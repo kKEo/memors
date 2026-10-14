@@ -56,7 +56,8 @@ until they restart; the last step offers to restart the ones MemoRS Tray started
 
 ## Settings window and launch at login
 
-The settings window and the setup assistant are pages that MemoRS Tray serves itself:
+The settings window, the setup assistant and the Configure Your Agent window are pages that
+MemoRS Tray serves itself:
 
 - They are served on `127.0.0.1:<random port>` and shown in its own WKWebView window.
 - A window enters through a link carrying a per-process secret, passed in process. It then

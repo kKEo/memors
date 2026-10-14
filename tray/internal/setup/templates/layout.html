@@ -8,10 +8,9 @@
 <main>
 {{- if .Step}}
 <ol class="steps">
-<li class="{{if eq .Step 1}}current{{else if gt .Step 1}}done{{end}}">Welcome</li>
-<li class="{{if eq .Step 2}}current{{else if gt .Step 2}}done{{end}}">Install</li>
-<li class="{{if eq .Step 3}}current{{else if gt .Step 3}}done{{end}}">Knowledge base</li>
-<li class="{{if eq .Step 4}}current{{end}}">Connect</li>
+{{- range $i, $label := .Steps}}{{$n := inc $i}}
+<li class="{{if eq $n $.Step}}current{{else if lt $n $.Step}}done{{end}}">{{$label}}</li>
+{{- end}}
 </ol>
 {{- end}}
 {{end}}

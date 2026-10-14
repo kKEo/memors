@@ -32,7 +32,8 @@ missing) walks you through four steps:
    whether a token is required, and whether the server starts with MemoRS Tray. **Save and start**
    starts it.
 4. **Connect**: the MCP address and the `claude mcp add` line for Claude Code, with a **Copy**
-   button.
+   button. Once the server runs, **Configure your agent** opens the step-by-step guide for other
+   agents (see below).
 
 MemoRS Tray contacts GitHub only while this assistant is open on the Install step.
 
@@ -63,12 +64,38 @@ minutes is dropped by the server and shows up again with its next request.
 - **Start Server ▸** lists your memories. Pick one and MemoRS Tray starts a server for it on
   `127.0.0.1:8765`, or the next free port. It remembers the address, so the URL you give your
   agents never changes.
-- **Copy "claude mcp add" Command** in a server's submenu puts the line that connects Claude
-  Code on the clipboard. Paste it in a terminal once.
+- **Configure Your Agent…** in a running server's submenu opens a window that walks you
+  through connecting an agent to that server (see below).
 - **Stop**, **Restart** and **Show Log** are in the same submenu. Servers you started in a
   terminal appear too, and you can stop them from here.
 - Quitting MemoRS Tray stops the servers it started. To keep them running, set
   `"stop_on_quit": false`.
+
+## Configure your agent
+
+**Configure Your Agent…** opens a window that guides you through connecting one agent, in four
+steps:
+
+1. **Agent**: the server's knowledge base, MCP address, sign-in and the name the agent will use
+   (`memors` for the `default` knowledge base, `memors-<name>` for the others). Pick **Claude
+   Code**, **Claude Desktop** or **Other MCP client**.
+2. **Add the server**:
+   - *Claude Code*: the `claude mcp add` command to run once in a terminal, with a **Copy**
+     button.
+   - *Claude Desktop*: **Open file** opens `claude_desktop_config.json` (and creates it if Claude
+     Desktop has none yet), and **Copy configuration** copies the entry to add. Claude Desktop
+     starts its own memors-mcp on the same knowledge base, so this works only for knowledge
+     bases on this Mac, and its activity does not show in the stats window. Restart Claude
+     Desktop afterwards.
+   - *Other*: the MCP address (Streamable HTTP) and, when the server needs a token, the
+     `Authorization` header and the command that prints the token.
+3. **Check**: where the agent lists its connected servers, and what to look at when it does not
+   connect.
+4. **Start using it**: the `ask` prompt (in Claude Code, `/mcp__<name>__ask`), and how to teach
+   the agent to search on its own.
+
+The token itself is never shown or copied, only the `memors-mcp http-token` command that prints
+it. Choosing the item for another server switches the same window to that server.
 
 ## The stats window
 

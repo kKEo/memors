@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/kKEo/memors/tray/internal/installer"
+	"github.com/kKEo/memors/tray/internal/menu"
 )
 
 //go:embed templates/*.html style.css
@@ -74,6 +75,9 @@ type Deps struct {
 	OpenFile      func(path, how string) error
 	Notify        func(Event)
 	Logf          func(format string, args ...any)
+	// Connection is a running server as the menu shows it, by its menu
+	// key; the "Configure your agent" pages describe it.
+	Connection func(server string) (menu.ServerView, bool)
 }
 
 // cookieName holds the secret once a window has come in.
@@ -173,6 +177,10 @@ func (s *Server) Handler() http.Handler {
 	app.HandleFunc("POST /wizard/kb", s.saveKB)
 	app.HandleFunc("GET /wizard/done", s.wizardDone)
 	app.HandleFunc("POST /wizard/copy", s.copyCommand)
+	app.HandleFunc("GET /connect", s.connectChoose)
+	app.HandleFunc("GET /connect/{agent}", s.connectStep)
+	app.HandleFunc("POST /connect/copy", s.connectCopy)
+	app.HandleFunc("POST /connect/open", s.connectOpen)
 	mux.Handle("/", s.authed(http.NewCrossOriginProtection().Handler(app)))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -221,13 +229,20 @@ func (s *Server) css(w http.ResponseWriter, _ *http.Request) {
 // page is what every template gets.
 type page struct {
 	Title   string
-	Refresh int // seconds; 0 = no automatic reload
-	Step    int // wizard step 1-4; 0 outside the wizard
+	Refresh int      // seconds; 0 = no automatic reload
+	Step    int      // the current step, from 1; 0 on pages without steps
+	Steps   []string // the step indicator; the wizard's when empty
 	Data    any
 }
 
+// wizardSteps label the setup assistant's step indicator.
+var wizardSteps = []string{"Welcome", "Install", "Knowledge base", "Connect"}
+
 func (s *Server) render(w http.ResponseWriter, name string, p page) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if p.Step > 0 && p.Steps == nil {
+		p.Steps = wizardSteps
+	}
 	if err := s.tmpl.ExecuteTemplate(w, name, p); err != nil {
 		s.d.Logf("render %s: %v", name, err)
 	}
@@ -250,6 +265,14 @@ var funcs = template.FuncMap{
 		return done * 100 / total
 	},
 	"tilde": tilde,
+	"inc":   func(i int) int { return i + 1 },
+	"dict": func(kv ...any) map[string]any { // pairs: "key", value, ...
+		m := map[string]any{}
+		for i := 0; i+1 < len(kv); i += 2 {
+			m[fmt.Sprint(kv[i])] = kv[i+1]
+		}
+		return m
+	},
 	"hasModel": func(models []Model, id string) bool {
 		for _, m := range models {
 			if m.ID == id {

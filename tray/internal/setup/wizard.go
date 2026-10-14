@@ -271,6 +271,7 @@ type doneData struct {
 	Auth    string
 	Command string
 	Copied  bool
+	Connect string // the "Configure your agent" pages, once the server runs
 }
 
 func (s *Server) wizardDone(w http.ResponseWriter, r *http.Request) {
@@ -280,6 +281,11 @@ func (s *Server) wizardDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.Copied = r.URL.Query().Get("copied") == "1"
+	if base := strings.TrimSuffix(d.URL, "/mcp"); s.d.Connection != nil {
+		if _, ok := s.d.Connection(base); ok {
+			d.Connect = connectLink("", base, nil)
+		}
+	}
 	s.render(w, "wizard_done.html", page{Title: "Connect your agents", Step: 4, Data: d})
 }
 

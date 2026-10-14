@@ -98,6 +98,10 @@
 <pre class="cmd">{{.Command}}</pre>
 <form method="post" action="/wizard/copy"><input type="hidden" name="kb" value="{{.KB}}"><button>{{if .Copied}}Copied ✓{{else}}Copy command{{end}}</button></form></div>
 </section>
+<section class="group"><h2>Other agents</h2>
+<div class="row">{{if .Connect}}<div>Claude Desktop, Cursor, VS Code and other MCP clients: a step-by-step guide.</div><a class="button" href="{{.Connect}}">Configure your agent</a>
+{{- else}}<div class="hint">For Claude Desktop, Cursor and other MCP clients, choose <b>{{.KB}} › Configure Your Agent…</b> in the menu bar once the server runs. <a href="/wizard/done?kb={{.KB}}">Refresh</a></div>{{end}}</div>
+</section>
 <section class="group"><h2>Next</h2>
 <div class="row stack"><div>In the menu bar, <b>MemoRS Tray › {{.KB}} › Open Stats Window</b> shows the connected agents and what they are doing. To change any of this later, choose <b>Settings…</b> in the same menu.</div></div>
 </section>

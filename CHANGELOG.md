@@ -5,6 +5,11 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **MemoRS Tray: Configure Your Agent…** replaces **Copy MCP URL** and **Copy "claude mcp add"
+  Command** in a running server's submenu. It opens a step-by-step window: choose the agent
+  (Claude Code, Claude Desktop or another MCP client), add the server (the command, the Claude
+  Desktop configuration entry, or the address and token header, each with a Copy button), check
+  the connection and start with the `ask` prompt. The setup assistant's last step links to it.
 - **`ask` MCP prompt**: turns a conversation into a chat answered from the knowledge base. The
   client's model searches passages and facts, reads for depth, cites every claim by its `memo://`
   address and says when the knowledge base has nothing; the server still runs no LLM. One

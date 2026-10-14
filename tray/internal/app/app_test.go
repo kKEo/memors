@@ -210,11 +210,17 @@ func TestActions(t *testing.T) {
 	h.tick()
 	key := "http://127.0.0.1:8765"
 	ctx := context.Background()
-	h.a.handle(ctx, menu.Action{Kind: menu.CopyURL, Server: key})
-	h.a.handle(ctx, menu.Action{Kind: menu.CopyAdd, Server: key, KB: "crportal"})
-	if len(h.copied) != 2 || h.copied[0] != key+"/mcp" || !strings.Contains(h.copied[1], `memors-crportal 'http://127.0.0.1:8765/mcp' --header "Authorization: Bearer $(memors-mcp http-token)"`) {
-		t.Errorf("copied = %q", h.copied)
+	h.a.handle(ctx, menu.Action{Kind: menu.ConfigureAgent, Server: key, KB: "crportal"})
+	if len(h.win.opens) != 1 || h.win.opens[0] != "tray:connect|http://127.0.0.1:1/enter?next=/connect?server=http%3A%2F%2F127.0.0.1%3A8765|http://127.0.0.1:1" {
+		t.Errorf("configure opens = %q", h.win.opens)
 	}
+	if v, ok := h.a.Connection(key); !ok || v.KB != "crportal" || v.URL != key || v.Auth != "token" {
+		t.Errorf("Connection(%s) = %+v, %v", key, v, ok)
+	}
+	if _, ok := h.a.Connection("http://127.0.0.1:9"); ok {
+		t.Error("Connection found a server that is not there")
+	}
+	h.win.opens = nil
 	h.a.handle(ctx, menu.Action{Kind: menu.OpenStats, Server: key})
 	if len(h.win.opens) != 1 || h.win.opens[0] != key+"|"+key+"/login?code=c&next=/live|"+key {
 		t.Errorf("window opens = %q", h.win.opens)

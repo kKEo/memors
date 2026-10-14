@@ -62,8 +62,7 @@ func TestServerWithAgents(t *testing.T) {
 	want := `crportal · 127.0.0.1:8765 · running
   > Open Stats Window
   > Open in Browser
-  > Copy MCP URL
-  > Copy “claude mcp add” Command
+  > Configure Your Agent…
   > ---
   > Show Log
   > Restart
@@ -146,6 +145,23 @@ func TestClaudeAddCommand(t *testing.T) {
 		if got := ClaudeAddCommand(c.kb, c.url, c.auth, c.file, "/h/http-token"); got != c.want {
 			t.Errorf("ClaudeAddCommand(%s) =\n%s\nwant\n%s", c.kb, got, c.want)
 		}
+	}
+}
+
+func TestServerNameAndTokenCommand(t *testing.T) {
+	for kb, want := range map[string]string{"default": "memors", "crportal": "memors-crportal", "my.kb": "memors-my-kb", "a b": "memors-a-b"} {
+		if got := ServerName(kb); got != want {
+			t.Errorf("ServerName(%q) = %q, want %q", kb, got, want)
+		}
+	}
+	if got := TokenCommand("/h/http-token", "/h/http-token"); got != "memors-mcp http-token" {
+		t.Errorf("default token file: %q", got)
+	}
+	if got := TokenCommand("", "/h/http-token"); got != "memors-mcp http-token" {
+		t.Errorf("no token file: %q", got)
+	}
+	if got := TokenCommand("/x/t", "/h/http-token"); got != "memors-mcp http-token --file '/x/t'" {
+		t.Errorf("other token file: %q", got)
 	}
 }
 

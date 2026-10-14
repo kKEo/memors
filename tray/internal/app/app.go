@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -79,6 +80,7 @@ type Pages interface {
 const (
 	settingsWindow = "tray:settings"
 	setupWindow    = "tray:setup"
+	connectWindow  = "tray:connect"
 )
 
 const (
@@ -115,6 +117,9 @@ type App struct {
 	busyMu     sync.Mutex
 	busy       map[string]bool // knowledge bases with a start/stop in progress
 	shutdownMu sync.Once
+
+	rowsMu sync.Mutex
+	rows   map[string]menu.ServerView // a copy of views for other goroutines (Connection)
 }
 
 type poll struct {
@@ -227,10 +232,15 @@ func (a *App) tick(ctx context.Context) {
 	}
 	a.views = map[string]view{}
 	var rows []menu.ServerView
+	byKey := map[string]menu.ServerView{}
 	for _, v := range views {
 		a.views[v.Key] = v
 		rows = append(rows, v.ServerView)
+		byKey[v.Key] = v.ServerView
 	}
+	a.rowsMu.Lock()
+	a.rows = byKey
+	a.rowsMu.Unlock()
 	a.followRestarts(ctx, views)
 	kbs, _ := home.KBs(a.d.Home)
 	for _, s := range a.cfg.Servers {
@@ -489,13 +499,9 @@ func (a *App) handle(ctx context.Context, act menu.Action) {
 			}
 			a.report("open in browser", err)
 		}
-	case menu.CopyURL:
+	case menu.ConfigureAgent:
 		if hasView && v.URL != "" {
-			a.report("copy", a.d.Copy(v.URL+"/mcp"))
-		}
-	case menu.CopyAdd:
-		if hasView && v.URL != "" {
-			a.report("copy", a.d.Copy(menu.ClaudeAddCommand(v.KB, v.URL, v.Auth, v.TokenFile, filepath.Join(a.d.Home, "http-token"))))
+			a.openPage(connectWindow, "Configure your agent", "/connect?"+url.Values{"server": {v.Key}}.Encode())
 		}
 	case menu.ShowLog:
 		a.report("show log", a.d.OpenFile(a.d.Supervisor.LogPath(act.KB), "log"))
@@ -693,6 +699,15 @@ const (
 	startIfStopped
 	restartManaged
 )
+
+// Connection is the server row for key (a menu ServerView.Key) as of the
+// last rescan. Safe to call from any goroutine: the setup pages use it.
+func (a *App) Connection(key string) (menu.ServerView, bool) {
+	a.rowsMu.Lock()
+	defer a.rowsMu.Unlock()
+	v, ok := a.rows[key]
+	return v, ok
+}
 
 // openPage shows one of memors-tray's own pages in its window.
 func (a *App) openPage(key, title, page string) {

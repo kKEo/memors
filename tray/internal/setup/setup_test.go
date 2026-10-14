@@ -20,6 +20,7 @@ import (
 
 	"github.com/kKEo/memors/tray/internal/config"
 	"github.com/kKEo/memors/tray/internal/installer"
+	"github.com/kKEo/memors/tray/internal/menu"
 )
 
 type fakeReleases struct {
@@ -80,6 +81,7 @@ type harness struct {
 	events   []Event
 	copied   []string
 	opened   []string
+	servers  map[string]menu.ServerView // what Deps.Connection finds
 }
 
 func newHarness(t *testing.T) *harness {
@@ -112,6 +114,12 @@ func newHarness(t *testing.T) *harness {
 		OpenFile: func(p, how string) error { h.opened = append(h.opened, how+":"+p); return nil },
 		Notify:   func(e Event) { h.mu.Lock(); h.events = append(h.events, e); h.mu.Unlock() },
 		Logf:     func(string, ...any) {},
+		Connection: func(server string) (menu.ServerView, bool) {
+			h.mu.Lock()
+			defer h.mu.Unlock()
+			v, ok := h.servers[server]
+			return v, ok
+		},
 	})
 	if err != nil {
 		t.Fatal(err)

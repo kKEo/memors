@@ -23,8 +23,7 @@ const (
 	None ActionKind = iota
 	OpenStats
 	OpenBrowser
-	CopyURL
-	CopyAdd
+	ConfigureAgent // the window that walks through connecting an agent to the server
 	ShowLog
 	Start
 	Restart
@@ -190,8 +189,7 @@ func header(s ServerView, in Input) Item {
 		children = append(children,
 			act("stats", "Open Stats Window", OpenStats, reachable && !s.MTLS),
 			act("browser", "Open in Browser", OpenBrowser, reachable),
-			act("url", "Copy MCP URL", CopyURL, s.URL != ""),
-			act("add", "Copy “claude mcp add” Command", CopyAdd, s.URL != ""),
+			act("connect", "Configure Your Agent…", ConfigureAgent, s.URL != ""),
 			sep(k+":sep"),
 		)
 		if s.HasLog {
@@ -298,24 +296,35 @@ func startMenu(in Input, servers []ServerView) Item {
 // ClaudeAddCommand is the line that adds a server to Claude Code. It names
 // the token through `memors-mcp http-token`, never the token itself.
 func ClaudeAddCommand(kb, serverURL, auth, tokenFile, defaultTokenFile string) string {
-	name := "memors"
-	if kb != "default" {
-		name = "memors-" + strings.Map(func(r rune) rune {
-			if r == '-' || r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
-				return r
-			}
-			return '-'
-		}, kb)
-	}
-	cmd := "claude mcp add --transport http " + name + " " + shellQuote(serverURL+"/mcp")
+	cmd := "claude mcp add --transport http " + ServerName(kb) + " " + shellQuote(serverURL+"/mcp")
 	if auth == "token" {
-		tok := "memors-mcp http-token"
-		if tokenFile != "" && tokenFile != defaultTokenFile {
-			tok += " --file " + shellQuote(tokenFile)
-		}
-		cmd += ` --header "Authorization: Bearer $(` + tok + `)"`
+		cmd += ` --header "Authorization: Bearer $(` + TokenCommand(tokenFile, defaultTokenFile) + `)"`
 	}
 	return cmd
+}
+
+// ServerName is the name an agent knows a knowledge base's server by:
+// memors for the default knowledge base, memors-<kb> for the others.
+func ServerName(kb string) string {
+	if kb == "default" {
+		return "memors"
+	}
+	return "memors-" + strings.Map(func(r rune) rune {
+		if r == '-' || r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return r
+		}
+		return '-'
+	}, kb)
+}
+
+// TokenCommand prints a server's bearer token; --file names a token file
+// other than the default one.
+func TokenCommand(tokenFile, defaultTokenFile string) string {
+	tok := "memors-mcp http-token"
+	if tokenFile != "" && tokenFile != defaultTokenFile {
+		tok += " --file " + shellQuote(tokenFile)
+	}
+	return tok
 }
 
 // Clean makes a client-supplied string safe to show: no control or

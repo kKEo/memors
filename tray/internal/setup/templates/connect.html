@@ -1,0 +1,146 @@
+{{define "connect_gone.html"}}{{template "head" .}}
+<h1>This server is not running</h1>
+<p class="lede">Start it from the menu bar, then choose <b>Configure Your Agent…</b> in its menu again.</p>
+<div class="actions"><span class="muted">Close this window with ⌘W.</span></div>
+{{template "foot" .}}{{end}}
+
+{{define "connect_summary"}}<section class="group"><h2>Server</h2>
+<dl class="kv">
+<dt>Knowledge base</dt><dd><b>{{.KB}}</b></dd>
+<dt>MCP address</dt><dd><code>{{.URL}}</code></dd>
+<dt>Sign-in</dt><dd>{{if .MTLS}}client certificate (mTLS){{else if eq .Auth "token"}}bearer token{{else}}none{{end}}</dd>
+<dt>Name in the agent</dt><dd><code>{{.Name}}</code></dd>
+</dl>
+</section>{{end}}
+
+{{define "copy"}}<form method="post" action="/connect/copy"><input type="hidden" name="server" value="{{.D.Server}}"><input type="hidden" name="agent" value="{{.D.Agent}}"><input type="hidden" name="what" value="{{.What}}"><button>{{if eq .D.Copied .What}}Copied ✓{{else}}{{.Label}}{{end}}</button></form>{{end}}
+
+{{define "connect_choose.html"}}{{template "head" .}}{{with .Data}}
+<h1>Configure your agent</h1>
+<p class="lede">Connect an AI agent to the <b>{{.KB}}</b> knowledge base, so it can search it, read it and cite it. This takes a minute; each step says exactly what to do.</p>
+{{template "connect_summary" .}}
+<section class="group"><h2>Which agent do you use?</h2>
+<div class="row"><div><div class="label">Claude Code</div><div class="hint">The command-line agent. One terminal command adds the server.</div></div>
+<a class="button{{if or (eq .Agent "claude-code") (eq .Agent "")}} primary{{end}}" href="/connect/claude-code?server={{.Server}}&amp;step=2">Choose</a></div>
+<div class="row"><div><div class="label">Claude Desktop</div><div class="hint">The desktop app. The server goes into its configuration file.</div></div>
+<a class="button{{if eq .Agent "claude-desktop"}} primary{{end}}" href="/connect/claude-desktop?server={{.Server}}&amp;step=2">Choose</a></div>
+<div class="row"><div><div class="label">Other MCP client</div><div class="hint">Cursor, VS Code, Windsurf or any client that speaks MCP over HTTP.</div></div>
+<a class="button{{if eq .Agent "other"}} primary{{end}}" href="/connect/other?server={{.Server}}&amp;step=2">Choose</a></div>
+</section>
+<div class="actions"><span class="muted">Close this window with ⌘W.</span></div>
+{{end}}{{template "foot" .}}{{end}}
+
+{{define "connect_step.html"}}{{template "head" .}}{{with .Data}}
+{{- if .MTLS}}<div class="banner warn">This server asks for a client certificate (mTLS). Configure your agent with that certificate as well; see <b>Install › Clients</b> in the operator guide.</div>{{end}}
+
+{{- if eq .Step 2}}
+<h1>Add the server to {{.Label}}</h1>
+{{- if eq .Agent "claude-code"}}
+<p class="lede">Claude Code keeps its MCP servers in its own settings. One command adds this one.</p>
+<section class="group"><h2>1 · Run this once in a terminal</h2>
+<div class="row stack"><pre class="cmd">{{.Command}}</pre>
+{{template "copy" (dict "D" . "What" "command" "Label" "Copy command")}}</div>
+</section>
+<section class="group"><h2>Good to know</h2>
+<div class="row stack">
+<div>The server is added to the project in the current folder. To use it in every project, add <code>--scope user</code> after <code>add</code>.</div>
+{{- if eq .Auth "token"}}
+<div>The command reads the token with <code>{{.TokenCmd}}</code> when you run it; the token is never shown here. If the token changes, run <code>claude mcp remove {{.Name}}</code> and the command again.</div>
+{{- end}}
+</div>
+</section>
+{{- else if eq .Agent "claude-desktop"}}
+<p class="lede">Claude Desktop starts its MCP servers itself. It runs its own memors-mcp on the same knowledge base, next to this server.</p>
+{{- if .DesktopWhy}}
+<div class="banner err">{{.DesktopWhy}}</div>
+{{- else}}
+{{- if eq .Problem "nodesktop"}}<div class="banner err">Claude Desktop does not seem to be installed: there is no <code>{{tilde .DesktopFile}}</code> folder yet. Install and open Claude Desktop once, then try again.</div>{{end}}
+{{- if eq .Problem "open"}}<div class="banner err">The configuration file could not be opened. Open <code>{{tilde .DesktopFile}}</code> yourself.</div>{{end}}
+<section class="group"><h2>1 · Open the configuration file</h2>
+<div class="row"><div><code>{{tilde .DesktopFile}}</code><div class="hint">Or, in Claude Desktop: Settings › Developer › Edit Config.</div></div>
+<form method="post" action="/connect/open"><input type="hidden" name="server" value="{{.Server}}"><button>{{if .Opened}}Opened ✓{{else}}Open file{{end}}</button></form></div>
+</section>
+<section class="group"><h2>2 · Add this server</h2>
+<div class="row stack"><div class="hint">If the file is empty or holds only <code>{}</code>, replace its content with this. If it already has <code>"mcpServers"</code>, add the <code>"{{.Name}}"</code> entry inside it, after a comma.</div>
+<pre class="cmd">{{.DesktopJSON}}</pre>
+{{template "copy" (dict "D" . "What" "json" "Label" "Copy configuration")}}</div>
+</section>
+<section class="group"><h2>3 · Save and restart</h2>
+<div class="row stack"><div>Save the file, then quit Claude Desktop completely (⌘Q) and open it again. It reads the file only when it starts.</div></div>
+</section>
+{{- end}}
+{{- else}}
+<p class="lede">Add a remote (HTTP) MCP server in your client's MCP settings, with these values.</p>
+<section class="group"><h2>1 · Server address</h2>
+<div class="row"><div><code>{{.URL}}</code><div class="hint">Transport: Streamable HTTP (sometimes just called "http"). Name: <code>{{.Name}}</code>.</div></div>
+{{template "copy" (dict "D" . "What" "url" "Label" "Copy address")}}</div>
+</section>
+{{- if eq .Auth "token"}}
+<section class="group"><h2>2 · Authorization header</h2>
+<div class="row stack"><div>Send the header <code>Authorization: Bearer &lt;token&gt;</code>. This command prints the token in a terminal:</div>
+<pre class="cmd">{{.TokenCmd}}</pre>
+{{template "copy" (dict "D" . "What" "token" "Label" "Copy command")}}
+<div class="hint">Keep the token out of shared files. If it changes, update the header.</div></div>
+</section>
+{{- end}}
+<section class="group"><h2>Example</h2>
+<div class="row stack"><div class="hint">Many clients (Cursor, for one) take a JSON entry like this under <code>"mcpServers"</code>:</div>
+<pre class="cmd">"{{.Name}}": {
+  "url": "{{.URL}}"{{if eq .Auth "token"}},
+  "headers": { "Authorization": "Bearer &lt;token&gt;" }{{end}}
+}</pre></div>
+</section>
+{{- end}}
+
+{{- else if eq .Step 3}}
+<h1>Check the connection</h1>
+<p class="lede">Make sure {{.Label}} sees the server before you rely on it.</p>
+<section class="group"><h2>In {{.Label}}</h2>
+<div class="row stack">
+{{- if eq .Agent "claude-code"}}
+<div>Start <code>claude</code> in the project folder and type <code>/mcp</code>. <b>{{.Name}}</b> should be listed as connected. In a terminal, <code>claude mcp list</code> shows the same.</div>
+{{- else if eq .Agent "claude-desktop"}}
+<div>Start a new chat and open the tools menu of the message box. <b>{{.Name}}</b> should be listed with its tools. If it is missing, Settings › Developer shows the server and its error.</div>
+{{- else}}
+<div>Open your client's MCP or tools settings. <b>{{.Name}}</b> should be listed as connected, with tools such as <code>search</code> and <code>read</code>.</div>
+{{- end}}
+</div>
+</section>
+{{- if ne .Agent "claude-desktop"}}
+<section class="group"><h2>In the menu bar</h2>
+<div class="row stack"><div>Once the agent calls a tool, it appears under <b>{{.KB}}</b> in the MemoRS Tray menu, and <b>{{.KB}} › Open Stats Window</b> shows what it is doing.</div></div>
+</section>
+{{- end}}
+<section class="group"><h2>Not connected?</h2>
+<div class="row stack">
+<div>Check that <b>{{.KB}}</b> is running in the menu bar, and that the address is <code>{{.URL}}</code>.</div>
+{{- if eq .Auth "token"}}<div>A 401 error means the token is missing or out of date.</div>{{end}}
+</div>
+</section>
+
+{{- else}}
+<h1>Start using it</h1>
+<p class="lede">The agent can now search the <b>{{.KB}}</b> knowledge base and cite what it finds.</p>
+<section class="group"><h2>Chat with the knowledge base</h2>
+<div class="row stack">
+{{- if eq .Agent "claude-code"}}
+<div>Type <code>/mcp__{{.Name}}__ask</code>, then your questions. Answers come only from the knowledge base, each claim with its <code>memo://</code> source. Add a namespace to narrow the search: <code>/mcp__{{.Name}}__ask &lt;namespace&gt;</code>.</div>
+{{- else if eq .Agent "claude-desktop"}}
+<div>Click <b>+</b> under the message box, choose <b>{{.Name}}</b> › <b>ask</b>, then ask your questions. Answers come only from the knowledge base, each claim with its <code>memo://</code> source.</div>
+{{- else}}
+<div>If your client shows MCP prompts, start with the <b>ask</b> prompt of <b>{{.Name}}</b>, then ask your questions. Answers come only from the knowledge base, each claim with its <code>memo://</code> source.</div>
+{{- end}}
+<div>Or just ask in any chat: <i>"Check {{.Name}}: how do we …?"</i></div>
+</div>
+</section>
+<section class="group"><h2>Optional: teach the agent</h2>
+<div class="row stack"><div>Add <code>SKILL.md</code> from the memors-mcp release to the agent's skills, or a line such as <i>"Search {{.Name}} before answering questions about this project"</i> to its instructions (<code>CLAUDE.md</code> for Claude Code). It then looks things up without being asked.</div></div>
+</section>
+{{- end}}
+
+<div class="actions">
+{{- if not .Next}}<span class="muted">All set. Close this window with ⌘W.</span><a class="button" href="/connect?server={{.Server}}">Configure another agent</a>{{end}}
+<a class="button" href="{{.Back}}">Back</a>
+{{- if .Next}}<a class="button primary" href="{{.Next}}">Next</a>{{end}}
+</div>
+{{end}}{{template "foot" .}}{{end}}
