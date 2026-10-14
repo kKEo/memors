@@ -317,6 +317,9 @@ func (s *Server) copyCommand(w http.ResponseWriter, r *http.Request) {
 // release returns the newest release, asking GitHub at most every
 // releaseFor unless refresh is set.
 func (s *Server) release(ctx context.Context, refresh bool) (installer.Release, error) {
+	if s.d.Updates != nil {
+		return s.latestRelease(ctx, refresh)
+	}
 	s.mu.Lock()
 	if !refresh && s.latest != nil && time.Since(s.latestAt) < releaseFor {
 		rel := *s.latest

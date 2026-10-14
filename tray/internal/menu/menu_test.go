@@ -42,6 +42,7 @@ Start Server
   > No knowledge bases yet (memors-mcp ingest creates one) [off]
 Settings…
 Install or Update memors-mcp…
+Check for Updates…
 ---
 Quit MemoRS Tray
 `
@@ -75,6 +76,7 @@ Start Server
   > default
 Settings…
 Install or Update memors-mcp…
+Check for Updates…
 ---
 Quit MemoRS Tray (stops 1 server)
 `
@@ -145,6 +147,32 @@ func TestClaudeAddCommand(t *testing.T) {
 		if got := ClaudeAddCommand(c.kb, c.url, c.auth, c.file, "/h/http-token"); got != c.want {
 			t.Errorf("ClaudeAddCommand(%s) =\n%s\nwant\n%s", c.kb, got, c.want)
 		}
+	}
+}
+
+func TestUpdateItems(t *testing.T) {
+	in := Input{Now: now, Memors: "memors-mcp 1.4.0 at /bin/memors-mcp", MemorsOK: true, TrayUpdate: "v1.5.0", MemorsUpdate: "1.5.0"}
+	got := titles(Build(in), "")
+	want := `Update MemoRS Tray to v1.5.0…
+Update memors-mcp to 1.5.0…
+---
+No memors-mcp servers running [off]
+`
+	if !strings.HasPrefix(got, want) {
+		t.Errorf("got\n%s\nwant prefix\n%s", got, want)
+	}
+	items := Build(in)
+	if items[0].Action.Kind != OpenUpdates || items[1].Action.Kind != OpenUpdates {
+		t.Errorf("update items open %v and %v", items[0].Action.Kind, items[1].Action.Kind)
+	}
+	// Without memors-mcp there is nothing to update, only to install.
+	in.MemorsOK = false
+	if got := titles(Build(in), ""); strings.Contains(got, "Update memors-mcp to") || !strings.Contains(got, "Update MemoRS Tray to v1.5.0…") {
+		t.Errorf("missing memors-mcp:\n%s", got)
+	}
+	in.TrayUpdate = ""
+	if got := titles(Build(in), ""); strings.Contains(got, "Update MemoRS Tray") || strings.Contains(got, "Update memors-mcp to") {
+		t.Errorf("nothing to update:\n%s", got)
 	}
 }
 

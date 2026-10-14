@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 )
@@ -80,6 +81,21 @@ func openFile(path, how string) error {
 	default:
 		return exec.Command("/usr/bin/open", path).Run()
 	}
+}
+
+// relaunch opens the app at bundle once this process has exited: a
+// detached shell waits for the pid to go away, so the single-instance lock
+// is free by then.
+func relaunch(bundle string) error {
+	quoted := "'" + strings.ReplaceAll(bundle, "'", `'\''`) + "'"
+	script := fmt.Sprintf("while kill -0 %d 2>/dev/null; do sleep 0.2; done; exec /usr/bin/open %s", os.Getpid(), quoted)
+	cmd := exec.Command("/bin/sh", "-c", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }() // reap it if it exits before we do
+	return nil
 }
 
 // copyText puts text on the clipboard.

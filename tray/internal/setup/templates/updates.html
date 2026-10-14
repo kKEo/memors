@@ -1,0 +1,44 @@
+{{define "updates.html"}}{{template "head" .}}{{with .Data}}
+<h1>Updates</h1>
+<p class="lede">MemoRS Tray asks GitHub for the newest release{{if .Automatic}} once a day and{{end}} when you ask. Downloads are checked against the checksums published with the release before anything is installed.</p>
+{{- if .Err}}<div class="banner err">Could not look up the latest release: {{.Err}}{{if .Release}} Showing the last answer.{{end}}</div>{{end}}
+<section class="group"><h2>Latest release</h2>
+<div class="row"><div>{{if .Release}}<b>{{.Release.Tag}}</b>{{with date .Release.Published}} · published {{.}}{{end}}{{if .Release.PageURL}} · <a href="{{.Release.PageURL}}">release notes</a>{{end}}
+<div class="hint">{{if .CheckedAt.IsZero}}Not checked yet.{{else}}Checked {{ago .CheckedAt}}.{{end}}</div>{{else}}<span class="muted">{{if .CheckedAt.IsZero}}Not checked yet.{{else}}Unknown.{{end}}</span>{{end}}</div>
+<form method="post" action="/updates/check"><button>Check now</button></form></div>
+</section>
+
+<section class="group"><h2>MemoRS Tray</h2>
+<div class="row"><div class="status"><span class="dot{{if .TrayNewer}} bad{{end}}"></span><span>{{.TrayVersion}}{{if .TrayDev}} <span class="muted">(development build; updates are not offered)</span>{{else if .TrayNewer}} · <b>{{.Release.Tag}} is available</b>{{else if .Release}} · up to date{{end}}</span></div>
+{{- if and .TrayNewer .TrayHasAsset .Updatable}}<form method="post" action="/updates/tray"><button class="primary">Update MemoRS Tray</button></form>
+{{- else if and .TrayNewer .Release.PageURL}}<a class="button primary" href="{{.Release.PageURL}}">Download {{.Release.Tag}}</a>{{end}}</div>
+{{- if and .TrayNewer (not .TrayHasAsset)}}<div class="row"><div class="hint">This release has no MemoRS Tray archive yet; it is uploaded shortly after the server's. Check again later, or download it from the release page.</div></div>
+{{- else if and .TrayNewer (not .Updatable)}}<div class="row"><div class="hint">{{.NotUpdatable}}</div></div>
+{{- else if .Updatable}}<div class="row"><div class="hint">Updating downloads the new app, checks it, swaps it in where MemoRS Tray is installed and relaunches it. Servers MemoRS Tray started are stopped and started again if they start with it.</div></div>{{end}}
+</section>
+
+<section class="group"><h2>memors-mcp</h2>
+<div class="row"><div class="status"><span class="dot{{if or (not .MemorsOK) .MemorsNewer}} bad{{end}}"></span><span>{{tilde .MemorsStatus}}{{if .MemorsNewer}} · <b>{{.Release.Version}} is available</b>{{else if and .MemorsOK .Release}} · up to date{{end}}</span></div>
+<a class="button{{if .MemorsNewer}} primary{{end}}" href="/wizard/install">{{if not .MemorsOK}}Install…{{else if .MemorsNewer}}Update memors-mcp…{{else}}Reinstall…{{end}}</a></div>
+</section>
+<div class="actions"><span class="muted">The daily check can be turned off in Settings.</span><a class="button" href="/settings">Settings</a></div>
+{{end}}{{template "foot" .}}{{end}}
+
+{{define "updates_progress.html"}}{{template "head" .}}{{with .Data}}
+{{- if .Running}}
+<h1>Updating MemoRS Tray to {{.Release.Tag}}</h1>
+<p class="lede">{{if eq .Phase "verifying"}}Checking the SHA-256 checksum…{{else if eq .Phase "installing"}}Unpacking, trying it out and swapping it in…{{else}}Downloading from GitHub…{{end}}</p>
+<section class="group"><div class="row stack">
+<progress value="{{pct .Done .Total}}" max="100"></progress>
+<div class="hint">{{if .Total}}{{mb .Done}} of {{mb .Total}}{{else}}Starting…{{end}}</div>
+</div></section>
+{{- else if .Err}}
+<h1>The update did not finish</h1>
+<div class="banner err">{{.Err}}</div>
+<p class="lede">Nothing was changed: MemoRS Tray stays as it was.</p>
+<div class="actions"><a class="button" href="/updates">Back</a>{{if .Release.PageURL}}<a class="button primary" href="{{.Release.PageURL}}">Open the release page</a>{{end}}</div>
+{{- else}}
+<h1>MemoRS Tray {{.Release.Tag}} is installed</h1>
+<div class="banner ok">MemoRS Tray relaunches in a moment. This window closes with it.</div>
+{{- end}}
+{{end}}{{template "foot" .}}{{end}}

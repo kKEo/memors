@@ -33,7 +33,8 @@ changed, and the old ones are not read any more:
 5. If `tray.json` sets `memo_binary`, rename the key to `memors_binary`, or delete it and let
    MemoRS Tray find `memors-mcp` by itself.
 6. Install MemoRS Tray by hand, as described on [its page](tray.md): memo-tray cannot update
-   itself to the renamed release archives. Delete memo-tray.app. "Open at login" carries over on the first start.
+   itself to the renamed release archives (MemoRS Tray can, from then on). Delete memo-tray.app.
+   "Open at login" carries over on the first start.
 7. Rename `memo_` to `memors_` in Prometheus recording rules, alerts and dashboards
    ([Prometheus](../monitoring/prometheus.md)).
 8. Browsers log in to the web UI once more: the session cookie was renamed.

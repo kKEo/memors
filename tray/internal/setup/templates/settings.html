@@ -10,6 +10,8 @@
 <section class="group"><h2>General</h2>
 <div class="row"><label class="check"><input type="checkbox" name="login"{{if .Login}} checked{{end}}> Open MemoRS Tray when you log in</label></div>
 <div class="row"><label class="check"><input type="checkbox" name="stop_on_quit"{{if .StopOnQuit}} checked{{end}}> Stop the servers MemoRS Tray started when it quits</label></div>
+<div class="row"><label class="check"><input type="checkbox" name="check_updates"{{if .CheckUpdates}} checked{{end}}> Check for updates once a day</label>
+<a class="button" href="/updates">Updates…</a></div>
 </section>
 
 <section class="group"><h2>memors-mcp</h2>
@@ -54,6 +56,6 @@
 <div class="actions"><button class="primary">Save</button></div>
 </form>
 <form method="post" action="/settings/open" class="links">
-<button class="link" name="what" value="config">Open tray.json</button><span class="sep">·</span><button class="link" name="what" value="logs">Open logs folder</button><span class="sep">·</span><a href="/wizard">Setup assistant</a>
+<button class="link" name="what" value="config">Open tray.json</button><span class="sep">·</span><button class="link" name="what" value="logs">Open logs folder</button><span class="sep">·</span><a href="/wizard">Setup assistant</a><span class="sep">·</span><span>MemoRS Tray {{.TrayVersion}}</span>
 </form>
 {{end}}{{template "foot" .}}{{end}}

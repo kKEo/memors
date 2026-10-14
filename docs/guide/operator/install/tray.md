@@ -9,7 +9,7 @@ memors-mcp binary stays pure Go.
 User-facing behaviour is described in the user guide (*The menu-bar app*). This page covers
 how it works and what to configure.
 
-![MemoRS Tray polls GET /live.json on every running server, mints login links for its stats window and starts and stops servers. It finds servers through the run files they write, keeps settings in tray.json, logs the servers it started, and contacts GitHub only on the setup assistant's Install step.](../images/tray-architecture.svg)
+![MemoRS Tray polls GET /live.json on every running server, mints login links for its stats window and starts and stops servers. It finds servers through the run files they write, keeps settings in tray.json, logs the servers it started, and contacts GitHub for the daily update check and on the setup assistant's Install step.](../images/tray-architecture.svg)
 
 ## Install
 
@@ -35,8 +35,8 @@ make tray-test   # vet and tests of the tray module
 ## Installing memors-mcp from the app
 
 The setup assistant installs memors-mcp on demand. On the Install step it asks the GitHub API for
-the latest release (`api.github.com/repos/kKEo/memors/releases/latest`). MemoRS Tray makes no
-other outbound connection, and makes this one only when you open that step.
+the latest release (`api.github.com/repos/kKEo/memors/releases/latest`). The same request is the
+update check (below). MemoRS Tray makes no other outbound connection.
 
 Installing works like this:
 
@@ -130,7 +130,33 @@ the settings pages never undo each other.
 | `servers[].autostart` | Start it when MemoRS Tray starts |
 | `servers[].env`, `env` | Extra environment for that server, or for every server. Variables MemoRS Tray controls (above, plus `MEMORS_KB` and `MEMORS_HOME`) are refused |
 | `stop_on_quit` | Stop the servers MemoRS Tray started when it quits (default `true`) |
+| `check_updates` | Ask GitHub once a day whether a newer MemoRS Tray or memors-mcp exists (default `true`) |
 | `debug` | Enable the web inspector in stats windows |
+
+## Updates
+
+With `check_updates` on, MemoRS Tray requests `releases/latest` a minute after it starts and
+then every 24 hours (in memory; a restart checks again after a minute). It compares the release
+tag with its own version and with `memors-mcp version`; a build without a semantic version
+(`dev`, `git describe` output) is never offered an update. **Check for Updates…** in the menu
+requests it again on demand, whether or not the daily check is on.
+
+**Update MemoRS Tray** in the Updates window replaces the app in place:
+
+1. `memors-tray_X.Y.Z_darwin_universal.zip` and its `.sha256` are downloaded; the SHA-256 must
+   match before anything is unpacked.
+2. The zip is unpacked with `ditto` into a hidden folder next to the installed app, and the new
+   `memors-tray -version` must run.
+3. The old bundle is renamed, the new one moved to its path, and the old one removed. The
+   running process keeps working from memory until it quits.
+4. A detached shell waits for the process to exit (which releases `tray.lock`) and opens the
+   app again with `open`. Quitting stops the servers MemoRS Tray started as usual.
+
+The app is not updated in place when it is not running from a `.app` bundle, when macOS App
+Translocation runs it from a temporary copy (an app opened straight from Downloads), or when
+the folder it is in is not writable; the window then links to the release page. The download
+carries no quarantine attribute, so Gatekeeper does not ask again. The release's checksum proves
+the download is the file the release lists, nothing more, as with the manual install.
 
 ## The stats window
 

@@ -29,6 +29,8 @@ type settingsData struct {
 	Errors       []string
 	Login        bool
 	StopOnQuit   bool
+	CheckUpdates bool
+	TrayVersion  string
 	MemorsMode   string // auto or path
 	MemorsPath   string
 	MemorsStatus string
@@ -122,6 +124,10 @@ func (s *Server) fromForm(f url.Values, cur *config.Config) (*config.Config, []s
 		no := false
 		next.StopOnQuit = &no
 	}
+	if f.Get("check_updates") != "on" {
+		no := false
+		next.CheckUpdates = &no
+	}
 	if f.Get("memors_mode") == "path" {
 		p := expandHome(strings.TrimSpace(f.Get("memors_path")))
 		if !filepath.IsAbs(p) {
@@ -182,6 +188,8 @@ func (s *Server) settingsFrom(ctx context.Context, cfg *config.Config) settingsD
 	d := settingsData{
 		Login:        s.d.Login.Enabled(),
 		StopOnQuit:   cfg.StopsOnQuit(),
+		CheckUpdates: cfg.ChecksUpdates(),
+		TrayVersion:  s.d.TrayVersion,
 		MemorsMode:   "auto",
 		MemorsPath:   cfg.MemorsBinary,
 		Model:        cfg.Env["MEMORS_MODEL"],

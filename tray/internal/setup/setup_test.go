@@ -21,6 +21,7 @@ import (
 	"github.com/kKEo/memors/tray/internal/config"
 	"github.com/kKEo/memors/tray/internal/installer"
 	"github.com/kKEo/memors/tray/internal/menu"
+	"github.com/kKEo/memors/tray/internal/update"
 )
 
 type fakeReleases struct {
@@ -28,14 +29,31 @@ type fakeReleases struct {
 	installErr error
 	gate       chan struct{} // when set, Install waits for it to close
 	dirs       []string
+	noTray     bool // the release has no MemoRS Tray archive
+	trayErr    error
+	bundles    []string // InstallTray calls
 }
 
 func (f *fakeReleases) Latest(context.Context) (installer.Release, error) {
 	if f.latestErr != nil {
 		return installer.Release{}, f.latestErr
 	}
-	return installer.Release{Tag: "v9.9.9", PageURL: "https://github.com/kKEo/memors/releases/tag/v9.9.9", Published: time.Now(),
-		Assets: []installer.Asset{{Name: "memors-mcp_9.9.9_darwin_arm64.tar.gz", URL: "https://example.invalid/a", Size: 9 << 20}}}, nil
+	rel := installer.Release{Tag: "v9.9.9", PageURL: "https://github.com/kKEo/memors/releases/tag/v9.9.9", Published: time.Now(),
+		Assets: []installer.Asset{{Name: "memors-mcp_9.9.9_darwin_arm64.tar.gz", URL: "https://example.invalid/a", Size: 9 << 20}}}
+	if !f.noTray {
+		rel.Assets = append(rel.Assets, installer.Asset{Name: "memors-tray_9.9.9_darwin_universal.zip", URL: "https://example.invalid/t", Size: 4 << 20},
+			installer.Asset{Name: "memors-tray_9.9.9_darwin_universal.zip.sha256", URL: "https://example.invalid/s", Size: 100})
+	}
+	return rel, nil
+}
+
+func (f *fakeReleases) InstallTray(_ context.Context, _ installer.Release, bundle string, progress func(installer.Progress)) error {
+	f.bundles = append(f.bundles, bundle)
+	progress(installer.Progress{Phase: installer.Downloading, Done: 1 << 20, Total: 4 << 20})
+	if f.gate != nil {
+		<-f.gate
+	}
+	return f.trayErr
 }
 
 func (f *fakeReleases) Install(_ context.Context, rel installer.Release, goarch, dir string, progress func(installer.Progress)) (string, error) {
@@ -70,28 +88,32 @@ func (f *fakeLogin) Enable() error {
 func (f *fakeLogin) Disable() error { f.on = false; return nil }
 
 type harness struct {
-	t        *testing.T
-	s        *Server
-	c        *http.Client
-	home     string
-	rel      *fakeReleases
-	login    *fakeLogin
-	memorsOK bool
-	mu       sync.Mutex
-	events   []Event
-	copied   []string
-	opened   []string
-	servers  map[string]menu.ServerView // what Deps.Connection finds
+	t         *testing.T
+	s         *Server
+	c         *http.Client
+	home      string
+	rel       *fakeReleases
+	login     *fakeLogin
+	memorsOK  bool
+	mu        sync.Mutex
+	events    []Event
+	copied    []string
+	opened    []string
+	servers   map[string]menu.ServerView // what Deps.Connection finds
+	bundle    string                     // what Deps.AppBundle returns
+	bundleErr error
+	tray      string // Deps.TrayVersion
 }
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	h := &harness{t: t, home: t.TempDir(), rel: &fakeReleases{}, login: &fakeLogin{}, memorsOK: true}
+	h := &harness{t: t, home: t.TempDir(), rel: &fakeReleases{}, login: &fakeLogin{}, memorsOK: true, tray: "v1.4.0", bundle: "/Applications/MemoRS Tray.app"}
 	s, err := New(Deps{
 		Home:        h.home,
-		TrayVersion: "test",
+		TrayVersion: h.tray,
 		GOARCH:      "arm64",
 		Releases:    h.rel,
+		Updates:     &update.Checker{Releases: h.rel, Now: time.Now},
 		FindMemors: func(configured string) (string, error) {
 			if configured != "" {
 				if _, err := os.Stat(configured); err != nil {
@@ -120,6 +142,7 @@ func newHarness(t *testing.T) *harness {
 			v, ok := h.servers[server]
 			return v, ok
 		},
+		AppBundle: func() (string, error) { return h.bundle, h.bundleErr },
 	})
 	if err != nil {
 		t.Fatal(err)
