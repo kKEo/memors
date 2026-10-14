@@ -24,6 +24,7 @@ import (
 	"github.com/kKEo/memors/tray/internal/home"
 	"github.com/kKEo/memors/tray/internal/menu"
 	"github.com/kKEo/memors/tray/internal/supervisor"
+	"github.com/kKEo/memors/tray/internal/update"
 )
 
 // Supervisor is the part of *supervisor.Supervisor the controller uses.
@@ -68,6 +69,16 @@ type Deps struct {
 	Quit          func() // ends the menu-bar loop
 	Logf          func(format string, args ...any)
 	Setup         Pages // memors-tray's own pages: settings and the setup assistant
+	TrayVersion   string
+	Updates       Updates      // nil: no update checks
+	Relaunch      func() error // starts a new memors-tray once this one exits
+}
+
+// Updates knows the newest release (*update.Checker).
+type Updates interface {
+	Due() bool
+	Check(ctx context.Context) update.Result
+	Last() update.Result
 }
 
 // Pages are memors-tray's own pages (*setup.Server).
@@ -81,6 +92,7 @@ const (
 	settingsWindow = "tray:settings"
 	setupWindow    = "tray:setup"
 	connectWindow  = "tray:connect"
+	updatesWindow  = "tray:updates"
 )
 
 const (
@@ -159,6 +171,9 @@ func (a *App) StartIfStopped(kb string) { a.Do(menu.Action{Kind: startIfStopped,
 // RestartManaged restarts the servers memors-tray started (to run a new
 // memors-mcp).
 func (a *App) RestartManaged() { a.Do(menu.Action{Kind: restartManaged}) }
+
+// TrayUpdated relaunches memors-tray: a new one is in place.
+func (a *App) TrayUpdated() { a.Do(menu.Action{Kind: trayUpdated}) }
 
 func (a *App) MenuOpened() {
 	select {
@@ -258,7 +273,33 @@ func (a *App) tick(ctx context.Context) {
 	}
 	in := menu.Input{Now: now, Servers: rows, KBs: kbs, Memors: a.memorsLine(), MemorsOK: a.memorsErr == nil, Problem: problem,
 		StopsOnQuit: stops, DefaultTokenFile: filepath.Join(a.d.Home, "http-token")}
+	in.TrayUpdate, in.MemorsUpdate = a.checkUpdates(ctx)
 	a.d.Render(menu.Build(in), menu.Title(in))
+}
+
+// checkUpdates runs the daily release check in the background when it is
+// due and tray.json allows it, and reports the newer releases known so far.
+func (a *App) checkUpdates(ctx context.Context) (tray, memors string) {
+	if a.d.Updates == nil {
+		return "", ""
+	}
+	if a.cfg.ChecksUpdates() && a.d.Updates.Due() {
+		go func() {
+			a.d.Updates.Check(ctx)
+			a.refreshSoon()
+		}()
+	}
+	rel := a.d.Updates.Last().Release
+	if rel.Tag == "" {
+		return "", ""
+	}
+	if update.Newer(a.d.TrayVersion, rel.Tag) {
+		tray = rel.Tag
+	}
+	if a.memorsErr == nil && update.Newer(a.memorsVer, rel.Tag) {
+		memors = rel.Version()
+	}
+	return tray, memors
 }
 
 func (a *App) loadConfig() {
@@ -531,6 +572,22 @@ func (a *App) handle(ctx context.Context, act menu.Action) {
 		a.openPage(settingsWindow, "MemoRS Tray Settings", "/settings")
 	case menu.OpenSetup:
 		a.openPage(setupWindow, "Set up memors-mcp", "/wizard")
+	case menu.OpenUpdates:
+		a.openPage(updatesWindow, "Updates", "/updates")
+	case menu.CheckUpdates:
+		a.openPage(updatesWindow, "Updates", "/updates?check=1")
+	case trayUpdated:
+		if a.d.Relaunch == nil {
+			return
+		}
+		a.d.Logf("relaunching memors-tray to run the new version")
+		time.AfterFunc(relaunchAfter, func() {
+			if err := a.d.Relaunch(); err != nil {
+				a.queueNote("relaunch", err)
+				return
+			}
+			a.Do(menu.Action{Kind: menu.Quit})
+		})
 	case reloadAction:
 		a.cfgMod, a.memorsAt = time.Time{}, time.Time{}
 	case startIfStopped:
@@ -698,7 +755,12 @@ const (
 	reloadAction menu.ActionKind = -2 - iota
 	startIfStopped
 	restartManaged
+	trayUpdated
 )
+
+// relaunchAfter gives the Updates window time to show that the update
+// finished before memors-tray quits.
+var relaunchAfter = 3 * time.Second
 
 // Connection is the server row for key (a menu ServerView.Key) as of the
 // last rescan. Safe to call from any goroutine: the setup pages use it.

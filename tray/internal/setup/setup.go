@@ -26,6 +26,7 @@ import (
 
 	"github.com/kKEo/memors/tray/internal/installer"
 	"github.com/kKEo/memors/tray/internal/menu"
+	"github.com/kKEo/memors/tray/internal/update"
 )
 
 //go:embed templates/*.html style.css
@@ -35,6 +36,13 @@ var files embed.FS
 type Releases interface {
 	Latest(ctx context.Context) (installer.Release, error)
 	Install(ctx context.Context, rel installer.Release, goarch, dir string, progress func(installer.Progress)) (string, error)
+	InstallTray(ctx context.Context, rel installer.Release, bundle string, progress func(installer.Progress)) error
+}
+
+// Updates remembers the newest release (*update.Checker).
+type Updates interface {
+	Check(ctx context.Context) update.Result
+	Last() update.Result
 }
 
 // LoginItem switches starting memors-tray at login (loginitem.Agent).
@@ -52,6 +60,7 @@ const (
 	ConfigSaved    EventKind = iota // tray.json changed: reload it, look for memors-mcp again
 	StartServer                     // start KB's server (unless it runs)
 	RestartServers                  // restart the servers memors-tray started, to run a new memors-mcp
+	TrayUpdated                     // a new MemoRS Tray is in place: relaunch
 )
 
 // Event is sent to the controller; it must not block.
@@ -78,6 +87,11 @@ type Deps struct {
 	// Connection is a running server as the menu shows it, by its menu
 	// key; the "Configure your agent" pages describe it.
 	Connection func(server string) (menu.ServerView, bool)
+	// Updates knows the newest release; nil disables the Updates page.
+	Updates Updates
+	// AppBundle is the MemoRS Tray.app to update in place, or why it
+	// cannot be (installer.ErrNotUpdatable).
+	AppBundle func() (string, error)
 }
 
 // cookieName holds the secret once a window has come in.
@@ -93,6 +107,7 @@ type Server struct {
 	host     string // the only accepted Host header: the listener's address
 	hs       *http.Server
 	job      *job
+	trayJob  *trayJob
 	latest   *installer.Release
 	latestAt time.Time
 }
@@ -177,6 +192,10 @@ func (s *Server) Handler() http.Handler {
 	app.HandleFunc("POST /wizard/kb", s.saveKB)
 	app.HandleFunc("GET /wizard/done", s.wizardDone)
 	app.HandleFunc("POST /wizard/copy", s.copyCommand)
+	app.HandleFunc("GET /updates", s.updatesPage)
+	app.HandleFunc("POST /updates/check", s.checkUpdates)
+	app.HandleFunc("POST /updates/tray", s.startTrayUpdate)
+	app.HandleFunc("GET /updates/progress", s.trayProgress)
 	app.HandleFunc("GET /connect", s.connectChoose)
 	app.HandleFunc("GET /connect/{agent}", s.connectStep)
 	app.HandleFunc("POST /connect/copy", s.connectCopy)
@@ -280,6 +299,18 @@ var funcs = template.FuncMap{
 			}
 		}
 		return false
+	},
+	"ago": func(t time.Time) string {
+		d := time.Since(t).Round(time.Minute)
+		switch {
+		case d < time.Minute:
+			return "just now"
+		case d < time.Hour:
+			return fmt.Sprintf("%d min ago", int(d.Minutes()))
+		case d < 48*time.Hour:
+			return fmt.Sprintf("%d h ago", int(d.Hours()))
+		}
+		return t.Local().Format("2 January 2006")
 	},
 	"date": func(t time.Time) string {
 		if t.IsZero() {

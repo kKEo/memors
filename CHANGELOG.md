@@ -5,6 +5,13 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **MemoRS Tray checks for updates and updates itself.** A minute after it starts and then once
+  a day it asks GitHub for the newest release; when a newer MemoRS Tray or memors-mcp exists, the
+  top of the menu offers it, and **Check for Updates…** asks on demand. The new **Updates** window
+  shows both versions and **Update MemoRS Tray** downloads the release zip, verifies its
+  `.sha256`, swaps the app in place and relaunches it (or links to the release page where it
+  cannot replace itself). `check_updates: false` in `tray.json`, or the Settings checkbox, turns
+  the daily check off. memors-mcp is updated by the assistant's Install step, as before.
 - **MemoRS Tray: Configure Your Agent…** replaces **Copy MCP URL** and **Copy "claude mcp add"
   Command** in a running server's submenu. It opens a step-by-step window: choose the agent
   (Claude Code, Claude Desktop or another MCP client), add the server (the command, the Claude

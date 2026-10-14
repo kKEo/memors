@@ -30,6 +30,9 @@ type Config struct {
 	// StopOnQuit stops the servers memors-tray started when it quits
 	// (default true).
 	StopOnQuit *bool `json:"stop_on_quit,omitempty"`
+	// CheckUpdates asks GitHub once a day whether a newer MemoRS Tray or
+	// memors-mcp exists (default true).
+	CheckUpdates *bool `json:"check_updates,omitempty"`
 	// Debug enables the web inspector in stats windows.
 	Debug bool `json:"debug,omitempty"`
 }
@@ -141,6 +144,9 @@ func Revision(path string) string {
 
 // StopsOnQuit reports whether quitting stops the servers memors-tray started.
 func (c *Config) StopsOnQuit() bool { return c.StopOnQuit == nil || *c.StopOnQuit }
+
+// ChecksUpdates reports whether the daily update check is on.
+func (c *Config) ChecksUpdates() bool { return c.CheckUpdates == nil || *c.CheckUpdates }
 
 // Find returns the entry for a knowledge base, or nil.
 func (c *Config) Find(kb string) *Server {

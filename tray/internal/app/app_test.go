@@ -16,8 +16,10 @@ import (
 	"github.com/kKEo/memors/internal/runfile"
 	"github.com/kKEo/memors/tray/internal/client"
 	"github.com/kKEo/memors/tray/internal/config"
+	"github.com/kKEo/memors/tray/internal/installer"
 	"github.com/kKEo/memors/tray/internal/menu"
 	"github.com/kKEo/memors/tray/internal/supervisor"
+	"github.com/kKEo/memors/tray/internal/update"
 )
 
 type fakeSup struct {
@@ -455,5 +457,99 @@ func TestRestartManaged(t *testing.T) {
 	waitFor(t, func() bool { return !h.a.isBusy("mine") })
 	if !slices.Equal(h.sup.stops, []string{"mine"}) || len(h.stoppedX) != 0 {
 		t.Errorf("stops = %v, external stops = %v", h.sup.stops, h.stoppedX)
+	}
+}
+
+// fakeUpdates stands in for the release checker.
+type fakeUpdates struct {
+	due    bool
+	tag    string
+	checks int
+}
+
+func (f *fakeUpdates) Due() bool { return f.due }
+func (f *fakeUpdates) Check(context.Context) update.Result {
+	f.checks++
+	f.due = false
+	return f.Last()
+}
+func (f *fakeUpdates) Last() update.Result {
+	if f.tag == "" {
+		return update.Result{}
+	}
+	return update.Result{At: time.Now(), Release: installer.Release{Tag: f.tag}}
+}
+
+func TestUpdateCheckAndMenu(t *testing.T) {
+	h := newHarness(t)
+	u := &fakeUpdates{tag: "v2.0.0"}
+	h.a.d.Updates, h.a.d.TrayVersion = u, "v1.0.0"
+	h.a.d.MemorsVersion = func(context.Context, string) (string, error) { return "1.0.0", nil }
+	h.tick()
+	if u.checks != 0 {
+		t.Error("checked although not due")
+	}
+	text := h.menuText()
+	if !strings.Contains(text, "Update MemoRS Tray to v2.0.0…") || !strings.Contains(text, "Update memors-mcp to 2.0.0…") || !strings.Contains(text, "Check for Updates…") {
+		t.Errorf("menu:\n%s", text)
+	}
+	u.due = true
+	h.tick()
+	deadline := time.Now().Add(2 * time.Second)
+	for u.checks == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if u.checks != 1 {
+		t.Errorf("background check ran %d times", u.checks)
+	}
+	// Turned off in tray.json, a due check does not run.
+	no := false
+	if err := (&config.Config{CheckUpdates: &no}).Save(config.Path(h.a.d.Home)); err != nil {
+		t.Fatal(err)
+	}
+	h.a.cfgMod = time.Time{}
+	u.due = true
+	h.tick()
+	time.Sleep(50 * time.Millisecond)
+	if u.checks != 1 {
+		t.Errorf("checked with check_updates off: %d", u.checks)
+	}
+	// A development build is offered nothing.
+	h.a.d.TrayVersion = "dev"
+	h.tick()
+	if strings.Contains(h.menuText(), "Update MemoRS Tray") {
+		t.Errorf("dev build offered an update:\n%s", h.menuText())
+	}
+	ctx := context.Background()
+	h.a.handle(ctx, menu.Action{Kind: menu.CheckUpdates})
+	h.a.handle(ctx, menu.Action{Kind: menu.OpenUpdates})
+	if len(h.win.opens) != 2 || !strings.HasPrefix(h.win.opens[0], "tray:updates|http://127.0.0.1:1/enter?next=/updates?check=1|") || !strings.HasPrefix(h.win.opens[1], "tray:updates|http://127.0.0.1:1/enter?next=/updates|") {
+		t.Errorf("windows = %q", h.win.opens)
+	}
+}
+
+func TestTrayUpdatedRelaunches(t *testing.T) {
+	h := newHarness(t)
+	relaunched := make(chan struct{}, 1)
+	h.a.d.Relaunch = func() error { relaunched <- struct{}{}; return nil }
+	old := relaunchAfter
+	relaunchAfter = 0
+	t.Cleanup(func() { relaunchAfter = old })
+	h.tick()
+	h.a.TrayUpdated()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go h.a.Run(ctx)
+	select {
+	case <-relaunched:
+	case <-time.After(2 * time.Second):
+		t.Fatal("no relaunch")
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for !h.quit && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !h.quit {
+		t.Error("memors-tray did not quit after relaunching")
 	}
 }

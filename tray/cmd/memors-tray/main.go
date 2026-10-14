@@ -35,6 +35,7 @@ import (
 	"github.com/kKEo/memors/tray/internal/setup"
 	"github.com/kKEo/memors/tray/internal/supervisor"
 	"github.com/kKEo/memors/tray/internal/trayui"
+	"github.com/kKEo/memors/tray/internal/update"
 )
 
 // version is set at build time (-ldflags "-X main.version=...").
@@ -88,11 +89,22 @@ func run() int {
 	if err := login.Repair(); err != nil {
 		logf("login item: %v", err)
 	}
+	releases := installer.New("memors-tray/" + buildVersion())
+	updates := &update.Checker{Releases: releases, Now: time.Now, Logf: logf}
+	appBundle := func() (string, error) {
+		exe, err := os.Executable()
+		if err != nil {
+			return "", err
+		}
+		return installer.AppBundle(exe)
+	}
 	pages, err := setup.Start(setup.Deps{
 		Home:          homeDir,
 		TrayVersion:   buildVersion(),
 		GOARCH:        runtime.GOARCH,
-		Releases:      installer.New("memors-tray/" + buildVersion()),
+		Releases:      releases,
+		Updates:       updates,
+		AppBundle:     appBundle,
 		FindMemors:    locate.MemorsBinary,
 		MemorsVersion: locate.Version,
 		Models:        setup.ListModels(homeDir),
@@ -108,6 +120,8 @@ func run() int {
 				a.StartIfStopped(e.KB)
 			case setup.RestartServers:
 				a.RestartManaged()
+			case setup.TrayUpdated:
+				a.TrayUpdated()
 			}
 		},
 		Logf: logf,
@@ -147,6 +161,15 @@ func run() int {
 		Quit:          systray.Quit,
 		Logf:          logf,
 		Setup:         pages,
+		TrayVersion:   buildVersion(),
+		Updates:       updates,
+		Relaunch: func() error {
+			bundle, err := appBundle()
+			if err != nil {
+				return err
+			}
+			return relaunch(bundle)
+		},
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())

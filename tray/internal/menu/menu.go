@@ -33,6 +33,8 @@ const (
 	Quit
 	OpenSettings // memors-tray's settings window
 	OpenSetup    // the assistant that installs memors-mcp and sets up a knowledge base
+	OpenUpdates  // the Updates page
+	CheckUpdates // the Updates page, after asking GitHub again
 )
 
 // Action is a click: what to do, to which server or knowledge base.
@@ -96,6 +98,8 @@ type Input struct {
 	Problem          string // a configuration or discovery problem
 	StopsOnQuit      int    // servers Quit will stop
 	DefaultTokenFile string // <MEMORS_HOME>/http-token
+	TrayUpdate       string // a newer MemoRS Tray release (its tag), or empty
+	MemorsUpdate     string // a newer memors-mcp release (its version), or empty
 }
 
 // activeWindow is how recently a client without an event stream must have
@@ -107,6 +111,15 @@ func Build(in Input) []Item {
 	var items []Item
 	if !in.MemorsOK {
 		items = append(items, Item{Key: "install", Title: "Install memors-mcp…", Tooltip: in.Memors, Action: Action{Kind: OpenSetup}}, sep("install"))
+	}
+	if in.TrayUpdate != "" {
+		items = append(items, Item{Key: "update-tray", Title: "Update MemoRS Tray to " + in.TrayUpdate + "…", Action: Action{Kind: OpenUpdates}})
+	}
+	if in.MemorsUpdate != "" && in.MemorsOK {
+		items = append(items, Item{Key: "update-memors", Title: "Update memors-mcp to " + in.MemorsUpdate + "…", Action: Action{Kind: OpenUpdates}})
+	}
+	if in.TrayUpdate != "" || (in.MemorsUpdate != "" && in.MemorsOK) {
+		items = append(items, sep("update"))
 	}
 	if in.Problem != "" {
 		items = append(items, Item{Key: "problem", Title: "⚠ " + in.Problem, Disabled: true}, sep("problem"))
@@ -128,6 +141,7 @@ func Build(in Input) []Item {
 	items = append(items, sep("start"), startMenu(in, servers),
 		Item{Key: "settings", Title: "Settings…", Action: Action{Kind: OpenSettings}},
 		Item{Key: "setup", Title: "Install or Update memors-mcp…", Tooltip: in.Memors, Action: Action{Kind: OpenSetup}},
+		Item{Key: "updates", Title: "Check for Updates…", Action: Action{Kind: CheckUpdates}},
 		sep("quit"))
 	quit := "Quit MemoRS Tray"
 	if in.StopsOnQuit > 0 {

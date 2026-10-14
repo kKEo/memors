@@ -62,6 +62,8 @@ type fakeGitHub struct {
 	sums    string
 	noSums  bool
 	extra   map[string]http.HandlerFunc
+	trayZip []byte // when set, the release also has the MemoRS Tray archive
+	traySum string
 }
 
 func newFake(t *testing.T, archive []byte) *fakeGitHub {
@@ -83,11 +85,19 @@ func newFake(t *testing.T, archive []byte) *fakeGitHub {
 			if !f.noSums {
 				assets = append(assets, Asset{Name: "checksums.txt", URL: f.ts.URL + "/dl/sums", Size: int64(len(f.sums))})
 			}
+			if f.trayZip != nil {
+				assets = append(assets, Asset{Name: "memors-tray_9.9.9_darwin_universal.zip", URL: f.ts.URL + "/dl/tray", Size: int64(len(f.trayZip))},
+					Asset{Name: "memors-tray_9.9.9_darwin_universal.zip.sha256", URL: f.ts.URL + "/dl/traysum", Size: int64(len(f.traySum))})
+			}
 			_ = json.NewEncoder(w).Encode(Release{Tag: "v9.9.9", PageURL: "https://github.com/x/y/releases/v9.9.9", Assets: assets})
 		case "/dl/archive":
 			_, _ = w.Write(f.archive)
 		case "/dl/sums":
 			_, _ = w.Write([]byte(f.sums))
+		case "/dl/tray":
+			_, _ = w.Write(f.trayZip)
+		case "/dl/traysum":
+			_, _ = w.Write([]byte(f.traySum))
 		default:
 			http.NotFound(w, r)
 		}

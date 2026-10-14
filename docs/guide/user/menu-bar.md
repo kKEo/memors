@@ -35,7 +35,7 @@ missing) walks you through four steps:
    button. Once the server runs, **Configure your agent** opens the step-by-step guide for other
    agents (see below).
 
-MemoRS Tray contacts GitHub only while this assistant is open on the Install step.
+MemoRS Tray contacts GitHub on this Install step and for the daily update check (below).
 
 ## What the menu shows
 
@@ -110,7 +110,8 @@ If the server asks for a token, the window logs in by itself. There is nothing t
 
 **Settings…** in the menu opens the settings window:
 
-- **General**: open MemoRS Tray when you log in; stop the servers it started when it quits.
+- **General**: open MemoRS Tray when you log in; stop the servers it started when it quits;
+  check for updates once a day, with **Updates…** (below).
 - **memors-mcp**: which memors-mcp runs and its version, with **Check for updates…**; find it
   automatically or use a specific file; the embedding model for every server MemoRS Tray starts.
 - **Servers**: each knowledge base MemoRS Tray can start, with its address, whether it needs a
@@ -139,3 +140,23 @@ The window shows what is saved in `~/.memors-mcp/tray.json`. You can also edit t
 - `memors_binary` is the memors-mcp to run; the setup assistant sets it to what it installed.
 
 Logs live in `~/.memors-mcp/logs/`: one file per server (`serve-<name>.log`) and `tray.log`.
+
+## Updates
+
+MemoRS Tray asks GitHub for the newest release a minute after it starts and then once a day.
+When a newer MemoRS Tray or memors-mcp exists, the top of the menu says so: **Update MemoRS
+Tray to vX.Y.Z…** or **Update memors-mcp to X.Y.Z…**. Either opens the **Updates** window, as
+does **Check for Updates…** at the bottom of the menu, which asks GitHub again first. The window
+shows both installed versions next to the newest release, with:
+
+- **Update MemoRS Tray**: downloads the new app, checks it against the `.sha256` published with
+  the release, makes sure it starts, swaps it in where MemoRS Tray is installed, and relaunches
+  it. Servers MemoRS Tray started stop with it (unless *stop on quit* is off) and the ones set
+  to start with it start again. If MemoRS Tray cannot replace itself, for example because macOS
+  runs it from a temporary copy (open it from Applications, not from the Downloads folder), the
+  window offers the release page instead.
+- **Update memors-mcp…**: the setup assistant's Install step, as before.
+
+A build without a release version (a development build) is never offered an update. To stop
+the daily check, turn off **Check for updates once a day** in Settings; **Check for Updates…**
+still works then.

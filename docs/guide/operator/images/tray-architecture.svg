@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="396" viewBox="0 0 760 396" role="img" aria-labelledby="t d">
 <title id="t">How MemoRS Tray works</title>
-<desc id="d">MemoRS Tray, the macOS menu-bar app, has a menu bar, a stats window, setup and settings pages it serves locally, and a supervisor. It polls GET /live.json on every running memors-mcp serve --http every 2 seconds, mints single-use login links with POST /login-link for its window, and starts and stops servers. It finds servers through the run files each server writes in $MEMORS_HOME/run, keeps its settings in tray.json, and sends the output of the servers it started to $MEMORS_HOME/logs. It contacts GitHub only on the setup assistant's Install step. MCP clients connect to the servers at /mcp.</desc>
+<desc id="d">MemoRS Tray, the macOS menu-bar app, has a menu bar, a stats window, setup and settings pages it serves locally, and a supervisor. It polls GET /live.json on every running memors-mcp serve --http every 2 seconds, mints single-use login links with POST /login-link for its window, and starts and stops servers. It finds servers through the run files each server writes in $MEMORS_HOME/run, keeps its settings in tray.json, and sends the output of the servers it started to $MEMORS_HOME/logs. It contacts GitHub for the daily update check and on the setup assistant's Install step. MCP clients connect to the servers at /mcp.</desc>
 <style>
 text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:13px;fill:#171a1f}
 .mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
@@ -39,7 +39,7 @@ text{fill:#eceeec}
 <!-- github -->
 <rect class="box" x="24" y="20" width="248" height="38" rx="9"/>
 <text class="s h" x="38" y="37">GitHub releases</text>
-<text class="xs t2" x="38" y="51">Install step only; checksum verified</text>
+<text class="xs t2" x="38" y="51">daily check, installs; checksum verified</text>
 <path class="ln dash" d="M148,59 V81" marker-end="url(#an)"/>
 
 <!-- MemoRS Tray -->
