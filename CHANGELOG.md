@@ -5,6 +5,20 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **Living-system scenarios** (`internal/eval/scenario`, `docs/eval/scenarios.md`): a second
+  eval gate next to the static corpus. A scenario is a YAML file in
+  `internal/eval/testdata/scenarios/` scripting agents (one in-memory MCP session each, with
+  its own client name and a scripted elicitation answer) and a human (the CLI channel) acting
+  on one knowledge base over a fake clock; each step may expect results, output fields, lint
+  findings, audit rows or status counters, and an invariant pack (one live revision per
+  source, forgotten records never served, no tool call above the agent trust cap, raw rows
+  untouched by compaction, …) runs after every step. `TestScenarios` runs every `ci`-tier
+  file with the hash embedder. Three pilots ship: elicitation declined then accepted plus a
+  refused tool forget (B1), the zombie fact (B2, `decision: open`), and two agents' conflict
+  resolved by a third (C2). The catalogue of scenarios still to write and fifteen behaviour
+  gaps found while reading the code, each awaiting an owner decision, are in the document.
+  Supporting changes: `retrieve.Service.SetNow`, `server.Server.Connect`, `eval.RawChecksum`
+  (the compaction checksum, exported); `gopkg.in/yaml.v3` is a new dependency.
 - **MemoRS Tray checks for updates and updates itself.** A minute after it starts and then once
   a day it asks GitHub for the newest release; when a newer MemoRS Tray or memors-mcp exists, the
   top of the menu offers it, and **Check for Updates…** asks on demand. The new **Updates** window

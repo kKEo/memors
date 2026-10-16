@@ -2,8 +2,6 @@ package eval
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"strings"
 	"testing"
@@ -13,39 +11,16 @@ import (
 	"github.com/kKEo/memors/internal/kb"
 )
 
-// rawChecksum hashes every raw row (sources, documents, chunks, facts) so a
-// test can prove compaction touched none of them (research D-A).
+// rawChecksum is RawChecksum for tests: every raw row (sources, documents,
+// chunks and optionally facts), so a test can prove compaction touched none
+// of them (research D-A).
 func rawChecksum(t *testing.T, store *kb.Store, includeFacts bool) string {
 	t.Helper()
-	h := sha256.New()
-	queries := []string{
-		`SELECT id, namespace, uri, content_hash, trust FROM sources ORDER BY id`,
-		`SELECT id, source_id, revision, content, deleted_at, superseded_by FROM documents ORDER BY id`,
-		`SELECT id, document_id, ord, text FROM chunks ORDER BY id`,
+	sum, err := RawChecksum(context.Background(), store.DB(), includeFacts)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if includeFacts {
-		queries = append(queries, `SELECT id, statement, trust, deleted_at, invalidated_at FROM facts ORDER BY id`)
-	}
-	for _, q := range queries {
-		rows, err := store.DB().QueryContext(context.Background(), q)
-		if err != nil {
-			t.Fatal(err)
-		}
-		cols, _ := rows.Columns()
-		for rows.Next() {
-			vals := make([]any, len(cols))
-			ptrs := make([]any, len(cols))
-			for i := range vals {
-				ptrs[i] = &vals[i]
-			}
-			if err := rows.Scan(ptrs...); err != nil {
-				t.Fatal(err)
-			}
-			fmt.Fprintf(h, "%v\n", vals)
-		}
-		rows.Close()
-	}
-	return hex.EncodeToString(h.Sum(nil))
+	return sum
 }
 
 // TestCompactionSlices is the P8 eval: lint must find every planted defect

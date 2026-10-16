@@ -56,6 +56,11 @@ func New(store *kb.Store, profile Profile, logQueries bool) *Service {
 	return &Service{store: store, db: store.DB(), embedder: store.Embedder(), profile: profile, logQueries: logQueries, now: time.Now, graphs: graphCache{m: map[string]*nsGraph{}}, metrics: newSearchMetrics(obs.Default())}
 }
 
+// SetNow replaces the clock: recency, TTL, as_of and the query log read it.
+// Tests and the scenario harness drive it together with kb.Store.SetNow so
+// writes and searches agree on what "now" is.
+func (s *Service) SetNow(f func() time.Time) { s.now = f }
+
 // Scope narrows a search before ranking (docs/schema.md §6).
 type Scope struct {
 	Namespaces []string   `json:"namespaces,omitempty"`
