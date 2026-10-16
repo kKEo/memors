@@ -1,0 +1,82 @@
+# B1 — The human confirms and rejects. An agent asks the human to raise a
+# fact's trust through the client's dialog: declined once (nothing changes,
+# the CLI command comes back), accepted the second time (audited on the
+# elicitation channel). Then the human promotes a document to curated from the
+# CLI and the agent tries to forget it: refused, the record is above the tool
+# channel's cap, and no audit row is written for the refusal.
+name: b1-promote-decline-then-accept
+description: elicitation decline, elicitation accept, CLI promote, tool forget refused
+decision: decided
+tiers: [ci]
+clock: 2026-02-01
+actors:
+  a1: {kind: agent, client: claude-code, elicitation: decline}
+  h:  {kind: human}
+steps:
+  - at: 0d
+    actor: a1
+    op: ingest
+    args:
+      namespace: grpc
+      content: |
+        # gRPC interceptors
+
+        Interceptors run in registration order. Put the auth interceptor before logging.
+      source: {uri: https://grpc.example/interceptors, title: gRPC interceptors, kind: doc, library: grpc/grpc-go, version: v1.8.0, origin: web}
+    bind: doc
+
+  - at: 0d
+    actor: a1
+    op: remember
+    args: {namespace: grpc, statement: "Interceptors wrap every RPC in registration order.", about: [interceptors], evidence_uri: $doc.chunk}
+    bind: f1
+
+  - at: 0d
+    actor: a1
+    op: promote
+    args: {uri: $f1, to: user}
+    expect:
+      out: {applied: false}
+      out_contains: {command: trust promote, reason: declined}
+      audit_none: true
+
+  - at: 0d
+    actor: a1
+    op: promote
+    elicit: accept
+    args: {uri: $f1, to: user}
+    expect:
+      out: {applied: true}
+      audit: [{op: promote, actor: claude-code, channel: elicitation, target: $f1}]
+
+  - at: 0d
+    actor: a1
+    op: search
+    args: {query: interceptors registration order, granularity: fact}
+    expect:
+      top: [$f1]
+      out: {results.0.provenance.trust: user}
+
+  - at: 1d
+    actor: h
+    op: promote
+    args: {uri: $doc, to: curated}
+    expect:
+      audit: [{op: promote, channel: cli, target: $doc}]
+
+  - at: 1d
+    actor: a1
+    op: forget
+    args: {uri: $doc, reason: "the agent thinks it is outdated"}
+    expect:
+      error: true
+      error_contains: needs a human
+      audit_none: true
+
+  - at: 1d
+    actor: a1
+    op: search
+    args: {query: auth interceptor before logging, granularity: document}
+    expect:
+      top: [$doc]
+      out: {results.0.provenance.trust: curated}
