@@ -5,6 +5,47 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **Tester guide** (`docs/guide/tester/`): a third book next to the user and operator guides, for
+  people who run, write and review tests. It covers running the suite, what is tested where, the
+  CI workflows, contract goldens, the retrieval benchmark and its paired gate, fuzzing and races,
+  MemoRS Tray tests, documentation checks, exploratory testing in a sandbox knowledge base, and
+  adding tests. A full part on scenario tests includes a walk-through, the DSL reference, the
+  invariant pack, reading the pictures, `memors-scenario`, the studio, failures, and the
+  open/decided workflow. The behaviour gaps, the catalogue (with each entry's status) and a log
+  of implemented scenarios (one page with picture, steps and source per file) are **generated**
+  from `internal/eval/testdata/scenario-catalogue.yaml` and the scenario files by the new
+  `memors-scenario book` (`make scenario-docs`, replacing `scenario-svg`). `TestBookCurrent` fails
+  when they are stale, and `TestCoversKnown` fails on a `covers:` id the catalogue does not define.
+  The catalogue file gains categories, details, tiers and per-gap `where`/`decision`. A shared
+  `internal/eval/scenario/coverage` package feeds both the studio's index and the guide.
+  `docs/eval/scenarios.md` keeps the rationale and design notes and points to the guide;
+  `docs/eval/scenarios/*.svg` is gone. `make docs` builds three books and the site index has a
+  third card.
+- **Scenario pictures and `memors-scenario`.** A scenario file can now be drawn as an SVG swimlane
+  picture (`internal/eval/scenario/diagram`): a lane per actor, time flowing down, one box per step
+  with arguments and expectation chips, `$bind` edges to the steps that use them, dialog bubbles,
+  parallel brackets, an amber banner for `decision: open`, and expandable long text (click in a
+  standalone file, a link in the studio). `cmd/memors-scenario` (a development tool, not in the
+  release) has `render`, `validate` (with file lines), `run` (`--json`, `--trace`) and `describe`;
+  `make scenario-docs` keeps the pictures in the tester guide current (see the next entry).
+  Supporting changes: `scenario.Parse` indexes source positions (`Lines`, `LineOf`), `Validate`
+  returns `*Issue` values with paths and lines (`Issues`, `StepPath`, `ParseLoose`), the DSL gains
+  `covers:` (catalogue ids and gaps a file exercises), and `StepReport` carries `Path`, `Binds`,
+  per-sub-step `Sub` entries and, with `Options.Trace`, `Status` and a capped `Out`.
+- **Living-system scenarios** (`internal/eval/scenario`, `docs/eval/scenarios.md`): a second
+  eval gate next to the static corpus. A scenario is a YAML file in
+  `internal/eval/testdata/scenarios/` scripting agents (one in-memory MCP session each, with
+  its own client name and a scripted elicitation answer) and a human (the CLI channel) acting
+  on one knowledge base over a fake clock; each step may expect results, output fields, lint
+  findings, audit rows or status counters, and an invariant pack (one live revision per
+  source, forgotten records never served, no tool call above the agent trust cap, raw rows
+  untouched by compaction, …) runs after every step. `TestScenarios` runs every `ci`-tier
+  file with the hash embedder. Three pilots ship: elicitation declined then accepted plus a
+  refused tool forget (B1), the zombie fact (B2, `decision: open`), and two agents' conflict
+  resolved by a third (C2). The catalogue of scenarios still to write and fifteen behaviour
+  gaps found while reading the code, each awaiting an owner decision, are in the document.
+  Supporting changes: `retrieve.Service.SetNow`, `server.Server.Connect`, `eval.RawChecksum`
+  (the compaction checksum, exported); `gopkg.in/yaml.v3` is a new dependency.
 - **MemoRS Tray checks for updates and updates itself.** A minute after it starts and then once
   a day it asks GitHub for the newest release; when a newer MemoRS Tray or memors-mcp exists, the
   top of the menu offers it, and **Check for Updates…** asks on demand. The new **Updates** window

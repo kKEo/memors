@@ -1,0 +1,19 @@
+# Read by mdBook in CI (make docs); GitBook ignores this file.
+[book]
+title = "memors-mcp tester guide"
+description = "How memors-mcp is tested: the gates every change passes, the living-system scenarios, exploratory testing and adding tests."
+authors = ["memors-mcp contributors"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "../../../site/tester"
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/kKEo/memors"
+edit-url-template = "https://github.com/kKEo/memors/edit/master/docs/guide/tester/{path}"
+site-url = "/memors/tester/"
+
+[output.html.search]
+enable = true

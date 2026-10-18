@@ -33,10 +33,13 @@ publishing. It writes the five archives and `checksums.txt` under `dist/`. Relea
 | `make check` | gofmt, vet, golangci-lint, then all tests under the race detector |
 | `make test` | All tests, no race detector |
 | `make eval` | The retrieval benchmark against the recorded baseline |
-| `make golden-update` | Re-record the `tools/list` golden after a deliberate tool-surface change |
+| `make golden-update` | Re-record the contract goldens (`tools/list`, `/live.json`, scenario pictures) after a deliberate change |
 | `make baseline-update` | Re-record the eval baseline after a deliberate retrieval change |
-| `make docs` | Build these guides with mdBook into `site/` |
+| `make docs` | Build the user, operator and tester guides with mdBook into `site/` |
+| `make scenario-studio` | Read, check and run the living-system scenarios in a local web app |
+| `make scenario-docs` | Regenerate the tester guide's scenario pages after changing a scenario file |
 | `make tray-test` | Vet and test the MemoRS Tray module (macOS) |
 | `make tray-app` | Build `tray/dist/MemoRS Tray.app` and its release zip (macOS) |
 
-Tests use a deterministic hash embedder and need no network or model download.
+Tests use a deterministic hash embedder and need no network or model download. The
+[tester guide](../../tester/) covers running, reading and writing tests in detail.

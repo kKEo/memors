@@ -2,7 +2,7 @@ BINARY = memors-mcp
 PKG = ./cmd/memors-mcp/
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
-.PHONY: build snapshot test test-verbose test-race cover fmt vet lint check clean eval golden-update baseline-update spike docs docs-check docs-serve start-http tray tray-test tray-app
+.PHONY: build snapshot test test-verbose test-race cover fmt vet lint check clean eval golden-update baseline-update spike docs docs-check docs-serve start-http tray tray-test tray-app scenario-docs scenario-studio
 
 build:
 	CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=$(VERSION)" -o $(BINARY) $(PKG)
@@ -27,13 +27,28 @@ baseline-update:
 golden-update:
 	go test ./internal/server/ -run TestListToolsGolden -count=1 -update
 	go test ./internal/ui/ -run TestLiveJSONGolden -count=1 -update
+	go test ./internal/eval/scenario/diagram/ -run TestGolden -count=1 -update
+
+# scenario-docs regenerates the scenario pages of the tester guide (gaps,
+# catalogue, one page and picture per scenario file, the SUMMARY.md entries)
+# after a scenario file, the catalogue or the renderer changed; TestBookCurrent
+# fails until this has run. memors-scenario is a development tool, not part of
+# the release.
+SCENARIOS ?= internal/eval/testdata/scenarios
+scenario-docs:
+	go run ./cmd/memors-scenario book --dir $(SCENARIOS)
+
+# scenario-studio serves the scenario studio (pictures, validation, runs of the
+# files under SCENARIOS) on a loopback address and prints the URL.
+scenario-studio:
+	go run ./cmd/memors-scenario serve --dir $(SCENARIOS)
 
 # spike runs a throwaway experiment under spikes/<name> (never part of the
 # binary or of PR CI). Usage: make spike NAME=s2-vectors
 spike:
 	go run -tags spike ./spikes/$(NAME)
 
-# docs builds the user and operator guides (docs/guide/, GitBook-compatible
+# docs builds the user, operator and tester guides (docs/guide/, GitBook-compatible
 # markdown) into site/ with mdBook, the same way the Pages workflow does.
 # mdBook is a single static binary: https://github.com/rust-lang/mdBook/releases
 MDBOOK ?= mdbook
@@ -44,17 +59,18 @@ docs: docs-check
 	rm -rf site
 	$(MDBOOK) build docs/guide/user
 	$(MDBOOK) build docs/guide/operator
+	$(MDBOOK) build docs/guide/tester
 	rm -f site/*/book.toml site/*/.gitbook.yaml
 	cp docs/guide/index.html site/index.html
 	touch site/.nojekyll
-	@echo "site/index.html: open it, or run 'make docs-serve BOOK=user|operator'"
+	@echo "site/index.html: open it, or run 'make docs-serve BOOK=user|operator|tester'"
 
 # docs-check fails when an env var, command or metric in the code is missing
 # from the operator guide, or a relative link in either guide is broken.
 docs-check:
 	./scripts/docs-check.sh
 
-# docs-serve previews one book with live reload (BOOK=user or BOOK=operator).
+# docs-serve previews one book with live reload (BOOK=user, operator or tester).
 docs-serve:
 	$(MDBOOK) serve docs/guide/$(BOOK) --open
 

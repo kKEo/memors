@@ -22,7 +22,8 @@ model and profile combination, and prints quality next to cost:
 | abstention | Share of no-answer queries that correctly returned nothing |
 | p50 ms, tokens p50 | Median latency and response size |
 
-`hash` is the deterministic test embedder and needs no download. Other model ids download real
+The [tester guide](../../tester/gates/retrieval-eval.md) describes the same benchmark as a test
+gate: its corpora and the per-query regression rules. `hash` is the deterministic test embedder and needs no download. Other model ids download real
 models. The corpora are the project's own fixtures, so they tell you about **relative** effects
 (this profile against that one), not about your data.
 

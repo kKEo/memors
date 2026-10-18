@@ -247,6 +247,13 @@ func (s *Server) Run(ctx context.Context) error {
 	return s.mcp.Run(ctx, &mcp.StdioTransport{})
 }
 
+// Connect serves one MCP session over t: the in-process equivalent of a
+// stdio or HTTP client. Several sessions may be connected to one Server, as
+// over HTTP. The scenario harness connects one per scripted agent.
+func (s *Server) Connect(ctx context.Context, t mcp.Transport) (*mcp.ServerSession, error) {
+	return s.mcp.Connect(ctx, t, nil)
+}
+
 // HTTPOptions tunes HTTPHandler.
 type HTTPOptions struct {
 	// BehindProxy: a reverse proxy on this machine forwards requests to

@@ -1,0 +1,82 @@
+# B2 — Zombie fact. A human forgets an agent fact with a reason; next session
+# the same agent records the same statement again. Today nothing links the new
+# fact to the forgotten one (gap: zombie facts). This scenario pins current
+# behaviour until the owner decides on a warning at remember time or a
+# `resurrected` lint kind; the last expectation is the one that will flip.
+name: b2-zombie-fact
+description: an agent re-records a statement a human had forgotten with a reason
+decision: open
+tiers: [ci]
+covers: [B2, gap-15]
+clock: 2026-01-05
+actors:
+  a1: {kind: agent, client: claude-code}
+  h:  {kind: human}
+steps:
+  - at: 0d
+    actor: a1
+    op: ingest
+    args:
+      namespace: ops
+      content: |
+        # Pager policy
+
+        The pager escalates to the on-call secondary after nine minutes of silence.
+      source: {uri: https://ops.example/pager, title: Pager policy, kind: doc, origin: web}
+    bind: pager
+    expect:
+      out: {revision: 1, unchanged: false, trust: agent}
+      audit: [{op: ingest, actor: claude-code, channel: tool}]
+
+  - at: 0d
+    actor: a1
+    op: remember
+    args: {namespace: ops, statement: "The pager escalates to the CEO after five minutes.", about: [pager], evidence_uri: $pager.chunk}
+    bind: f1
+    expect:
+      out: {trust: agent}
+      audit: [{op: remember, actor: claude-code, channel: tool, target: $f1}]
+
+  - at: 1d
+    actor: h
+    op: forget
+    args: {uri: $f1, reason: "wrong: the pager never escalates to the CEO"}
+    expect:
+      audit: [{op: forget, channel: cli, target: $f1}]
+
+  - at: 1d
+    actor: h
+    op: read
+    args: {uri: $f1}
+    expect:
+      out: {tombstone: true}
+      out_contains: {reason: never escalates}
+
+  - at: 1d
+    actor: a1
+    op: search
+    args: {query: pager escalates to the CEO, granularity: fact}
+    expect: {abstains: true, excludes: [$f1]}
+
+  - at: 2d
+    actor: a1
+    op: remember
+    args: {namespace: ops, statement: "The pager escalates to the CEO after five minutes.", about: [pager], evidence_uri: $pager.chunk}
+    bind: f2
+    note: "gap: nothing links this to the forgotten fact; a warning or a lint kind is an open decision"
+    expect:
+      out: {trust: agent}
+      audit: [{op: remember, actor: claude-code, channel: tool, target: $f2}]
+      lint: {namespace: ops, has_not: [resurrected]}
+
+  - at: 2d
+    actor: a1
+    op: search
+    args: {query: pager escalates to the CEO, granularity: fact}
+    expect: {top: [$f2], excludes: [$f1], count: 1}
+
+  - at: 2d
+    actor: h
+    op: facts
+    args: {namespace: ops}
+    expect: {contains: [$f2], excludes: [$f1]}

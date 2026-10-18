@@ -1,0 +1,14 @@
+{{template "head" .}}<h1>Scenarios</h1>{{with .Data}}
+<table><tr><th>file</th><th>catalogue</th><th>decision</th><th>tiers</th><th>actors</th><th class="num">steps</th><th>covers</th><th>status</th></tr>
+{{range .Files}}<tr><td><a href="/s/{{.Name}}">{{.Name}}</a>{{if .Title}}<div class="muted small">{{.Title}}</div>{{end}}</td><td>{{.Catalogue}}</td><td>{{if .Decision}}<span class="badge {{.Decision}}">{{.Decision}}</span>{{end}}</td><td>{{join .Tiers ", "}}</td><td>{{join .Actors ", "}}</td><td class="num">{{.Steps}}{{if .Parallel}} <span class="muted">({{.Parallel}} parallel)</span>{{end}}</td><td>{{range .Covers}}<span class="badge">{{.}}</span>{{end}}</td><td>{{if .Error}}<span class="warn">invalid</span><div class="muted small">{{.Error}}</div>{{else}}<span class="ok">valid</span>{{end}}</td></tr>{{end}}</table>
+<h2>Coverage</h2>
+<div class="cols">
+<div><h3>Operations × actor kind</h3><p class="muted small">Which scenarios call each operation as an agent (a tool) and as a human (the CLI). An empty cell is a test nobody wrote yet.</p>
+<table><tr><th>op</th><th>agent</th><th>human</th></tr>{{range .Ops}}<tr><td><code>{{.Op}}</code></td><td>{{if .AgentNA}}<span class="badge na">not a tool</span>{{else if .Agent}}{{join .Agent ", "}}{{else}}<span class="cell-empty">—</span>{{end}}</td><td>{{if .HumanNA}}<span class="badge na">not a CLI op</span>{{else if .Human}}{{join .Human ", "}}{{else}}<span class="cell-empty">—</span>{{end}}</td></tr>{{end}}</table></div>
+<div><h3>Expectation kinds</h3><table>{{range .Expectations}}<tr><td><code>{{.Key}}</code></td><td>{{if .Scenarios}}{{join .Scenarios ", "}}{{else}}<span class="cell-empty">—</span>{{end}}</td></tr>{{end}}</table>
+<h3>Invariants skipped</h3>{{if .Skipped}}<table>{{range .Skipped}}<tr><td><code>{{.Key}}</code></td><td>{{join .Scenarios ", "}}</td></tr>{{end}}</table>{{else}}<p class="muted">none: every scenario holds the whole pack</p>{{end}}
+{{if .CatalogueErr}}<p class="warn">catalogue: {{.CatalogueErr}}</p>{{else if .HasCatalogue}}
+<h3>Catalogue entries without a scenario</h3><p>{{range .Uncovered}}<span class="badge" title="{{.Title}}">{{.ID}}</span>{{else}}<span class="ok">all covered</span>{{end}}</p>
+<h3>Gaps without a scenario</h3><p>{{range .UncoveredGaps}}<span class="badge" title="{{.Title}}">{{.ID}}</span>{{else}}<span class="ok">all covered</span>{{end}}</p>{{end}}</div>
+</div>
+{{end}}{{template "foot" .}}

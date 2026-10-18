@@ -1,0 +1,267 @@
+# The scenario catalogue and the behaviour gaps: the source of the tester
+# guide's generated pages (docs/guide/tester/scenarios/catalogue.md and
+# gaps.md; `make scenario-docs`) and of the studio's coverage view. A scenario
+# names what it exercises with `covers: [B2, gap-15]`; TestCoversKnown fails on
+# an id this file does not define. The file sits one level above the scenarios
+# directory so LoadDir never mistakes it for a scenario.
+#
+# Text fields are markdown. tier: ci (default) | nightly | binary.
+# decision on a gap: open (not decided yet) | keep | change | document.
+categories:
+  - id: A
+    title: Two clocks and time
+    intro: Recorded time (when the store learned something) against valid time (when it was true), and what ageing does to ranking.
+  - id: B
+    title: Human confirm / reject loops
+    intro: A human confirms, corrects or rejects what agents wrote, through the CLI or an elicitation dialog.
+  - id: C
+    title: Many agents writing notes
+    intro: Several agents write into shared namespaces, agree in different words, disagree, or write at once.
+  - id: D
+    title: Adversarial, in a living system
+    intro: Poisoned or hostile content arriving through the normal channels, and whether trust and revocation hold.
+  - id: E
+    title: Operational lifecycle
+    intro: Crashes, reindexing, migrations, backups and growth while the system is in use.
+  - id: F
+    title: Retrieval quality on a drifting corpus
+    intro: Ranking quality when the ground truth moves with time, and relations that must hold when no label exists.
+
+entries:
+  - id: A1
+    title: Expiry during the run
+    gaps: [8]
+    detail: Fact with `valid_to` day 10; query at day 5 and 15; `lint` at 15 reports `expired-fact`; search behaviour per gap 8.
+  - id: A2
+    title: Out-of-order arrival
+    detail: Day 20 an agent records F2; day 25 a human records F1 with `valid_from` day 1. `as_of` day 22 returns F2 (recorded time); `facts --as-of`, `history` and the conflict detector agree with each other.
+  - id: A3
+    title: Backdated supersession chain
+    detail: F1 (valid Jan) → F2 (valid Mar) supersedes → F3 (valid Feb, late evidence) supersedes F2; `history` shows both clocks without contradiction.
+  - id: A4
+    title: Re-confirmed note never refreshes
+    detail: The same note re-ingested unchanged at day 0/100/200 is a dedup no-op each time, so recency keeps ageing it. Decide whether re-ingest bumps freshness.
+  - id: A5
+    title: Revision churn
+    detail: One document revised 30 times with a page on it; `built_from_rev` monotonic, one open stale item at a time, `as_of` per day returns that day's revision, the final page cites live chunks.
+  - id: A6
+    title: Recency across the horizon
+    detail: Identical notes at ages 0/30/365/730 plus one `curated` document; documents do not age, notes newest first; a one-second clock move must not flip ties.
+
+  - id: B1
+    title: Decline then retry
+    detail: "Declined: nothing changes, the CLI command comes back, no audit row. Accepted: audited on the elicitation channel."
+  - id: B2
+    title: Zombie fact
+    gaps: [15]
+    detail: A human forgets an agent fact with a reason; the agent records the same statement again and nothing links the two.
+  - id: B3
+    title: Human corrects, agent holds the old id
+    detail: The human supersedes a curated fact from the CLI; the agent later calls `remember` with `supersedes` on the old id and gets "already superseded"; its fact must land as a conflict item against the human's, not vanish.
+  - id: B4
+    title: Demote
+    detail: "A curated document demoted to `agent`; `scope.min_trust: user` excludes it; facts citing it keep their own trust; pages built from it are unchanged."
+  - id: B5
+    title: Partial review
+    gaps: [11]
+    detail: Of 6 items the human resolves 2, skips 2, ignores 2; the next `compact` must not re-propose skipped items without two new passages.
+  - id: B6
+    title: Promote, then an agent revises
+    gaps: [1]
+    detail: A human promotes a source to `curated`; an agent then re-ingests a changed copy through the tool channel.
+  - id: B7
+    title: Merge stickiness
+    detail: The human rejects merge A~B; agents keep writing both spellings; the resolver must not re-open the pair (verified sticky; keep as a regression); after an accept, new ingests of B resolve to A and `explore` shows the alias.
+  - id: B8
+    title: Elicitation on HTTP with several clients
+    gaps: [7]
+    detail: Several clients on one `serve --http` server; one answers a promote dialog meant for another.
+
+  - id: C1
+    title: Same claim, different words
+    gaps: [10]
+    detail: Three agents remember paraphrases with the same `about`; today one conflict item per pair; all three vote for one evidence passage.
+  - id: C2
+    title: Disagreement without a human
+    detail: Two agents' facts conflict; lint reports it; a third agent resolves it through `compact` and `submit`; the loser is history, raw rows unchanged.
+  - id: C3
+    title: Spoofed actor
+    gaps: [6]
+    detail: Two sessions named `claude-code` on `serve --http`.
+  - id: C4
+    title: Stale re-ingest
+    gaps: [5]
+    detail: An agent re-ingests an older cached copy of a document that has moved on.
+  - id: C5
+    title: Drowning by chatter
+    tier: nightly
+    detail: 500 agent notes of generic standup text from 5 agents plus 5 curated documents; curated answers keep recall@5; abstention queries still abstain (real model).
+  - id: C6
+    title: Namespace spill
+    detail: One agent writes to `personal`; another searches unscoped; measure the contamination rate so a future change is comparable.
+  - id: C7
+    title: Submit after concurrent ingest
+    gaps: [4]
+    detail: A page is submitted after passages it should cite were added or revised since `compact`.
+  - id: C8
+    title: Two agents, one work item
+    detail: Both compact, both submit; the second gets "already done"; the first page is not overwritten; one `submit` audit row.
+  - id: C9
+    title: Concurrent same-URI ingest over HTTP
+    detail: Exactly one live revision per source, contiguous revision numbers, both audit rows.
+  - id: C10
+    title: Spelling variants over time
+    detail: Four spellings of one name from four agents; merge precision stays at or above 0.95 as the stream grows; after human merges, `explore` from any spelling reaches one neighbourhood.
+
+  - id: D1
+    title: Poison amplification loop
+    detail: A web page with a fact-shaped sentence about a trusted entity; an agent remembers it citing that chunk; chunk and fact now vote together. The curated answer's rank must not drop a band.
+  - id: D2
+    title: Revoked but still reachable
+    gaps: [2, 3]
+    detail: Forget the poisoned document; the claim must be unreachable via search at every granularity, `explore`, the page and the citing fact.
+  - id: D3
+    title: Graph hijack via declared entities
+    detail: Junk ingested with a declared entity name; multi-hop queries about that entity must not surface it above the real pages.
+  - id: D4
+    title: Homoglyph identifiers
+    detail: An identifier with a Cyrillic letter; the exact arm and the merge resolver must not silently merge it with the ASCII one.
+  - id: D5
+    title: Instruction text in reasons and titles
+    gaps: [9]
+    detail: A tool-channel forget plants instruction-shaped text in a tombstone reason or a title.
+  - id: D6
+    title: Tool-channel privilege probe
+    detail: A scripted agent tries every mutation on `user` and `curated` records across all ten tools, including revise; every attempt fails with `needs_human` and leaves no audit row.
+
+  - id: E1
+    title: Crash between commit and vectors
+    tier: binary
+    gaps: [13]
+    detail: The process is killed between the ingest commit and vector storage.
+  - id: E2
+    title: Partial reindex
+    detail: Switch model, interrupt `reindex` at 50%; queries say which model's vectors ran; `degraded` semantics defined.
+  - id: E3
+    title: Migrate a populated file
+    tier: binary
+    detail: An older knowledge-base file with real content is migrated by the built binary.
+  - id: E4
+    title: Backup mid-write
+    tier: binary
+    detail: A backup is taken while agents are writing.
+  - id: E5
+    title: Export/import at mid-life
+    gaps: [14]
+    detail: Export and re-import a knowledge base that holds documents, facts and pages.
+  - id: E6
+    title: Index resource under growth
+    detail: With 10k documents `memo://index` truncates deterministically and prefers live, high-trust, recent entries.
+  - id: E7
+    title: Graph cache under continuous ingest
+    detail: Structural-arm p95 while another agent ingests every second.
+  - id: E8
+    title: Graph cache same-count revision
+    gaps: [12]
+    detail: A revision that keeps the live mention count unchanged.
+  - id: E9
+    title: Log prune during use
+    detail: "`log prune` runs while searches and tool calls are being logged."
+
+  - id: F1
+    title: Time-indexed labels
+    detail: Ground truth generated from a planted fact timeline; facts with validity windows first, documents and notes generated from them, queries at several days with the relevant set derived from the timeline.
+  - id: F2
+    title: Trust vs freshness boundary
+    detail: An agent fact (new) against a curated fact (old) inside and just outside the 10% tiebreak; small content perturbations must not flip the order.
+  - id: F3
+    title: Abstention under contamination
+    tier: nightly
+    detail: Abstention queries keep abstaining as unrelated content accumulates (real model).
+  - id: F4
+    title: Non-English notes
+    tier: nightly
+    detail: Notes and queries in languages other than English (real model).
+  - id: F5
+    title: Determinism
+    detail: The same scenario twice gives identical ranked lists.
+  - id: F6
+    title: Metamorphic relations
+    detail: Adding irrelevant documents must not reorder the existing top-k; scoped results are a subset of unscoped; duplicating a document must not double its score; `exclude_ids` paging is consistent with the unpaged list.
+
+gaps:
+  - id: gap-1
+    title: A tool-channel revision of a curated source stays curated
+    where: "`kb/store.go` `Ingest`"
+    decision: open
+    detail: "`Ingest` updates hash, etag, fetched_at and title on an existing source and never checks the channel cap; forget and supersede are guarded, revise is not."
+  - id: gap-2
+    title: A fact whose evidence document is forgotten stays live with no evidence
+    where: "`kb/schema_v1.go`, `kb/facts.go` `Forget`"
+    decision: open
+    detail: "`evidence_chunk_id ON DELETE SET NULL` and `Forget` deletes chunks; no audit row, no lint kind, and `verify` cannot see it."
+  - id: gap-3
+    title: Pages built from forgotten or revised sources are still served
+    where: "`kb/facts.go`, `retrieve/pages.go`"
+    decision: open
+    detail: "Such pages are served at `granularity: page` with the old content, flagged `stale` only."
+  - id: gap-4
+    title: submit writes page_sources from the payload captured at compact time
+    where: "`compact/submit.go`"
+    decision: open
+    detail: Passages added or revised between `compact` and `submit` are missing, and cited chunk ids may be gone.
+  - id: gap-5
+    title: Re-ingesting an older cached copy creates a new revision with old content
+    where: "`kb/store.go` `Ingest`"
+    decision: open
+    detail: Dedup compares only the current revision's hash, so an old copy becomes revision N+1.
+  - id: gap-6
+    title: The actor name is the self-declared ClientInfo.Name
+    where: "`server/server.go` `clientName`"
+    decision: open
+    detail: The actor in audit, the call log and the live page is the client's own name; two clients with one name are indistinguishable.
+  - id: gap-7
+    title: The elicitation request state is unsigned
+    where: "`server/server.go` `promoteState`"
+    decision: open
+    detail: The state is plain text; a client that advertises the capability can answer its own question and raise trust on the `elicitation` channel (spike S7; an HTTP server would need to sign it).
+  - id: gap-8
+    title: A fact past valid_to is served by default
+    where: "`retrieve/retrieve.go`, `compact/lint.go`"
+    decision: open
+    detail: "`as_of` filters on recorded time only, and only `lint` notices an expired fact."
+  - id: gap-9
+    title: A tombstone's reason is served verbatim
+    where: "`kb/read.go`"
+    decision: open
+    detail: A tool-channel forget can plant instruction-shaped text in the reason.
+  - id: gap-10
+    title: Paraphrased agreements become conflict items
+    where: "`compact/compact.go` `Conflicts`"
+    decision: open
+    detail: Two facts about one subject are a conflict unless their statements are identical after key normalisation, so agents agreeing in different words produce one conflict item per pair.
+  - id: gap-11
+    title: A skipped work item is re-created on the next compact
+    where: "`kb/pages.go`"
+    decision: open
+    detail: "`UpsertWorkItem` matches `state = 'open'` only, so a skipped item comes back with no new evidence."
+  - id: gap-12
+    title: The graph cache rebuilds on mention count only
+    where: "`retrieve/arm_graph.go` `graphFor`"
+    decision: open
+    detail: A revision with the same live mention count serves stale chunk ids to the graph arm.
+  - id: gap-13
+    title: A crash between the ingest commit and vector storage leaves no job
+    where: "`kb/store.go` `Ingest`, `embedChunks`"
+    decision: open
+    detail: Jobs are enqueued only when the embedder is absent or fails; chunks are left with no vectors and only `verify --repair` recovers them.
+  - id: gap-14
+    title: "`export --md` omits facts"
+    where: "`kb/export.go`"
+    decision: open
+    detail: "`export --md` writes documents and pages, not facts; \"re-import yields nothing new\" is proven for documents only."
+  - id: gap-15
+    title: A forgotten fact re-recorded with the same statement is unlinked
+    where: "`kb/facts.go` `Remember`"
+    decision: open
+    detail: The new fact is a fresh fact; nothing links it to the forget reason.
