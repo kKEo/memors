@@ -18,7 +18,10 @@ type Report struct {
 
 // StepReport is one step's outcome.
 type StepReport struct {
-	Index      int
+	Index int
+	// Path is the step's Lines path (steps.2; steps.4.parallel.1 for a
+	// sub-step), so a tool can map the outcome back to the source.
+	Path       string
 	At         string
 	Clock      time.Time
 	Actor      string
@@ -27,6 +30,17 @@ type StepReport struct {
 	Summary    string
 	Failures   []string
 	Invariants []string
+	// Binds is what the step bound: "" is the address, then chunk, id, a,
+	// b, kind as the op provides them.
+	Binds map[string]string
+	// Status holds the status counters after the step (Options.Trace only).
+	Status map[string]any
+	// Out is the step's output, strings capped at 2 KB and lists at 20
+	// items (Options.Trace only).
+	Out map[string]any
+	// Sub holds one report per sub-step of a parallel group; Failures on
+	// the group itself carry the aggregate with an actor/op prefix.
+	Sub []StepReport
 }
 
 // OK reports whether every step met its expectations and every invariant held.
@@ -53,10 +67,13 @@ func (r *Report) Failures() []string {
 	return out
 }
 
+// OK reports whether the step met its expectations and the invariants held.
+func (s StepReport) OK() bool { return len(s.Failures) == 0 && len(s.Invariants) == 0 }
+
 // Line is the one-line log form of a step.
 func (s StepReport) Line() string {
 	state := "ok"
-	if len(s.Failures) > 0 || len(s.Invariants) > 0 {
+	if !s.OK() {
 		state = "FAIL"
 	}
 	line := fmt.Sprintf("%2d %-4s %-6s %-10s %-8s %s", s.Index, s.At, s.Actor, s.Op, state, s.Summary)

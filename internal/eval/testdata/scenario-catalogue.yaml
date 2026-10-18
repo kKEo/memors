@@ -1,0 +1,66 @@
+# The catalogue (docs/eval/scenarios.md §5) and the behaviour gaps (§4) that the
+# scenario studio's coverage view compares `covers:` entries against. A scenario
+# names what it exercises with `covers: [B2, gap-15]`. This file sits one level
+# above the scenarios directory so LoadDir never mistakes it for a scenario.
+entries:
+  - {id: A1, title: Expiry during the run, gaps: [8]}
+  - {id: A2, title: Out-of-order arrival}
+  - {id: A3, title: Backdated supersession chain}
+  - {id: A4, title: Re-confirmed note never refreshes}
+  - {id: A5, title: Revision churn}
+  - {id: A6, title: Recency across the horizon}
+  - {id: B1, title: Decline then retry}
+  - {id: B2, title: Zombie fact, gaps: [15]}
+  - {id: B3, title: Human corrects, agent holds the old id}
+  - {id: B4, title: Demote}
+  - {id: B5, title: Partial review, gaps: [11]}
+  - {id: B6, title: Promote, then an agent revises, gaps: [1]}
+  - {id: B7, title: Merge stickiness}
+  - {id: B8, title: Elicitation on HTTP with several clients, gaps: [7]}
+  - {id: C1, title: Same claim, different words, gaps: [10]}
+  - {id: C2, title: Disagreement without a human}
+  - {id: C3, title: Spoofed actor, gaps: [6]}
+  - {id: C4, title: Stale re-ingest, gaps: [5]}
+  - {id: C5, title: Drowning by chatter}
+  - {id: C6, title: Namespace spill}
+  - {id: C7, title: Submit after concurrent ingest, gaps: [4]}
+  - {id: C8, title: Two agents, one work item}
+  - {id: C9, title: Concurrent same-URI ingest over HTTP}
+  - {id: C10, title: Spelling variants over time}
+  - {id: D1, title: Poison amplification loop}
+  - {id: D2, title: Revoked but still reachable, gaps: [2, 3]}
+  - {id: D3, title: Graph hijack via declared entities}
+  - {id: D4, title: Homoglyph identifiers}
+  - {id: D5, title: Instruction text in reasons and titles, gaps: [9]}
+  - {id: D6, title: Tool-channel privilege probe}
+  - {id: E1, title: Crash between commit and vectors, gaps: [13]}
+  - {id: E2, title: Partial reindex}
+  - {id: E3, title: Migrate a populated file}
+  - {id: E4, title: Backup mid-write}
+  - {id: E5, title: Export/import at mid-life, gaps: [14]}
+  - {id: E6, title: Index resource under growth}
+  - {id: E7, title: Graph cache under continuous ingest}
+  - {id: E8, title: Graph cache same-count revision, gaps: [12]}
+  - {id: E9, title: Log prune during use}
+  - {id: F1, title: Time-indexed labels}
+  - {id: F2, title: Trust vs freshness boundary}
+  - {id: F3, title: Abstention under contamination}
+  - {id: F4, title: Non-English notes}
+  - {id: F5, title: Determinism}
+  - {id: F6, title: Metamorphic relations}
+gaps:
+  - {id: gap-1, title: A tool-channel revision of a curated source stays curated}
+  - {id: gap-2, title: A fact whose evidence document is forgotten stays live with no evidence}
+  - {id: gap-3, title: Pages built from forgotten or revised sources are still served}
+  - {id: gap-4, title: submit writes page_sources from the payload captured at compact time}
+  - {id: gap-5, title: Re-ingesting an older cached copy creates a new revision with old content}
+  - {id: gap-6, title: The actor name is the self-declared ClientInfo.Name}
+  - {id: gap-7, title: The elicitation request state is unsigned}
+  - {id: gap-8, title: A fact past valid_to is served by default}
+  - {id: gap-9, title: A tombstone's reason is served verbatim}
+  - {id: gap-10, title: Paraphrased agreements become conflict items}
+  - {id: gap-11, title: A skipped work item is re-created on the next compact}
+  - {id: gap-12, title: The graph cache rebuilds on mention count only}
+  - {id: gap-13, title: A crash between the ingest commit and vector storage leaves no job}
+  - {id: gap-14, title: export --md omits facts}
+  - {id: gap-15, title: A forgotten fact re-recorded with the same statement is unlinked}

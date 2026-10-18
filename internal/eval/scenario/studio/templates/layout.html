@@ -1,0 +1,5 @@
+{{define "head"}}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · scenario studio</title><link rel="stylesheet" href="/static/studio.css"></head><body>
+<header><a class="brand" href="/">scenario studio</a><span class="muted">{{.Dir}}</span></header><main>{{end}}
+{{define "foot"}}</main><footer>Files are read on every request: edit a scenario in any editor and reload. A run uses a fresh knowledge base with the deterministic hash embedder and never touches your own data.</footer></body></html>{{end}}

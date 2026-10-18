@@ -2,7 +2,7 @@ BINARY = memors-mcp
 PKG = ./cmd/memors-mcp/
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
-.PHONY: build snapshot test test-verbose test-race cover fmt vet lint check clean eval golden-update baseline-update spike docs docs-check docs-serve start-http tray tray-test tray-app
+.PHONY: build snapshot test test-verbose test-race cover fmt vet lint check clean eval golden-update baseline-update spike docs docs-check docs-serve start-http tray tray-test tray-app scenario-svg scenario-studio
 
 build:
 	CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=$(VERSION)" -o $(BINARY) $(PKG)
@@ -27,6 +27,19 @@ baseline-update:
 golden-update:
 	go test ./internal/server/ -run TestListToolsGolden -count=1 -update
 	go test ./internal/ui/ -run TestLiveJSONGolden -count=1 -update
+	go test ./internal/eval/scenario/diagram/ -run TestGolden -count=1 -update
+
+# scenario-svg redraws the scenario pictures embedded in docs/eval/scenarios.md
+# after a scenario file or the renderer changed; TestDocsCurrent fails until
+# this has run. memors-scenario is a development tool, not part of the release.
+SCENARIOS ?= internal/eval/testdata/scenarios
+scenario-svg:
+	go run ./cmd/memors-scenario render --out docs/eval/scenarios --expand all $(SCENARIOS)
+
+# scenario-studio serves the scenario studio (pictures, validation, runs of the
+# files under SCENARIOS) on a loopback address and prints the URL.
+scenario-studio:
+	go run ./cmd/memors-scenario serve --dir $(SCENARIOS)
 
 # spike runs a throwaway experiment under spikes/<name> (never part of the
 # binary or of PR CI). Usage: make spike NAME=s2-vectors

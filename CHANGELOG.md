@@ -5,6 +5,17 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **Scenario pictures and `memors-scenario`.** A scenario file can now be drawn as an SVG swimlane
+  picture (`internal/eval/scenario/diagram`): a lane per actor, time flowing down, one box per step
+  with arguments and expectation chips, `$bind` edges to the steps that use them, dialog bubbles,
+  parallel brackets, an amber banner for `decision: open`, and expandable long text (click in a
+  standalone file, a link in the studio). `cmd/memors-scenario` (a development tool, not in the
+  release) has `render`, `validate` (with file lines), `run` (`--json`, `--trace`) and `describe`;
+  `make scenario-svg` keeps `docs/eval/scenarios/*.svg` current and `TestDocsCurrent` checks them.
+  Supporting changes: `scenario.Parse` indexes source positions (`Lines`, `LineOf`), `Validate`
+  returns `*Issue` values with paths and lines (`Issues`, `StepPath`, `ParseLoose`), the DSL gains
+  `covers:` (catalogue ids and gaps a file exercises), and `StepReport` carries `Path`, `Binds`,
+  per-sub-step `Sub` entries and, with `Options.Trace`, `Status` and a capped `Out`.
 - **Living-system scenarios** (`internal/eval/scenario`, `docs/eval/scenarios.md`): a second
   eval gate next to the static corpus. A scenario is a YAML file in
   `internal/eval/testdata/scenarios/` scripting agents (one in-memory MCP session each, with

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	_ "modernc.org/sqlite"
@@ -35,6 +36,9 @@ type Options struct {
 	Dir string
 	// Logf receives one line per step when set.
 	Logf func(format string, args ...any)
+	// Trace records each step's output (capped) and the status counters
+	// after it on the report, for tools that show a run on the picture.
+	Trace bool
 }
 
 // Runner executes one scenario against one fresh knowledge base.
@@ -194,7 +198,7 @@ func (r *Runner) connectAgent(name string, a Actor) error {
 // --- steps ---
 
 func (r *Runner) runStep(ctx context.Context, idx int, st Step) {
-	sr := StepReport{Index: idx + 1, At: st.At, Actor: st.Actor, Op: st.Op, Note: st.Note}
+	sr := StepReport{Index: idx + 1, Path: StepPath(idx, -1), At: st.At, Actor: st.Actor, Op: st.Op, Note: st.Note}
 	if st.At != "" {
 		d, _ := ParseAt(st.At)
 		r.now = r.clock0.Add(d)
@@ -234,9 +238,13 @@ func (r *Runner) runStep(ctx context.Context, idx int, st Step) {
 		for i, sub := range st.Parallel {
 			outs[i].audit = rows
 			label := fmt.Sprintf("%s/%s", sub.Actor, sub.Op)
-			for _, f := range r.finish(ctx, sub, outs[i]) {
+			fails := r.finish(ctx, sub, outs[i])
+			for _, f := range fails {
 				sr.Failures = append(sr.Failures, label+": "+f)
 			}
+			ss := StepReport{Index: i + 1, Path: StepPath(idx, i), Clock: r.now, Actor: sub.Actor, Op: sub.Op, Note: sub.Note, Summary: summarize(sub.Op, outs[i]), Failures: fails}
+			r.trace(&ss, sub, outs[i])
+			sr.Sub = append(sr.Sub, ss)
 		}
 	} else {
 		args, err := r.resolveArgs(st.Args)
@@ -252,13 +260,65 @@ func (r *Runner) runStep(ctx context.Context, idx int, st Step) {
 		}
 		sr.Failures = append(sr.Failures, r.finish(ctx, st, o)...)
 		sr.Summary = summarize(st.Op, o)
+		r.trace(&sr, st, o)
 		last = &o
 	}
 	sr.Invariants = r.checkInvariants(ctx, st, last)
+	if r.opts.Trace {
+		sr.Status, _ = r.statusMap(ctx)
+	}
 	if r.opts.Logf != nil {
 		r.opts.Logf("%s", sr.Line())
 	}
 	r.report.Steps = append(r.report.Steps, sr)
+}
+
+// trace records what the step bound and, under Options.Trace, what it
+// returned.
+func (r *Runner) trace(sr *StepReport, st Step, o outcome) {
+	if st.Bind != "" {
+		if b, ok := r.binds[st.Bind]; ok {
+			sr.Binds = make(map[string]string, len(b))
+			for k, v := range b {
+				sr.Binds[k] = v
+			}
+		}
+	}
+	if r.opts.Trace && o.out != nil {
+		sr.Out, _ = capValue(o.out, 2048, 20).(map[string]any)
+	}
+}
+
+// capValue copies a value tree with strings cut at maxStr bytes (on a rune
+// boundary) and lists at maxList items.
+func capValue(v any, maxStr, maxList int) any {
+	switch x := v.(type) {
+	case string:
+		if len(x) <= maxStr {
+			return x
+		}
+		i := maxStr
+		for i > 0 && !utf8.RuneStart(x[i]) {
+			i--
+		}
+		return x[:i] + "…"
+	case []any:
+		out := make([]any, 0, min(len(x), maxList))
+		for i, e := range x {
+			if i >= maxList {
+				break
+			}
+			out = append(out, capValue(e, maxStr, maxList))
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, e := range x {
+			out[k] = capValue(e, maxStr, maxList)
+		}
+		return out
+	}
+	return v
 }
 
 // execute performs one step's operation and returns what it produced.

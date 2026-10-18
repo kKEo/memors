@@ -8,6 +8,7 @@ name: b1-promote-decline-then-accept
 description: elicitation decline, elicitation accept, CLI promote, tool forget refused
 decision: decided
 tiers: [ci]
+covers: [B1]
 clock: 2026-02-01
 actors:
   a1: {kind: agent, client: claude-code, elicitation: decline}

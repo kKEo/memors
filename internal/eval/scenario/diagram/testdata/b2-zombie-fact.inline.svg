@@ -1,0 +1,221 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="704" height="1486" viewBox="0 0 704 1486" role="img" aria-labelledby="t d" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#171a1f">
+<title id="t">b2-zombie-fact</title>
+<desc id="d">b2-zombie-fact: 8 steps over 2 days from 2026-01-05 (decision open: pins current behaviour). Actors: a1 (agent, claude-code), h (human). an agent re-records a statement a human had forgotten with a reason. 1. [0d] a1 ingest # Pager policy → $pager; expects 4 things. 2. a1 remember The pager escalates to the CEO after five minutes. → $f1; expects 2 things. 3. [1d] h forget $f1; expects 1 thing. 4. h read $f1; expects 2 things. 5. a1 search pager escalates to the CEO; expects 2 things. 6. [2d] a1 remember The pager escalates to the CEO after five minutes. → $f2; expects 3 things. 7. a1 search pager escalates to the CEO; expects 3 things. 8. h facts ops; expects 2 things.</desc>
+<defs><marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#8a8f96"/></marker></defs>
+<rect class="bg" x="0" y="0" width="704" height="1486" fill="#faf8f4"/>
+<g class="header" id="header">
+<text x="12" y="36" id="hdr-name" data-path="name" font-size="16" font-weight="600">b2-zombie-fact</text>
+<g class="desc" id="hdr-description" data-path="description">
+<text x="12" y="56" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif" fill="#6d727a">an agent re-records a statement a human had forgotten with a reason</text>
+</g>
+<g class="chip chip-open"><rect x="12" y="62" width="104" height="18" rx="9" fill="#fdf3d7" stroke="#b8860b"/><text x="18" y="75" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#7a5a0a">decision: open</text></g>
+<g class="chip chip-meta"><rect x="120" y="62" width="71" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="126" y="75" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">tiers: ci</text></g>
+<g class="chip chip-meta"><rect x="195" y="62" width="124" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="201" y="75" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">clock: 2026-01-05</text></g>
+<g class="chip chip-meta"><rect x="323" y="62" width="137" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="329" y="75" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">8 steps over 2 days</text></g>
+<g class="chip chip-meta"><rect x="464" y="62" width="131" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="470" y="75" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">covers: B2, gap-15</text></g>
+</g>
+<g class="lanes">
+<g class="lane lane-agent" id="lane-a1" data-path="actors.a1">
+<rect x="118" y="100" width="250" height="1346" fill="#eef3f8" fill-opacity="0.45"/>
+<rect x="118" y="100" width="250" height="50" rx="6" fill="#eef3f8" stroke="#5b7ea3"/>
+<text x="126" y="118" font-weight="600" font-size="13">a1</text>
+<text x="126" y="133" font-size="11" fill="#6d727a">agent · claude-code</text>
+</g>
+<g class="lane lane-human" id="lane-h" data-path="actors.h">
+<rect x="386" y="100" width="250" height="1346" fill="#eef5f2" fill-opacity="0.45"/>
+<rect x="386" y="100" width="250" height="50" rx="6" fill="#eef5f2" stroke="#3b8572"/>
+<text x="394" y="118" font-weight="600" font-size="13">h</text>
+<text x="394" y="133" font-size="11" fill="#6d727a">human</text>
+</g>
+</g>
+<g class="row" id="row-1" data-index="1" data-path="steps.0">
+<text x="12" y="172" font-weight="600">1 · 0d</text>
+<text x="12" y="187" font-size="11" fill="#6d727a">2026-01-05</text>
+<g class="step" id="step-1" data-path="steps.0">
+<rect class="box" x="118" y="158" width="250" height="238" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="126" y="181" class="op" font-weight="600" font-size="13" data-path="steps.0.op">ingest</text>
+<text class="bind" id="bind-pager" data-path="steps.0.bind" x="360" y="181" text-anchor="end" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="600" fill="#1f5c4f">$pager</text>
+<g class="field" id="step-1-arg-namespace" data-path="steps.0.args.namespace">
+<text x="126" y="200" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">namespace: ops</text>
+</g>
+<g class="field" id="step-1-arg-content" data-path="steps.0.args.content">
+<title>content: # Pager policy
+
+The pager escalates to the on-call secondary after nine minutes of silence.
+</title>
+<text x="126" y="216" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">content: # Pager policy</text>
+<text x="126" y="232" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">The pager escalates to the</text>
+<a href="?expand=step-1-arg-content"><text class="more" x="126" y="248" font-size="11" fill="#36577a">… more</text></a>
+</g>
+<g class="field" id="step-1-arg-source" data-path="steps.0.args.source">
+<title>source: {uri: https://ops.example/pager, title: Pager policy, kind: doc, origin: web}</title>
+<text x="126" y="264" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">source: {uri:</text>
+<text x="126" y="280" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">https://ops.example/pager,</text>
+<a href="?expand=step-1-arg-source"><text class="more" x="126" y="296" font-size="11" fill="#36577a">… more</text></a>
+</g>
+<g class="chip chip-out" id="step-1-chip-1"><rect x="126" y="300" width="118" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="132" y="313" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out revision = 1</text></g>
+<g class="chip chip-out" id="step-1-chip-2"><rect x="126" y="322" width="151" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="132" y="335" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out unchanged = false</text></g>
+<g class="chip chip-out" id="step-1-chip-3"><rect x="126" y="344" width="124" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="132" y="357" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out trust = agent</text></g>
+<g class="chip chip-audit" id="step-1-chip-4"><rect x="126" y="366" width="223" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="132" y="379" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">audit ingest by claude-code/tool</text></g>
+</g>
+</g>
+<g class="row" id="row-2" data-index="2" data-path="steps.1">
+<text x="12" y="424" font-weight="600">2 · 0d</text>
+<g class="step" id="step-2" data-path="steps.1">
+<rect class="box" x="118" y="410" width="250" height="175" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="126" y="433" class="op" font-weight="600" font-size="13" data-path="steps.1.op">remember</text>
+<text class="bind" id="bind-f1" data-path="steps.1.bind" x="360" y="433" text-anchor="end" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="600" fill="#1f5c4f">$f1</text>
+<g class="field" id="step-2-arg-namespace" data-path="steps.1.args.namespace">
+<text x="126" y="452" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">namespace: ops</text>
+</g>
+<g class="field" id="step-2-arg-statement" data-path="steps.1.args.statement">
+<text x="126" y="468" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">statement: The pager escalates</text>
+<text x="126" y="484" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">to the CEO after five minutes.</text>
+</g>
+<g class="field" id="step-2-arg-about" data-path="steps.1.args.about">
+<text x="126" y="500" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">about: [pager]</text>
+</g>
+<g class="field" id="step-2-arg-evidence_uri" data-path="steps.1.args.evidence_uri">
+<text x="126" y="516" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">evidence_uri: $pager.chunk</text>
+</g>
+<g class="chip chip-out" id="step-2-chip-1"><rect x="126" y="520" width="124" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="132" y="533" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out trust = agent</text></g>
+<g class="chip chip-audit" id="step-2-chip-2"><rect x="126" y="542" width="157" height="31" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="132" y="555" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">audit remember by</text><text x="132" y="568" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">claude-code/tool → $f1</text></g>
+</g>
+</g>
+<g class="row" id="row-3" data-index="3" data-path="steps.2">
+<line x1="12" y1="597" x2="636" y2="597" stroke="#d3cec4" stroke-dasharray="2 4"/>
+<text x="12" y="623" font-weight="600">3 · 1d</text>
+<text x="12" y="638" font-size="11" fill="#6d727a">2026-01-06 +1d</text>
+<g class="step" id="step-3" data-path="steps.2">
+<rect class="box" x="386" y="609" width="250" height="108" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="394" y="632" class="op" font-weight="600" font-size="13" data-path="steps.2.op">forget</text>
+<g class="field" id="step-3-arg-uri" data-path="steps.2.args.uri">
+<text x="394" y="651" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">uri: $f1</text>
+</g>
+<g class="field" id="step-3-arg-reason" data-path="steps.2.args.reason">
+<text x="394" y="667" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">reason: wrong: the pager never</text>
+<text x="394" y="683" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">escalates to the CEO</text>
+</g>
+<g class="chip chip-audit" id="step-3-chip-1"><rect x="394" y="687" width="157" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="400" y="700" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">audit forget/cli → $f1</text></g>
+</g>
+</g>
+<g class="row" id="row-4" data-index="4" data-path="steps.3">
+<text x="12" y="745" font-weight="600">4 · 1d</text>
+<g class="step" id="step-4" data-path="steps.3">
+<rect class="box" x="386" y="731" width="250" height="98" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="394" y="754" class="op" font-weight="600" font-size="13" data-path="steps.3.op">read</text>
+<g class="field" id="step-4-arg-uri" data-path="steps.3.args.uri">
+<text x="394" y="773" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">uri: $f1</text>
+</g>
+<g class="chip chip-out" id="step-4-chip-1"><rect x="394" y="777" width="144" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="790" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out tombstone = true</text></g>
+<g class="chip chip-out" id="step-4-chip-2"><rect x="394" y="799" width="210" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="812" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out reason ∋ &#34;never escalates&#34;</text></g>
+</g>
+</g>
+<g class="row" id="row-5" data-index="5" data-path="steps.4">
+<text x="12" y="857" font-weight="600">5 · 1d</text>
+<g class="step" id="step-5" data-path="steps.4">
+<rect class="box" x="118" y="843" width="250" height="108" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="126" y="866" class="op" font-weight="600" font-size="13" data-path="steps.4.op">search</text>
+<g class="field" id="step-5-arg-query" data-path="steps.4.args.query">
+<text x="126" y="885" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">query: pager escalates to the</text>
+<text x="126" y="901" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">CEO</text>
+</g>
+<g class="field" id="step-5-arg-granularity" data-path="steps.4.args.granularity">
+<text x="126" y="917" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">granularity: fact</text>
+</g>
+<g class="chip chip-excludes" id="step-5-chip-1"><rect x="126" y="921" width="91" height="18" rx="9" fill="#fbf1ea" stroke="#a85a2c"/><text x="132" y="934" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#8a4a24">excludes $f1</text></g>
+<g class="chip chip-abstains" id="step-5-chip-2"><rect x="221" y="921" width="65" height="18" rx="9" fill="#fbf1ea" stroke="#a85a2c"/><text x="227" y="934" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#8a4a24">abstains</text></g>
+</g>
+</g>
+<g class="row" id="row-6" data-index="6" data-path="steps.5">
+<line x1="12" y1="963" x2="636" y2="963" stroke="#d3cec4" stroke-dasharray="2 4"/>
+<text x="12" y="989" font-weight="600">6 · 2d</text>
+<text x="12" y="1004" font-size="11" fill="#6d727a">2026-01-07 +1d</text>
+<g class="step" id="step-6" data-path="steps.5">
+<rect class="box" x="118" y="975" width="250" height="245" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="126" y="998" class="op" font-weight="600" font-size="13" data-path="steps.5.op">remember</text>
+<text class="bind" id="bind-f2" data-path="steps.5.bind" x="360" y="998" text-anchor="end" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="600" fill="#1f5c4f">$f2</text>
+<g class="field" id="step-6-arg-namespace" data-path="steps.5.args.namespace">
+<text x="126" y="1017" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">namespace: ops</text>
+</g>
+<g class="field" id="step-6-arg-statement" data-path="steps.5.args.statement">
+<text x="126" y="1033" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">statement: The pager escalates</text>
+<text x="126" y="1049" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">to the CEO after five minutes.</text>
+</g>
+<g class="field" id="step-6-arg-about" data-path="steps.5.args.about">
+<text x="126" y="1065" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">about: [pager]</text>
+</g>
+<g class="field" id="step-6-arg-evidence_uri" data-path="steps.5.args.evidence_uri">
+<text x="126" y="1081" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">evidence_uri: $pager.chunk</text>
+</g>
+<g class="chip chip-out" id="step-6-chip-1"><rect x="126" y="1085" width="124" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="132" y="1098" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out trust = agent</text></g>
+<g class="chip chip-lint" id="step-6-chip-2"><rect x="126" y="1107" width="203" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="132" y="1120" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">lint[ops] has_not resurrected</text></g>
+<g class="chip chip-audit" id="step-6-chip-3"><rect x="126" y="1129" width="157" height="31" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="132" y="1142" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">audit remember by</text><text x="132" y="1155" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">claude-code/tool → $f2</text></g>
+<g class="note" id="step-6-note" data-path="steps.5.note">
+<title>gap: nothing links this to the forgotten fact; a warning or a lint kind is an open decision</title>
+<text x="126" y="1176" font-style="italic" fill="#6d727a">gap: nothing links this to the</text>
+<text x="126" y="1192" font-style="italic" fill="#6d727a">forgotten fact; a warning or a</text>
+<a href="?expand=step-6-note"><text class="more" x="126" y="1208" font-size="11" fill="#36577a">… more</text></a>
+</g>
+</g>
+</g>
+<g class="row" id="row-7" data-index="7" data-path="steps.6">
+<text x="12" y="1248" font-weight="600">7 · 2d</text>
+<g class="step" id="step-7" data-path="steps.6">
+<rect class="box" x="118" y="1234" width="250" height="108" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="126" y="1257" class="op" font-weight="600" font-size="13" data-path="steps.6.op">search</text>
+<g class="field" id="step-7-arg-query" data-path="steps.6.args.query">
+<text x="126" y="1276" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">query: pager escalates to the</text>
+<text x="126" y="1292" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">CEO</text>
+</g>
+<g class="field" id="step-7-arg-granularity" data-path="steps.6.args.granularity">
+<text x="126" y="1308" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">granularity: fact</text>
+</g>
+<g class="chip chip-top" id="step-7-chip-1"><rect x="126" y="1312" width="58" height="18" rx="9" fill="#eef5f2" stroke="#3b8572"/><text x="132" y="1325" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#1f5c4f">top $f2</text></g>
+<g class="chip chip-excludes" id="step-7-chip-2"><rect x="188" y="1312" width="91" height="18" rx="9" fill="#fbf1ea" stroke="#a85a2c"/><text x="194" y="1325" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#8a4a24">excludes $f1</text></g>
+<g class="chip chip-count" id="step-7-chip-3"><rect x="283" y="1312" width="58" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="289" y="1325" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">count 1</text></g>
+</g>
+</g>
+<g class="row" id="row-8" data-index="8" data-path="steps.7">
+<text x="12" y="1370" font-weight="600">8 · 2d</text>
+<g class="step" id="step-8" data-path="steps.7">
+<rect class="box" x="386" y="1356" width="250" height="76" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="394" y="1379" class="op" font-weight="600" font-size="13" data-path="steps.7.op">facts</text>
+<g class="field" id="step-8-arg-namespace" data-path="steps.7.args.namespace">
+<text x="394" y="1398" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">namespace: ops</text>
+</g>
+<g class="chip chip-contains" id="step-8-chip-1"><rect x="394" y="1402" width="91" height="18" rx="9" fill="#eef5f2" stroke="#3b8572"/><text x="400" y="1415" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#1f5c4f">contains $f2</text></g>
+<g class="chip chip-excludes" id="step-8-chip-2"><rect x="489" y="1402" width="91" height="18" rx="9" fill="#fbf1ea" stroke="#a85a2c"/><text x="495" y="1415" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#8a4a24">excludes $f1</text></g>
+</g>
+</g>
+<g class="edges">
+<g class="edge" id="edge-pager" data-bind="pager">
+<title>$pager is used by 2 later step(s)</title>
+<circle cx="368" cy="177" r="3" fill="#1f5c4f"/>
+<path d="M368,177 H652 V994" fill="none" stroke="#8a8f96" stroke-dasharray="4 3"/>
+<path d="M652,429 H370" fill="none" stroke="#8a8f96" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<path d="M652,994 H370" fill="none" stroke="#8a8f96" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<text x="656" y="173" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="9" fill="#1f5c4f" transform="rotate(90 656 173)">$pager</text>
+</g>
+<g class="edge" id="edge-f1" data-bind="f1">
+<title>$f1 is used by 5 later step(s)</title>
+<circle cx="368" cy="429" r="3" fill="#1f5c4f"/>
+<path d="M368,429 H668 V1375" fill="none" stroke="#8a8f96" stroke-dasharray="4 3"/>
+<path d="M668,628 H638" fill="none" stroke="#8a8f96" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<path d="M668,750 H638" fill="none" stroke="#8a8f96" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<path d="M668,862 H370" fill="none" stroke="#8a8f96" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<path d="M668,1253 H370" fill="none" stroke="#8a8f96" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<path d="M668,1375 H638" fill="none" stroke="#8a8f96" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<text x="672" y="425" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="9" fill="#1f5c4f" transform="rotate(90 672 425)">$f1</text>
+</g>
+<g class="edge" id="edge-f2" data-bind="f2">
+<title>$f2 is used by 2 later step(s)</title>
+<circle cx="368" cy="994" r="3" fill="#1f5c4f"/>
+<path d="M368,994 H684 V1375" fill="none" stroke="#8a8f96" stroke-dasharray="4 3"/>
+<path d="M684,1253 H370" fill="none" stroke="#8a8f96" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<path d="M684,1375 H638" fill="none" stroke="#8a8f96" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<text x="688" y="990" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="9" fill="#1f5c4f" transform="rotate(90 688 990)">$f2</text>
+</g>
+</g>
+<text x="12" y="1468" class="legend" font-size="11" fill="#6d727a">one box = one step · $name = what the step binds, dashed arrows lead to the steps that use it · chips = expectatio…</text>
+</svg>

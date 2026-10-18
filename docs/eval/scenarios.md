@@ -40,6 +40,7 @@ name: b2-zombie-fact
 description: an agent re-records a statement a human had forgotten with a reason
 decision: open               # open: pins current behaviour of a documented gap; decided: the wanted behaviour
 tiers: [ci]                  # ci (hash embedder, every PR) | nightly (real model) | binary (built process)
+covers: [B2, gap-15]         # what the file exercises: catalogue ids and gaps from §4–5 (free strings; the coverage view reads them)
 clock: 2026-01-05            # the fake clock at the first step
 actors:
   a1: {kind: agent, client: claude-code, elicitation: decline}   # one MCP session; client = ClientInfo.Name
@@ -108,6 +109,32 @@ demoted, or retired a `user`/`curated` record), `audit-per-mutation`,
 `raw-unchanged-by-compaction`, `page-sources-exist`, `stale-consistent`,
 `one-open-item-per-subject`, `mentions-live`, `status-matches-sql`, `verify-clean`.
 
+### Seeing, checking and running a file
+
+`memors-scenario` (`cmd/memors-scenario`, a development tool outside the release) works on files
+or directories:
+
+```
+go run ./cmd/memors-scenario render   --out /tmp/svg [--expand all] internal/eval/testdata/scenarios
+go run ./cmd/memors-scenario validate internal/eval/testdata/scenarios     # path:line: message per problem
+go run ./cmd/memors-scenario run      [--json] [--trace] <file>...         # the report, exit 1 on failure
+go run ./cmd/memors-scenario describe <file>                               # the scenario told in plain text
+make scenario-studio                                                       # the studio on a loopback address
+```
+
+`render` draws one swimlane picture per file: a lane per actor (agents, then the human), time
+flowing down with the resolved date at every clock move, one box per step with its arguments and
+expectation chips, `$name` badges with dashed edges to the steps that use the bind, a bubble for
+the dialog answer, a dashed bracket around a `parallel` group, and an amber banner on
+`decision: open`. Long arguments show two lines and `… more`: in a file opened on its own a click
+shows the full text, in the studio the link re-draws the picture with the block expanded;
+`--expand all` draws everything in full (what the pictures below use, since an `<img>` cannot
+expand). Every box carries `id="step-<n>"` and `data-path="steps.<n-1>…"`, the same paths
+`validate` reports, so a later editor can map a click back to the file.
+
+`make scenario-svg` redraws the pictures under `docs/eval/scenarios/`; `TestDocsCurrent` fails
+until it has run after a change.
+
 ## 3. Scenarios in the repository
 
 | File | Catalogue | Decision | What it pins |
@@ -115,6 +142,14 @@ demoted, or retired a `user`/`curated` record), `audit-per-mutation`,
 | `b1-promote-decline-then-accept.yaml` | B1 | decided | elicitation declined then accepted; CLI promote; a tool call cannot forget a curated record and leaves no audit row |
 | `b2-zombie-fact.yaml` | B2 | open | a human forgets an agent fact with a reason; the agent records the same statement again and nothing links the two (gap 15) |
 | `c2-two-agents-disagree.yaml` | C2 | decided | two agents' facts conflict; lint reports it; a third agent resolves it through compact and submit; the loser is history, raw rows unchanged |
+
+Pictures (drawn by `make scenario-svg`, fully expanded):
+
+![b1: elicitation declined then accepted, CLI promote, tool forget refused](scenarios/b1-promote-decline-then-accept.svg)
+
+![b2: the zombie fact, decision open](scenarios/b2-zombie-fact.svg)
+
+![c2: two agents disagree, a third resolves](scenarios/c2-two-agents-disagree.svg)
 
 ## 4. Behaviour gaps found by reading the code
 
@@ -258,3 +293,12 @@ Format: actors → steps over time → what must be observable. Files land in
 5. The nightly tier: `memors-mcp eval --scenarios` with a real model, the binary executor for
    E1/E3/E4, the F1 generator at scale with p95 per tool, and the replay corpus from
    `memors-mcp log replay`.
+6. Editing in the studio: a text editor on the scenario page with live `/api/validate` and
+   `/api/render`, saving with the file hash as the conflict check, structural edits (add,
+   duplicate, reorder a step; add an expectation) applied on the YAML node tree so comments
+   survive, and "record expectations from the last run", which must force `decision: open`
+   because it labels to current behaviour. The `Lines` index and the `data-path` attributes
+   on every drawn element are the click-to-node mapping it will use.
+7. Later: two runs (baseline and candidate model or profile) on one picture with per-step
+   deltas, a scenario skeleton captured from `memors-mcp log replay` or the audit table, and a
+   Mermaid export for pull-request descriptions.

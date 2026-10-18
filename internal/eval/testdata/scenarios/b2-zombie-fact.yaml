@@ -7,6 +7,7 @@ name: b2-zombie-fact
 description: an agent re-records a statement a human had forgotten with a reason
 decision: open
 tiers: [ci]
+covers: [B2, gap-15]
 clock: 2026-01-05
 actors:
   a1: {kind: agent, client: claude-code}

@@ -8,6 +8,7 @@ name: c2-two-agents-disagree-third-resolves
 description: agent-to-agent conflict resolved through compact and submit
 decision: decided
 tiers: [ci]
+covers: [C2]
 clock: 2026-03-01
 actors:
   a1: {kind: agent, client: agent-alpha}

@@ -127,12 +127,18 @@ func Listen(addr string, allowRemote bool) (net.Listener, error) {
 // AllowListener accepts the Host header values that reach ln: its bound
 // address and the loopback spellings of its port.
 func (s *Server) AllowListener(ln net.Listener) {
+	for _, h := range ListenerHosts(ln) {
+		s.AllowHost(h)
+	}
+}
+
+// ListenerHosts lists the Host header values that reach ln: its bound
+// address and the loopback spellings of its port. Other loopback servers
+// (the scenario studio) use the same list for their Host check.
+func ListenerHosts(ln net.Listener) []string {
 	bound := ln.Addr().String()
 	_, port, _ := net.SplitHostPort(bound)
-	s.AllowHost(bound)
-	s.AllowHost("localhost:" + port)
-	s.AllowHost("127.0.0.1:" + port)
-	s.AllowHost("[::1]:" + port)
+	return []string{bound, "localhost:" + port, "127.0.0.1:" + port, "[::1]:" + port}
 }
 
 // Handler returns the http.Handler: GET only, Host checked, no mutation.

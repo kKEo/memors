@@ -1,0 +1,12 @@
+{{template "head" .}}{{with .Data}}<h1>{{.Name}}</h1>
+{{if .Desc}}<p class="muted">{{.Desc}}{{if .Decision}} · decision <span class="badge {{.Decision}}">{{.Decision}}</span>{{end}}{{range .Covers}} <span class="badge">{{.}}</span>{{end}}</p>{{end}}
+<p class="tools"><a href="{{.ExpandAllHref}}">expand all</a> · <a href="{{.CollapseHref}}">collapse</a> · <a href="/s/{{.Name}}/diagram.svg{{.SVGQuery}}">open as .svg</a> ·
+<form method="post" action="/s/{{.Name}}/run" class="inline"><button>Run</button></form>
+{{with .Run}}<span>last run {{.At}}: {{if .Err}}<span class="warn">error</span>{{else if .OK}}<span class="ok">pass</span>{{else}}<span class="warn">FAIL</span>{{end}}</span>{{end}}{{if .RunStale}}<span class="warn">(the file changed since)</span>{{end}}{{if and .Run (not .ShowRun)}}<a href="{{.RunHref}}">show it on the picture</a>{{end}}</p>
+{{if .Issues}}<div class="issues"><h2>Issues</h2><ul>{{range .Issues}}<li>{{if .Line}}<a href="#L{{.Line}}">line {{.Line}}</a> · {{end}}{{if .Path}}<a href="#{{stepID .Path}}"><code>{{.Path}}</code></a>: {{end}}{{.Msg}}</li>{{end}}</ul></div>{{end}}
+{{if .SVG}}<div class="picture">{{.SVG}}</div>{{end}}
+{{with .Run}}{{if .Err}}<p class="warn">run error: {{.Err}}</p>{{end}}{{if .Steps}}<h2>Last run</h2><table><tr><th>#</th><th>at</th><th>actor</th><th>op</th><th>result</th><th>bound</th><th>failures</th></tr>{{range .Steps}}<tr class="{{.State}}"><td>{{.Index}}</td><td>{{.At}}</td><td>{{.Actor}}</td><td>{{.Op}}</td><td class="state">{{if .Failures}}FAIL{{else}}ok{{end}}{{if .Summary}} · {{.Summary}}{{end}}</td><td><code>{{.Binds}}</code></td><td>{{range .Failures}}<div class="warn">{{.}}</div>{{end}}</td></tr>{{end}}</table>{{end}}{{end}}
+{{if .Steps}}<h2>Steps</h2><table><tr><th>#</th><th>at</th><th>clock</th><th>actor</th><th>op</th><th>bind</th><th>expects</th><th>note</th><th>line</th></tr>{{range .Steps}}<tr><td>{{if eq .Kind "sub"}}<span class="muted">↳</span>{{else}}{{.Index}}{{end}}</td><td>{{.At}}</td><td class="muted">{{.Clock}}</td><td>{{.Actor}}</td><td><a href="#{{stepID .Path}}">{{if eq .Kind "parallel"}}parallel{{else}}{{.Op}}{{end}}</a></td><td>{{if .Bind}}<code>${{.Bind}}</code>{{end}}</td><td class="muted">{{.Expect}}</td><td class="muted">{{.Note}}</td><td><a href="#L{{.Line}}">{{.Line}}</a></td></tr>{{end}}</table>{{end}}
+<h2>Source</h2><pre class="source">{{range .Source}}<span class="ln" id="L{{.N}}">{{.N}}</span><span>{{.Text}}</span>
+{{end}}</pre>
+{{end}}{{template "foot" .}}
