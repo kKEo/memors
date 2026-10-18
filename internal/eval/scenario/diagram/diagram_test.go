@@ -351,18 +351,3 @@ func TestNarrate(t *testing.T) {
 		t.Error("ids")
 	}
 }
-
-// TestDocsCurrent keeps the pictures embedded in docs/eval/scenarios.md equal
-// to what the renderer draws for the fixtures today.
-func TestDocsCurrent(t *testing.T) {
-	files, _ := scenario.ListDir(fixtures)
-	for _, f := range files {
-		sc := load(t, filepath.Base(f))
-		want := render(t, sc, Options{Mode: Standalone, Expand: ParseExpand("all")})
-		p := filepath.Join("../../../../docs/eval/scenarios", strings.TrimSuffix(filepath.Base(f), filepath.Ext(f))+".svg")
-		got, err := os.ReadFile(p)
-		if err != nil || !bytes.Equal(got, want) {
-			t.Errorf("%s is missing or stale: run `make scenario-svg` (%v)", p, err)
-		}
-	}
-}

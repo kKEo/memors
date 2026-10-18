@@ -5,13 +5,29 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **Tester guide** (`docs/guide/tester/`): a third book next to the user and operator guides, for
+  people who run, write and review tests. It covers running the suite, what is tested where, the
+  CI workflows, contract goldens, the retrieval benchmark and its paired gate, fuzzing and races,
+  MemoRS Tray tests, documentation checks, exploratory testing in a sandbox knowledge base, and
+  adding tests. A full part on scenario tests includes a walk-through, the DSL reference, the
+  invariant pack, reading the pictures, `memors-scenario`, the studio, failures, and the
+  open/decided workflow. The behaviour gaps, the catalogue (with each entry's status) and a log
+  of implemented scenarios (one page with picture, steps and source per file) are **generated**
+  from `internal/eval/testdata/scenario-catalogue.yaml` and the scenario files by the new
+  `memors-scenario book` (`make scenario-docs`, replacing `scenario-svg`). `TestBookCurrent` fails
+  when they are stale, and `TestCoversKnown` fails on a `covers:` id the catalogue does not define.
+  The catalogue file gains categories, details, tiers and per-gap `where`/`decision`. A shared
+  `internal/eval/scenario/coverage` package feeds both the studio's index and the guide.
+  `docs/eval/scenarios.md` keeps the rationale and design notes and points to the guide;
+  `docs/eval/scenarios/*.svg` is gone. `make docs` builds three books and the site index has a
+  third card.
 - **Scenario pictures and `memors-scenario`.** A scenario file can now be drawn as an SVG swimlane
   picture (`internal/eval/scenario/diagram`): a lane per actor, time flowing down, one box per step
   with arguments and expectation chips, `$bind` edges to the steps that use them, dialog bubbles,
   parallel brackets, an amber banner for `decision: open`, and expandable long text (click in a
   standalone file, a link in the studio). `cmd/memors-scenario` (a development tool, not in the
   release) has `render`, `validate` (with file lines), `run` (`--json`, `--trace`) and `describe`;
-  `make scenario-svg` keeps `docs/eval/scenarios/*.svg` current and `TestDocsCurrent` checks them.
+  `make scenario-docs` keeps the pictures in the tester guide current (see the next entry).
   Supporting changes: `scenario.Parse` indexes source positions (`Lines`, `LineOf`), `Validate`
   returns `*Issue` values with paths and lines (`Issues`, `StepPath`, `ParseLoose`), the DSL gains
   `covers:` (catalogue ids and gaps a file exercises), and `StepReport` carries `Path`, `Binds`,

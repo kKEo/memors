@@ -1,4 +1,4 @@
-# Documentation site: the user guide and the operator guide (docs/guide/,
+# Documentation site: the user, operator and tester guides (docs/guide/,
 # GitBook-compatible markdown) rendered with mdBook and deployed to GitHub
 # Pages. One-time repository setting: Settings → Pages → Source: GitHub Actions.
 # Deploys run from master only: the github-pages environment's default
@@ -37,7 +37,7 @@ jobs:
           echo "${MDBOOK_SHA256}  mdbook.tgz" | sha256sum -c -
           tar xzf mdbook.tgz -C /usr/local/bin mdbook
           mdbook --version
-      - name: build both guides (runs docs-check first)
+      - name: build the three guides (runs docs-check first)
         run: make docs
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'

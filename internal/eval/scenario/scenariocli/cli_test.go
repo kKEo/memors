@@ -123,3 +123,38 @@ func TestRun(t *testing.T) {
 		t.Fatalf("a failing scenario should exit 1, got %d", code)
 	}
 }
+
+func TestBook(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "SUMMARY.md"), []byte("# Summary\n\n- [Scenarios](s.md)\n  - [Implemented scenarios](scenarios/log/README.md)\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	args := []string{"--dir", fixtures, "--catalogue", "../../testdata/scenario-catalogue.yaml", "--book", root}
+	var out, errb bytes.Buffer
+	if code := Main(ctx, append([]string{"book", "--check"}, args...), &out, &errb); code != 1 || !strings.Contains(errb.String(), "make scenario-docs") {
+		t.Fatalf("check on an empty book: %d %s %s", code, out.String(), errb.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, "scenarios")); !os.IsNotExist(err) {
+		t.Fatal("--check wrote files")
+	}
+	out.Reset()
+	if code := Main(ctx, append([]string{"book"}, args...), &out, &errb); code != 0 || !strings.Contains(out.String(), "write ") {
+		t.Fatalf("book: %d %s %s", code, out.String(), errb.String())
+	}
+	page, err := os.ReadFile(filepath.Join(root, "scenarios/log/b2-zombie-fact.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// --dir outside the working tree: links fall back to the repository path.
+	if !strings.Contains(string(page), "blob/master/internal/eval/testdata/scenarios/b2-zombie-fact.yaml") {
+		t.Error("source link does not use the repository path")
+	}
+	out.Reset()
+	if code := Main(ctx, append([]string{"book", "--check"}, args...), &out, &errb); code != 0 || !strings.Contains(out.String(), "up to date") {
+		t.Fatalf("check after book: %d %s", code, out.String())
+	}
+	if code := Main(ctx, []string{"book", "extra"}, &out, &errb); code != 2 {
+		t.Errorf("book with an argument: %d", code)
+	}
+}

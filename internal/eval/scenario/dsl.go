@@ -2,7 +2,8 @@
 // base: scripted actors (agents over in-memory MCP sessions, a human through
 // the CLI channel) act on one store over a fake clock; each step may carry
 // expectations, and an invariant pack runs after every step. A scenario is a
-// YAML (or JSON) file; the reference is docs/eval/scenarios.md.
+// YAML (or JSON) file; the reference is the tester guide
+// (docs/guide/tester/scenarios/dsl.md).
 package scenario
 
 import (
@@ -32,8 +33,9 @@ type Scenario struct {
 	// nightly (real model), binary (the built memors-mcp process).
 	Tiers []string `yaml:"tiers,omitempty"`
 	// Covers names what the file exercises: catalogue ids (B2) and gaps
-	// (gap-15) from docs/eval/scenarios.md. Free strings; the coverage view
-	// of the studio reads them.
+	// (gap-15) defined in internal/eval/testdata/scenario-catalogue.yaml;
+	// the studio's coverage view and the tester guide count them, and
+	// TestCoversKnown rejects an id the catalogue does not define.
 	Covers []string `yaml:"covers,omitempty"`
 	Seed   int64    `yaml:"seed,omitempty"`
 	// Clock is the fake clock at the first step (YYYY-MM-DD or RFC3339);

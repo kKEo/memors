@@ -274,6 +274,31 @@ func fmtSpan(d time.Duration) string {
 	return d.String()
 }
 
+// Gist is the one-line gist of a step (its statement, query, uri, …) for
+// the narration and the tester guide's step tables; path is the step's
+// Lines path.
+func Gist(st scenario.Step, lines map[string]scenario.Pos, path string) string {
+	return stepSummary(st, lines, path)
+}
+
+// Span is a scenario's length in words ("2 days") from its first clock to
+// its last step.
+func Span(sc *scenario.Scenario) string {
+	var span time.Duration
+	for _, st := range sc.Steps {
+		if st.At != "" {
+			if d, err := scenario.ParseAt(st.At); err == nil && d > span {
+				span = d
+			}
+		}
+	}
+	return fmtSpan(span)
+}
+
+// ActorOrder lists actor keys the way the picture lays out lanes: agents,
+// then humans, then anything else, each sorted.
+func ActorOrder(sc *scenario.Scenario) []string { return sortedActorKeys(sc) }
+
 // stepSummary is the one-line gist of a step for the narration.
 func stepSummary(st scenario.Step, lines map[string]scenario.Pos, path string) string {
 	for _, k := range []string{"statement", "query", "uri", "item_id", "content", "namespace"} {

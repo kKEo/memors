@@ -1,6 +1,6 @@
 // Package scenariocli is the memors-scenario command: render scenario files
 // as SVG, validate them, run them and tell them in plain text. It is a
-// development tool for the living-system scenarios (docs/eval/scenarios.md),
+// development tool for the living-system scenarios (docs/guide/tester/scenarios/),
 // kept out of the memors-mcp binary.
 package scenariocli
 
@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/kKEo/memors/internal/eval/scenario"
+	"github.com/kKEo/memors/internal/eval/scenario/book"
 	"github.com/kKEo/memors/internal/eval/scenario/diagram"
 )
 
@@ -40,6 +41,8 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return run(ctx, rest, stdout, stderr)
 	case "describe":
 		return describe(rest, stdout, stderr)
+	case "book":
+		return bookCmd(rest, stdout, stderr)
 	case "serve":
 		if Serve == nil {
 			fmt.Fprintln(stderr, "serve is not built into this binary")
@@ -62,14 +65,17 @@ func usage(w io.Writer) {
   memors-scenario validate <file|dir>...
   memors-scenario run      [--json] [--trace] <file|dir>...
   memors-scenario describe <file>...
+  memors-scenario book     [--dir internal/eval/testdata/scenarios] [--catalogue file] [--book docs/guide/tester] [--check]
   memors-scenario serve    [--addr 127.0.0.1:0] [--dir internal/eval/testdata/scenarios] [--catalogue file]
 
 render writes <name>.svg next to each file (or under --out). An invalid file
 is reported and skipped unless --force pins its issues on the picture.
 validate prints path:line: message per problem. run executes each file
 against a fresh knowledge base with the deterministic hash embedder and
-prints the report. describe tells the scenario in plain text. serve opens
-the studio on a loopback address. Exit codes: 0 ok, 1 invalid or failed, 2 usage.
+prints the report. describe tells the scenario in plain text. book
+regenerates the scenario pages of the tester guide (gaps, catalogue, one page
+and picture per file, the SUMMARY.md entries); --check only reports what is
+stale. serve opens the studio on a loopback address. Exit codes: 0 ok, 1 invalid or failed, 2 usage.
 `)
 }
 
@@ -277,4 +283,65 @@ func describe(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, diagram.Narrate(sc))
 	}
 	return code
+}
+
+func bookCmd(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("book", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	dir := fs.String("dir", book.DefaultDir, "the scenario files")
+	cat := fs.String("catalogue", book.DefaultCatalogue, "the catalogue data file")
+	root := fs.String("book", book.DefaultBook, "the tester guide's root (holds SUMMARY.md)")
+	check := fs.Bool("check", false, "write nothing; list stale files and exit 1 when there are any")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if fs.NArg() > 0 {
+		fmt.Fprintf(stderr, "book takes no arguments (got %q)\n", fs.Args())
+		return 2
+	}
+	cfg := book.Config{Dir: *dir, Catalogue: *cat}
+	// Links to the files on GitHub need repository paths; a relative path
+	// inside the working tree is one, anything else keeps the default.
+	if p := filepath.ToSlash(filepath.Clean(*dir)); !filepath.IsAbs(*dir) && !strings.HasPrefix(p, "..") {
+		cfg.SourcePath = p
+	}
+	if p := filepath.ToSlash(filepath.Clean(*cat)); !filepath.IsAbs(*cat) && !strings.HasPrefix(p, "..") {
+		cfg.CataloguePath = p
+	}
+	out, err := book.Generate(cfg)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	changes, err := book.Plan(*root, out)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	for _, c := range changes {
+		verb := "write"
+		if c.Content == nil {
+			verb = "remove"
+		}
+		if *check {
+			verb = "stale (" + verb + ")"
+		}
+		fmt.Fprintf(stdout, "%s %s\n", verb, filepath.Join(*root, filepath.FromSlash(c.Path)))
+	}
+	if *check {
+		if len(changes) > 0 {
+			fmt.Fprintln(stderr, "the tester guide's scenario pages are stale: run `make scenario-docs`")
+			return 1
+		}
+		fmt.Fprintln(stdout, "book: up to date")
+		return 0
+	}
+	if err := book.Apply(*root, changes); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if len(changes) == 0 {
+		fmt.Fprintln(stdout, "book: up to date")
+	}
+	return 0
 }

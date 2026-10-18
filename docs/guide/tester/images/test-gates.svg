@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="421" viewBox="0 0 760 421" role="img" aria-labelledby="t d">
+<title id="t">What runs where</title>
+<desc id="d">Four workflows. Every pull request (ci.yml, blocks the merge): gofmt, vet and golangci-lint; go test ./... under the race detector on Linux and macOS, which includes the package tests, the contract goldens, the retrieval benchmark, the ci-tier scenarios and the generated-docs check; a pure-Go build and smoke run; a release dry run producing five archives; and the tray tests, end-to-end run and app bundle. Every night (nightly.yml, report only): memors-mcp eval comparing the hash embedder with granite-small-r2 on both corpora, uploaded as a markdown report; nightly- and binary-tier scenarios are planned. Every tag (release.yml, blocks the release): go test, GoReleaser archives, the MCP registry publish, tray tests and the app bundle. Docs changes (docs.yml, blocks the deploy): docs-check.sh checks links and that env vars, commands and metrics are documented, then mdBook builds the three guides for GitHub Pages. No blocking job downloads a model: tests use the hash embedder, a fake clock and temporary directories.</desc>
+<style>
+text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:13px;fill:#171a1f}
+.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.h{font-weight:600}.lg{font-size:14px}.s{font-size:12px}.xs{font-size:11px}.cap{font-size:10.5px;font-weight:600;letter-spacing:.08em}
+.t2{fill:#4a4f57}.t3{fill:#6d727a}.tg{fill:#1f5c4f}.tc{fill:#8a4a24}.tb{fill:#36577a}.tw{fill:#fff}
+.bg{fill:#faf8f4;stroke:#e4e0d8}.bgk{fill:#faf8f4}.box{fill:#fff;stroke:#d3cec4}.gray{fill:#f3f0ea;stroke:#d3cec4}.sep{fill:none;stroke:#e4e0d8}
+.green{fill:#eef5f2;stroke:#3b8572}.clay{fill:#fbf1ea;stroke:#a85a2c}.blue{fill:#eef3f8;stroke:#5b7ea3}
+.fg{fill:#3b8572}.fc{fill:#b8693a}.fb{fill:#5b7ea3}.fn{fill:#c4c8cc}
+.zone{fill:none;stroke:#7fb3a3;stroke-width:1.5;stroke-dasharray:6 5}.zonec{fill:none;stroke:#d0a080;stroke-width:1.5;stroke-dasharray:6 5}
+.ln{fill:none;stroke:#8a8f96;stroke-width:1.5}.lgn{fill:none;stroke:#3b8572;stroke-width:1.5}.lcl{fill:none;stroke:#a85a2c;stroke-width:1.5}.lbl{fill:none;stroke:#5b7ea3;stroke-width:1.5}
+.dash{stroke-dasharray:4 4}
+.an{fill:#8a8f96}.ag{fill:#3b8572}.ac{fill:#a85a2c}.ab{fill:#5b7ea3}
+.ig,.ic,.ib,.in{fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ig{stroke:#1f5c4f}.ic{stroke:#a85a2c}.ib{stroke:#36577a}.in{stroke:#4a4f57}
+@media (prefers-color-scheme:dark){
+text{fill:#eceeec}
+.t2{fill:#b4bab7}.t3{fill:#8a918e}.tg{fill:#8fd1bd}.tc{fill:#e8a77f}.tb{fill:#a9c7e8}.tw{fill:#0f1214}
+.bg{fill:#161a1d;stroke:#2a3033}.bgk{fill:#161a1d}.box{fill:#1b2023;stroke:#3a4245}.gray{fill:#20262a;stroke:#3a4245}.sep{stroke:#2a3033}
+.green{fill:#142420;stroke:#4f9e88}.clay{fill:#2a1c14;stroke:#c97c4f}.blue{fill:#16202b;stroke:#6f93bb}
+.fg{fill:#5fb39c}.fc{fill:#d9895a}.fb{fill:#7fa3c9}.fn{fill:#4a5155}
+.zone{stroke:#3d7a6a}.zonec{stroke:#8a5a3a}
+.ln{stroke:#7d858a}.lgn{stroke:#5fb39c}.lcl{stroke:#d9895a}.lbl{stroke:#7fa3c9}
+.an{fill:#7d858a}.ag{fill:#5fb39c}.ac{fill:#d9895a}.ab{fill:#7fa3c9}
+.ig{stroke:#8fd1bd}.ic{stroke:#e8a77f}.ib{stroke:#a9c7e8}.in{stroke:#b4bab7}
+}
+</style>
+<rect class="bg" x="0.5" y="0.5" width="759" height="420" rx="10"/>
+<text x="16" y="30" class="h lg">What runs where</text>
+<text x="16" y="48" class="s t2">Four workflows in .github/workflows/. Only the pull-request gate decides whether a change can merge.</text>
+<rect class="box" x="16.5" y="64.5" width="172" height="277" rx="8"/>
+<rect class="green" x="16.5" y="64.5" width="172" height="66" rx="8"/>
+<text x="28" y="84" class="cap tg">EVERY PULL REQUEST</text>
+<text x="28" y="102" class="s mono t2">ci.yml</text>
+<text x="28" y="119" class="xs h tg">blocks the merge</text>
+<text x="28" y="150" class="s">gofmt · vet · golangci-lint</text>
+<text x="28" y="167" class="s h">go test ./... -race</text>
+<text x="28" y="184" class="s">on Linux and macOS:</text>
+<text x="28" y="201" class="s t2">· package tests</text>
+<text x="28" y="218" class="s t2">· contract goldens</text>
+<text x="28" y="235" class="s t2">· retrieval benchmark</text>
+<text x="28" y="252" class="s t2">· ci-tier scenarios</text>
+<text x="28" y="269" class="s t2">· generated-docs check</text>
+<text x="28" y="286" class="s">pure-Go build + smoke run</text>
+<text x="28" y="303" class="s">release dry run: 5 archives</text>
+<text x="28" y="320" class="s">tray: tests, E2E, app</text>
+<rect class="box" x="201.5" y="64.5" width="172" height="277" rx="8"/>
+<rect class="blue" x="201.5" y="64.5" width="172" height="66" rx="8"/>
+<text x="213" y="84" class="cap tb">EVERY NIGHT</text>
+<text x="213" y="102" class="s mono t2">nightly.yml</text>
+<text x="213" y="119" class="xs h tb">report only</text>
+<text x="213" y="150" class="s h">memors-mcp eval</text>
+<text x="213" y="167" class="s">hash vs granite-small-r2</text>
+<text x="213" y="184" class="s">both corpora</text>
+<text x="213" y="201" class="s">markdown report artifact</text>
+<text x="213" y="235" class="s t3">planned:</text>
+<text x="213" y="252" class="s t2">· nightly-tier scenarios</text>
+<text x="213" y="269" class="s t2">· binary-tier scenarios</text>
+<rect class="box" x="386.5" y="64.5" width="172" height="277" rx="8"/>
+<rect class="clay" x="386.5" y="64.5" width="172" height="66" rx="8"/>
+<text x="398" y="84" class="cap tc">EVERY TAG</text>
+<text x="398" y="102" class="s mono t2">release.yml</text>
+<text x="398" y="119" class="xs h tc">blocks the release</text>
+<text x="398" y="150" class="s h">go test ./...</text>
+<text x="398" y="167" class="s">GoReleaser archives</text>
+<text x="398" y="184" class="s">MCP registry publish</text>
+<text x="398" y="201" class="s">tray tests</text>
+<text x="398" y="218" class="s">tray app bundle</text>
+<rect class="box" x="571.5" y="64.5" width="172" height="277" rx="8"/>
+<rect class="gray" x="571.5" y="64.5" width="172" height="66" rx="8"/>
+<text x="583" y="84" class="cap t2">DOCS CHANGES</text>
+<text x="583" y="102" class="s mono t2">docs.yml</text>
+<text x="583" y="119" class="xs h t2">blocks the deploy</text>
+<text x="583" y="150" class="s h">scripts/docs-check.sh</text>
+<text x="583" y="167" class="s t2">· relative links</text>
+<text x="583" y="184" class="s t2">· env vars documented</text>
+<text x="583" y="201" class="s t2">· commands documented</text>
+<text x="583" y="218" class="s t2">· metrics documented</text>
+<text x="583" y="235" class="s">mdBook: three guides</text>
+<text x="583" y="252" class="s">GitHub Pages</text>
+<rect class="gray" x="16.5" y="357.5" width="727" height="52" rx="6"/>
+<text x="28" y="378" class="s t2">No blocking job downloads a model. Tests use the <tspan class="h">hash embedder</tspan>, a <tspan class="h">fake clock</tspan></text>
+<text x="28" y="396" class="s t2">and <tspan class="h">temporary directories</tspan>, so a run on a laptop gives the same answer as CI.</text>
+</svg>

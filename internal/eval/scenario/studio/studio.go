@@ -29,6 +29,7 @@ import (
 
 	"github.com/kKEo/memors/internal/embedding"
 	"github.com/kKEo/memors/internal/eval/scenario"
+	"github.com/kKEo/memors/internal/eval/scenario/coverage"
 	"github.com/kKEo/memors/internal/eval/scenario/diagram"
 	"github.com/kKEo/memors/internal/ui"
 )
@@ -321,7 +322,7 @@ func stepRows(sc *scenario.Scenario) []stepRow {
 		if j >= 0 {
 			row.Path = path
 		}
-		row.Expect = strings.Join(expectKinds(st.Expect), ", ")
+		row.Expect = strings.Join(coverage.ExpectKinds(st.Expect), ", ")
 		rows = append(rows, row)
 	}
 	for i, st := range sc.Steps {
@@ -340,32 +341,6 @@ func stepRows(sc *scenario.Scenario) []stepRow {
 		add(i, -1, st, "")
 	}
 	return rows
-}
-
-// expectKinds names the expectation keys a step uses.
-func expectKinds(e *scenario.Expect) []string {
-	if e == nil {
-		return nil
-	}
-	var out []string
-	add := func(ok bool, k string) {
-		if ok {
-			out = append(out, k)
-		}
-	}
-	add(e.Error != nil || e.ErrorContains != "", "error")
-	add(len(e.Top) > 0, "top")
-	add(len(e.Contains) > 0, "contains")
-	add(len(e.Excludes) > 0, "excludes")
-	add(e.Abstains != nil, "abstains")
-	add(e.Count != nil, "count")
-	add(len(e.Out) > 0, "out")
-	add(len(e.OutContains) > 0, "out_contains")
-	add(e.Lint != nil, "lint")
-	add(len(e.Audit) > 0, "audit")
-	add(e.AuditNone, "audit_none")
-	add(len(e.Status) > 0, "status")
-	return out
 }
 
 func runViewOf(rr *runResult) *runView {
