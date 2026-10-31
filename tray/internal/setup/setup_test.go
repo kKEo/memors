@@ -287,7 +287,7 @@ func TestSettingsSave(t *testing.T) {
 	code, body := h.post("/settings", url.Values{
 		"rev": {rev(t, body)}, "login": {"on"}, "memors_mode": {"path"}, "memors_path": {bin}, "model": {"potion"},
 		"servers": {"1"}, "kb_0": {"crportal"}, "addr_0": {"127.0.0.1:8770"}, "auth_0": {"token"}, "autostart_0": {"on"},
-		"new_kb": {"work"}, "new_auth": {"none"}, "new_autostart": {"on"}, "env": {"MEMORS_QUERY_LOG=1\n# comment\n"}, "debug": {"on"},
+		"env": {"MEMORS_QUERY_LOG=1\n# comment\n"}, "debug": {"on"},
 	})
 	if code != 200 || !strings.Contains(body, "Settings saved.") {
 		t.Fatalf("save: %d\n%s", code, body)
@@ -296,12 +296,12 @@ func TestSettingsSave(t *testing.T) {
 	if c.MemorsBinary != bin || c.Env["MEMORS_MODEL"] != "potion" || c.Env["MEMORS_QUERY_LOG"] != "1" || c.StopsOnQuit() || !c.Debug {
 		t.Errorf("saved config = %+v", c)
 	}
-	cr, work := c.Find("crportal"), c.Find("work")
-	if cr == nil || cr.Addr != "127.0.0.1:8770" || cr.Auth != "token" || !cr.Autostart || cr.Env["MEMORS_PROFILE"] != "precise" {
-		t.Errorf("crportal = %+v", cr)
+	cr := c.Find("crportal")
+	if cr == nil || cr.Addr != "127.0.0.1:8770" || cr.Auth != "token" || !cr.Autostart || cr.Env["MEMORS_PROFILE"] != "precise" || len(c.Servers) != 1 {
+		t.Errorf("crportal = %+v (%d servers)", cr, len(c.Servers))
 	}
-	if work == nil || work.Addr != "127.0.0.1:8765" || work.Auth != "" || !work.Autostart {
-		t.Errorf("work = %+v", work)
+	if !strings.Contains(body, `href="/settings/server/new"`) {
+		t.Error("settings page lacks the Add server button")
 	}
 	if !h.login.on || !slices.Contains(h.kinds(), ConfigSaved) {
 		t.Errorf("login %v, events %v", h.login.on, h.kinds())
@@ -310,9 +310,9 @@ func TestSettingsSave(t *testing.T) {
 	// Removing a server and going back to automatic discovery.
 	_, body = h.get(h.s.Origin() + "/settings")
 	h.post("/settings", url.Values{"rev": {rev(t, body)}, "memors_mode": {"auto"}, "stop_on_quit": {"on"},
-		"servers": {"2"}, "kb_0": {"crportal"}, "addr_0": {"127.0.0.1:8770"}, "remove_0": {"on"}, "kb_1": {"work"}, "addr_1": {"127.0.0.1:8765"}})
+		"servers": {"1"}, "kb_0": {"crportal"}, "addr_0": {"127.0.0.1:8770"}, "remove_0": {"on"}})
 	c = h.cfg()
-	if c.MemorsBinary != "" || len(c.Servers) != 1 || c.Servers[0].KB != "work" || !c.StopsOnQuit() || c.Env != nil || h.login.on {
+	if c.MemorsBinary != "" || len(c.Servers) != 0 || !c.StopsOnQuit() || c.Env != nil || h.login.on {
 		t.Errorf("after the second save: %+v (login %v)", c, h.login.on)
 	}
 }
@@ -325,13 +325,12 @@ func TestSettingsRefusesBadInput(t *testing.T) {
 		form url.Values
 		want string
 	}{
-		{url.Values{"new_kb": {"a b"}}, "not a valid knowledge-base name"},
 		{url.Values{"env": {"MEMORS_HTTP_AUTH=none"}}, "set by MemoRS Tray"},
 		{url.Values{"env": {"MEMORS_MODEL=potion"}}, "embedding model with the field above"},
 		{url.Values{"env": {"no equals sign"}}, "NAME=value"},
 		{url.Values{"memors_mode": {"path"}, "memors_path": {"relative/memors-mcp"}}, "full path"},
 		{url.Values{"memors_mode": {"path"}, "memors_path": {"/does/not/exist"}}, "not an executable"},
-		{url.Values{"new_kb": {"x"}, "new_addr": {"10.0.0.1:1"}}, "loopback"},
+		{url.Values{"servers": {"1"}, "kb_0": {"x"}, "addr_0": {"10.0.0.1:1"}}, "loopback"},
 	} {
 		c.form.Set("rev", rev(t, body))
 		code, got := h.post("/settings", c.form)
@@ -357,7 +356,7 @@ func TestSettingsConflict(t *testing.T) {
 	if err := meanwhile.Save(config.Path(h.home)); err != nil {
 		t.Fatal(err)
 	}
-	code, got := h.post("/settings", url.Values{"rev": {rev(t, body)}, "new_kb": {"other"}})
+	code, got := h.post("/settings", url.Values{"rev": {rev(t, body)}, "debug": {"on"}})
 	if code != http.StatusConflict || !strings.Contains(got, "changed while this form was open") {
 		t.Fatalf("stale form: %d", code)
 	}
@@ -366,6 +365,64 @@ func TestSettingsConflict(t *testing.T) {
 	}
 	if !strings.Contains(got, `value="started"`) {
 		t.Error("the conflict page does not show the current settings")
+	}
+}
+
+func TestAddServer(t *testing.T) {
+	h := newHarness(t)
+	old := &config.Config{Servers: []config.Server{{KB: "crportal", Addr: "127.0.0.1:8765"}}}
+	if err := old.Save(config.Path(h.home)); err != nil {
+		t.Fatal(err)
+	}
+	body := h.enter("/settings/server/new")
+	if !strings.Contains(body, "Save &amp; Run") || !strings.Contains(body, `action="/settings/server"`) {
+		t.Fatalf("add page:\n%s", body)
+	}
+	before, _ := os.ReadFile(config.Path(h.home))
+	for _, c := range []struct {
+		form url.Values
+		want string
+	}{
+		{url.Values{"kb": {"a b"}}, "not a valid knowledge-base name"},
+		{url.Values{"kb": {"crportal"}}, "already listed"},
+		{url.Values{"kb": {"x"}, "addr": {"10.0.0.1:1"}}, "loopback"},
+	} {
+		code, got := h.post("/settings/server", c.form)
+		if code != http.StatusUnprocessableEntity || !strings.Contains(got, c.want) {
+			t.Errorf("%v: %d, want an error containing %q", c.form, code, c.want)
+		}
+	}
+	if after, _ := os.ReadFile(config.Path(h.home)); string(after) != string(before) {
+		t.Error("an invalid form changed tray.json")
+	}
+	if k := h.kinds(); len(k) != 0 {
+		t.Errorf("events after invalid forms: %v", k)
+	}
+
+	code, body := h.post("/settings/server", url.Values{"kb": {"work"}, "auth": {"token"}, "autostart": {"on"}})
+	if code != 200 || !strings.Contains(body, "Server added") {
+		t.Fatalf("save: %d\n%s", code, body)
+	}
+	c := h.cfg()
+	if s := c.Find("work"); s == nil || s.Addr != "127.0.0.1:8766" || s.Auth != "token" || !s.Autostart || len(c.Servers) != 2 {
+		t.Errorf("config = %+v", c)
+	}
+	h.mu.Lock()
+	events := slices.Clone(h.events)
+	h.mu.Unlock()
+	if !slices.Equal(events, []Event{{Kind: ConfigSaved}, {Kind: StartServer, KB: "work"}}) {
+		t.Errorf("events = %v", events)
+	}
+	want := `claude mcp add --transport http memors-work 'http://127.0.0.1:8766/mcp' --header "Authorization: Bearer $(memors-mcp http-token)"`
+	if !strings.Contains(body, html.EscapeString(want)) || !strings.Contains(body, `href="/settings"`) {
+		t.Errorf("added page lacks the command:\n%s", body)
+	}
+	_, body = h.post("/settings/server/copy", url.Values{"kb": {"work"}})
+	if len(h.copied) != 1 || h.copied[0] != want || !strings.Contains(body, "Copied ✓") {
+		t.Errorf("copied %q", h.copied)
+	}
+	if _, body = h.get(h.s.Origin() + "/settings/server/added?kb=nope"); !strings.Contains(body, "<h1>Settings</h1>") {
+		t.Error("an unknown server does not lead back to Settings")
 	}
 }
 

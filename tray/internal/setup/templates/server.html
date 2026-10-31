@@ -1,0 +1,38 @@
+{{define "server_new.html"}}{{template "head" .}}{{with .Data}}
+<h1>Add a server</h1>
+<p class="lede">MemoRS Tray runs one server per knowledge base on this Mac. Give it a name, save, and the server starts right away.</p>
+{{- if .Err}}<div class="banner err">{{.Err}}</div>{{end}}
+{{- if not .MemorsOK}}<div class="banner warn">memors-mcp is not installed yet, so the server cannot start. <a href="/wizard/install">Install it first.</a></div>{{end}}
+<form method="post" action="/settings/server">
+<section class="group">
+<div class="row"><div><label class="label" for="kb">Knowledge base</label><div class="hint">Choose an existing one or type a new name.</div></div>
+<input type="text" id="kb" name="kb" value="{{.KB}}" list="kbs" required autofocus></div>
+{{template "kbs" .KBs}}
+<div class="row"><div><label class="label" for="addr">Address</label><div class="hint">Leave empty to pick a free loopback port. It stays fixed, so the MCP URL your agents use never changes.</div></div>
+<input type="text" id="addr" name="addr" value="{{.Addr}}" placeholder="automatic"></div>
+<div class="row"><div><div class="label">Access</div><div class="hint">Only this Mac can reach the server either way. A token also keeps other users of this Mac out.</div></div>
+<div class="choices"><label class="check"><input type="radio" name="auth" value="none"{{if ne .Auth "token"}} checked{{end}}> Open on this Mac</label>
+<label class="check"><input type="radio" name="auth" value="token"{{if eq .Auth "token"}} checked{{end}}> Require a token</label></div></div>
+<div class="row"><label class="check"><input type="checkbox" name="autostart"{{if .Autostart}} checked{{end}}> Start this server whenever MemoRS Tray starts</label></div>
+</section>
+<div class="actions"><a class="button" href="/settings">Cancel</a><button class="primary">Save &amp; Run</button></div>
+</form>
+{{end}}{{template "foot" .}}{{end}}
+
+{{define "server_added.html"}}{{template "head" .}}{{with .Data}}
+<h1>Server added</h1>
+<p class="lede">The <b>{{.KB}}</b> server is saved and starting. It appears in the menu bar in a few seconds.</p>
+<section class="group"><h2>MCP address</h2>
+<div class="row"><code>{{.URL}}</code>{{if eq .Auth "token"}}<span class="muted">token required</span>{{end}}</div>
+</section>
+<section class="group"><h2>Claude Code</h2>
+<div class="row stack"><div class="hint">Run this once in a terminal to add the server to Claude Code:</div>
+<pre class="cmd">{{.Command}}</pre>
+<form method="post" action="/settings/server/copy"><input type="hidden" name="kb" value="{{.KB}}"><button>{{if .Copied}}Copied ✓{{else}}Copy command{{end}}</button></form></div>
+</section>
+<section class="group"><h2>Other agents</h2>
+<div class="row">{{if .Connect}}<div>Claude Desktop, Cursor, VS Code and other MCP clients: a step-by-step guide.</div><a class="button" href="{{.Connect}}">Configure your agent</a>
+{{- else}}<div class="hint">For Claude Desktop, Cursor and other MCP clients, choose <b>{{.KB}} › Configure Your Agent…</b> in the menu bar once the server runs. <a href="/settings/server/added?kb={{.KB}}">Refresh</a></div>{{end}}</div>
+</section>
+<div class="actions"><a class="button" href="/settings/server/new">Add another</a><a class="button primary" href="/settings">Back to Settings</a></div>
+{{end}}{{template "foot" .}}{{end}}

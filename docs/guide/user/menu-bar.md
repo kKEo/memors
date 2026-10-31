@@ -115,8 +115,10 @@ If the server asks for a token, the window logs in by itself. There is nothing t
 - **memors-mcp**: which memors-mcp runs and its version, with **Check for updates…**; find it
   automatically or use a specific file; the embedding model for every server MemoRS Tray starts.
 - **Servers**: each knowledge base MemoRS Tray can start, with its address, whether it needs a
-  token, and whether it starts with MemoRS Tray; add or remove one (removing never deletes the
-  knowledge base itself).
+  token, and whether it starts with MemoRS Tray. **Add server…** opens a form; **Save & Run**
+  saves the server, starts it and shows the `claude mcp add` command to connect Claude Code
+  (plus a link to the guide for other agents). Removing a server never deletes the knowledge base
+  itself.
 - **Advanced**: extra environment for the servers, and the Web Inspector for MemoRS Tray's
   windows. Links open `tray.json` and the logs folder.
 

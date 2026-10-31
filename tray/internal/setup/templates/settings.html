@@ -27,6 +27,8 @@
 </section>
 
 <section class="group"><h2>Servers</h2>
+<div class="row"><div class="hint">{{if .Servers}}Each knowledge base MemoRS Tray runs a server for.{{else}}No servers yet. Add one and MemoRS Tray starts it for you.{{end}}</div>
+<a class="button" href="/settings/server/new">Add server…</a></div>
 <input type="hidden" name="servers" value="{{len .Servers}}">
 <table>
 <tr><th>Knowledge base</th><th>Address</th><th>Access</th><th>Start with MemoRS Tray</th><th>Remove</th></tr>
@@ -37,12 +39,7 @@
 <td class="center"><input type="checkbox" name="autostart_{{$i}}"{{if $s.Autostart}} checked{{end}} aria-label="start {{$s.KB}} with MemoRS Tray"></td>
 <td class="center"><input type="checkbox" name="remove_{{$i}}" aria-label="remove {{$s.KB}}"></td></tr>
 {{- end}}
-<tr class="add"><td><input type="text" name="new_kb" value="{{.NewKB}}" list="kbs" placeholder="Add…" aria-label="new knowledge base"></td>
-<td><input type="text" name="new_addr" value="{{.NewAddr}}" placeholder="automatic" aria-label="address of the new server"></td>
-<td><select name="new_auth" aria-label="access to the new server"><option value="none"{{if ne .NewAuth "token"}} selected{{end}}>Open on this Mac</option><option value="token"{{if eq .NewAuth "token"}} selected{{end}}>Token</option></select></td>
-<td class="center"><input type="checkbox" name="new_autostart"{{if .NewAutostart}} checked{{end}} aria-label="start the new server with MemoRS Tray"></td><td></td></tr>
 </table>
-{{template "kbs" .KBs}}
 <div class="row"><div class="hint">An address stays fixed, so the MCP URL your agents use never changes. Removing a server here does not delete its knowledge base. "Token" also keeps other users of this Mac out.</div></div>
 </section>
 

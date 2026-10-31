@@ -39,11 +39,6 @@ type settingsData struct {
 	Models       []Model
 	DefaultModel string
 	Servers      []serverRow
-	NewKB        string
-	NewAddr      string
-	NewAuth      string
-	NewAutostart bool
-	KBs          []string
 	Env          string
 	Debug        bool
 	ConfigPath   string
@@ -96,8 +91,6 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 		d.Rev, d.Errors = rev, errs
 		d.MemorsMode, d.MemorsPath = r.PostForm.Get("memors_mode"), r.PostForm.Get("memors_path")
 		d.Env = r.PostForm.Get("env")
-		d.NewKB, d.NewAddr, d.NewAuth = r.PostForm.Get("new_kb"), r.PostForm.Get("new_addr"), r.PostForm.Get("new_auth")
-		d.NewAutostart = r.PostForm.Get("new_autostart") == "on"
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		s.render(w, "settings.html", page{Title: "Settings", Data: d})
 		return
@@ -116,7 +109,8 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 // fromForm builds the configuration a posted settings form describes.
-// Per-server environment, which the form does not show, is kept.
+// Per-server environment, which the form does not show, is kept; new
+// servers come in through addServer.
 func (s *Server) fromForm(f url.Values, cur *config.Config) (*config.Config, []string) {
 	var errs []string
 	next := &config.Config{Debug: f.Get("debug") == "on"}
@@ -160,23 +154,6 @@ func (s *Server) fromForm(f url.Values, cur *config.Config) (*config.Config, []s
 		}
 		next.Servers = append(next.Servers, srv)
 	}
-	if kb := strings.TrimSpace(f.Get("new_kb")); kb != "" {
-		switch {
-		case !home.ValidName(kb):
-			errs = append(errs, fmt.Sprintf("New server: %q is not a valid knowledge-base name (letters, digits, '.', '_', '-')", kb))
-		case next.Find(kb) != nil:
-			errs = append(errs, fmt.Sprintf("New server: %s is already listed", kb))
-		default:
-			if addr := strings.TrimSpace(f.Get("new_addr")); addr != "" {
-				next.Servers = append(next.Servers, config.Server{KB: kb, Addr: addr})
-			} else if _, _, err := next.AddrFor(kb, s.d.PortFree); err != nil {
-				errs = append(errs, "New server: "+err.Error())
-			}
-			if srv := next.Find(kb); srv != nil {
-				srv.Auth, srv.Autostart = authOf(f.Get("new_auth")), f.Get("new_autostart") == "on"
-			}
-		}
-	}
 	if err := next.Validate(); err != nil {
 		errs = append(errs, err.Error())
 	}
@@ -194,8 +171,6 @@ func (s *Server) settingsFrom(ctx context.Context, cfg *config.Config) settingsD
 		MemorsPath:   cfg.MemorsBinary,
 		Model:        cfg.Env["MEMORS_MODEL"],
 		Debug:        cfg.Debug,
-		NewAuth:      "none",
-		NewAutostart: true,
 		ConfigPath:   config.Path(s.d.Home),
 		LogsDir:      home.LogDir(s.d.Home),
 	}
@@ -216,7 +191,6 @@ func (s *Server) settingsFrom(ctx context.Context, cfg *config.Config) settingsD
 	for _, srv := range cfg.Servers {
 		d.Servers = append(d.Servers, serverRow{KB: srv.KB, Addr: srv.Addr, Auth: authName(srv.Auth), Autostart: srv.Autostart})
 	}
-	d.KBs, _ = home.KBs(s.d.Home)
 	var lines []string
 	for k, v := range cfg.Env {
 		if k != "MEMORS_MODEL" {

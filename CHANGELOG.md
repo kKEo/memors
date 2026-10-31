@@ -5,6 +5,9 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **MemoRS Tray**: the Servers section of Settings gets an **Add server…** button in place of the
+  spare table row. The form's **Save & Run** saves the server, starts it and shows the
+  `claude mcp add` command (with Copy) and the link to the agent guide, like the setup assistant.
 - **Tester guide** (`docs/guide/tester/`): a third book next to the user and operator guides, for
   people who run, write and review tests. It covers running the suite, what is tested where, the
   CI workflows, contract goldens, the retrieval benchmark and its paired gate, fuzzing and races,
