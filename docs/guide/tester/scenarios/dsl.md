@@ -81,6 +81,7 @@ assistants connected to one server.
 | `bind` | Name the result so later steps can say `$name` |
 | `select` | On `compact` only: which work item to bind (`{kind: conflict, subject: pager}`) |
 | `elicit` | On agent steps: override the actor's dialog answer for this step (`accept`, `decline`, `cancel`) |
+| `replay` | On agent steps: `{state: "promote:$f1:user", answer: accept}` sends the call with a ready-made dialog answer, as if this client had been asked that question and its human had answered. The actor's `elicitation` must not be `none`. For scenarios about forged or misdirected dialogs |
 | `expect` | What must be observable after the step |
 | `invariants` | `{skip: [name]}` after this step only |
 | `note` | Free text, shown in the picture and the step table. Say why the step matters, or which gap it shows |
@@ -198,6 +199,7 @@ when:
 - a step names an unknown actor, or an op its actor kind cannot perform
   (`op "demote" is not a tool an agent can call`)
 - `elicit` is used on a human, or on an agent whose `elicitation` is `none`
+- `replay` is used on a human, on an agent whose `elicitation` is `none`, without `state`, or with an answer other than `accept`, `decline` or `cancel`
 - `select` is used on anything but `compact`
 - a `$name` is used before any step binds it
 - `at` is malformed or goes backwards

@@ -52,6 +52,10 @@ func TestValidateRejectsBadScripts(t *testing.T) {
 		"unknown field":   "name: x\nactors: {a: {kind: agent}}\nsteps: [{actor: a, op: status, expects: {}}]\n",
 		"bad tier":        "name: x\ntiers: [weekly]\nactors: {a: {kind: agent}}\nsteps: [{actor: a, op: status}]\n",
 		"select on read":  "name: x\nactors: {a: {kind: agent}}\nsteps: [{actor: a, op: status, select: {kind: page}}]\n",
+		"replay no actor": "name: x\nactors: {a: {kind: agent}}\nsteps: [{actor: a, op: promote, args: {uri: u, to: user}, replay: {state: s, answer: accept}}]\n",
+		"replay answer":   "name: x\nactors: {a: {kind: agent, elicitation: decline}}\nsteps: [{actor: a, op: promote, args: {uri: u, to: user}, replay: {state: s, answer: maybe}}]\n",
+		"replay unbound":  "name: x\nactors: {a: {kind: agent, elicitation: decline}}\nsteps: [{actor: a, op: promote, args: {uri: u, to: user}, replay: {state: \"promote:$nope:user\", answer: accept}}]\n",
+		"replay on human": "name: x\nactors: {h: {kind: human}}\nsteps: [{actor: h, op: promote, args: {uri: u, to: user}, replay: {state: s, answer: accept}}]\n",
 	}
 	for name, src := range cases {
 		if _, err := Parse([]byte(src)); err == nil {

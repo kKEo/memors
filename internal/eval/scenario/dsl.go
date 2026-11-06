@@ -148,13 +148,23 @@ type Step struct {
 	// case-insensitive substring of the subject.
 	Select map[string]string `yaml:"select,omitempty"`
 	// Elicit overrides the actor's elicitation answer for this step.
-	Elicit     string         `yaml:"elicit,omitempty"`
+	Elicit string `yaml:"elicit,omitempty"`
+	// Replay sends the tool call with a ready-made dialog answer instead of
+	// waiting to be asked: the request state another session was given and
+	// the answer, as if this client's human had confirmed it.
+	Replay     *Replay        `yaml:"replay,omitempty"`
 	Expect     *Expect        `yaml:"expect,omitempty"`
 	Invariants *InvariantOpts `yaml:"invariants,omitempty"`
 	// Parallel runs these steps concurrently (each on its own actor
 	// session), then applies their binds and expectations in order.
 	Parallel []Step `yaml:"parallel,omitempty"`
 	Note     string `yaml:"note,omitempty"`
+}
+
+// Replay is a forged elicitation answer attached to a tool call.
+type Replay struct {
+	State  string `yaml:"state"`  // the request state, e.g. "promote:$f1:user"
+	Answer string `yaml:"answer"` // accept, decline or cancel
 }
 
 // InvariantOpts switches invariants off by name (see invariants.go).
@@ -530,12 +540,31 @@ func (sc *Scenario) validateStep(where, path string, st Step, bound map[string]b
 				fail(".elicit", "%s: elicit needs an actor whose elicitation is not none", where)
 			}
 		}
+		if st.Replay != nil {
+			if st.Replay.State == "" {
+				fail(".replay", "%s: replay needs state", where)
+			}
+			if !answers[st.Replay.Answer] || st.Replay.Answer == "none" {
+				fail(".replay", "%s: replay answer %q: want accept, decline or cancel", where, st.Replay.Answer)
+			}
+			if a.Elicitation == "" || a.Elicitation == "none" {
+				fail(".replay", "%s: replay needs an actor whose elicitation is not none (the server only reads answers from clients that can show dialogs)", where)
+			}
+			for _, ref := range refsInString(st.Replay.State) {
+				if !bound[ref] {
+					fail(".replay", "%s: $%s is not bound by an earlier step", where, ref)
+				}
+			}
+		}
 	case "human":
 		if !humanOps[st.Op] {
 			fail(".op", "%s: op %q is not a CLI operation", where, st.Op)
 		}
 		if st.Elicit != "" {
 			fail(".elicit", "%s: elicit applies to agent steps only", where)
+		}
+		if st.Replay != nil {
+			fail(".replay", "%s: replay applies to agent steps only", where)
 		}
 	}
 	if len(st.Select) > 0 && st.Op != "compact" {

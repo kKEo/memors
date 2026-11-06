@@ -355,7 +355,22 @@ func (r *Runner) callTool(ctx context.Context, ag *agent, st Step, args map[stri
 	if args == nil {
 		args = map[string]any{}
 	}
-	res, err := ag.cs.CallTool(ctx, &mcp.CallToolParams{Name: st.Op, Arguments: args})
+	params := &mcp.CallToolParams{Name: st.Op, Arguments: args}
+	if st.Replay != nil {
+		// A forged answer: the call carries the dialog state and response as
+		// if this client had been asked and its human had answered.
+		state, err := r.resolveString(st.Replay.State)
+		if err != nil {
+			return nil, err
+		}
+		ans := &mcp.ElicitResult{Action: st.Replay.Answer}
+		if st.Replay.Answer == "accept" {
+			ans.Content = map[string]any{"confirm": true}
+		}
+		params.RequestState = state
+		params.InputResponses = mcp.InputResponseMap{"confirm": ans}
+	}
+	res, err := ag.cs.CallTool(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("protocol: %w", err)
 	}
