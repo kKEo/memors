@@ -32,6 +32,10 @@ cat notes.md | memors-mcp ingest - --kind note --title "Standup 2026-10-03"
 memors-mcp ingest ./big-folder --embed=false && memors-mcp backfill   # fast load, embed later
 ```
 
+A directory ingest takes every `.md` file (every file with `--kind code`) and skips `_index.md`,
+dot-files, and the `README.md` and `SUMMARY.md` of an export folder (recognised by the `book.toml`
+beside them), so re-ingesting an export never turns its table of contents into documents.
+
 CLI writes are trust `user`, or `curated` with `--trust curated`. Origin defaults to `web`
 when `--uri` is set, and to `user-said` otherwise.
 

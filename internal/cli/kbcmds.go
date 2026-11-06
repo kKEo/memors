@@ -114,7 +114,7 @@ func runIngest(ctx context.Context, args []string, stdout, stderr io.Writer) err
 				if err != nil {
 					return err
 				}
-				if d.IsDir() || d.Name() == "_index.md" || strings.HasPrefix(d.Name(), ".") {
+				if d.IsDir() || d.Name() == "_index.md" || strings.HasPrefix(d.Name(), ".") || isExportTOC(p, d.Name()) {
 					return nil
 				}
 				if *kind != kb.KindCode && !strings.HasSuffix(strings.ToLower(d.Name()), ".md") {
@@ -1840,4 +1840,15 @@ func printCalls(w io.Writer, calls []kb.CallLogEntry) {
 		}
 		fmt.Fprintf(w, "%d  %s  %-12s %-9s %4dms %3d results %5d tok  %s  %s\n", c.ID, c.At.Format("2006-01-02 15:04:05"), c.Client, c.Tool, c.LatencyMs, c.NResults, c.TokensOut, state, oneLine(string(c.Args), 70))
 	}
+}
+
+// isExportTOC says whether name is the README.md or SUMMARY.md of an export
+// written by `export --md` (a book.toml sits beside it): a table of contents,
+// not a document to ingest.
+func isExportTOC(p, name string) bool {
+	if name != "README.md" && name != "SUMMARY.md" {
+		return false
+	}
+	_, err := os.Stat(filepath.Join(filepath.Dir(p), "book.toml"))
+	return err == nil
 }

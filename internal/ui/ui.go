@@ -65,6 +65,7 @@ func New(store *kb.Store, search *retrieve.Service, version string, opts ...Opti
 		"join": strings.Join,
 		"list": func(v ...string) []string { return v },
 		"href": uriHref,
+		"md":   renderMarkdown,
 		"json": func(v any) string { b, _ := json.MarshalIndent(v, "", "  "); return string(b) },
 		"ms":   func(v float64) string { return strconv.FormatFloat(v, 'f', 1, 64) },
 		"f1":   func(v float64) string { return strconv.FormatFloat(v, 'f', 1, 64) },
@@ -719,6 +720,8 @@ details { margin:.4rem 0; } summary { cursor:pointer; color:var(--accent); }
 .card { border:1px solid var(--line); border-radius:6px; padding:.7rem .9rem; } .card .big { font-size:1.6rem; font-weight:700; }
 .filters { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end; margin-bottom:1rem; } .filters label { display:flex; flex-direction:column; font-size:.85em; color:var(--muted); }
 blockquote { border-left:3px solid var(--line); margin:.4rem 0; padding:.2rem .8rem; color:var(--muted); }
+.md { max-width:52rem; } .md h1 { font-size:1.25rem; margin-top:1.2rem; } .md h2 { font-size:1.1rem; } .md h3 { font-size:1rem; margin:1rem 0 .4rem; }
+.md table { width:auto; margin:.6rem 0; } .md img { max-width:100%; } .md pre code { background:none; padding:0; } .md hr { border:0; border-top:1px solid var(--line); }
 .timeline li { margin:.3rem 0; } .timeline .dead { color:var(--muted); text-decoration:line-through; }
 .badge.running { border-color:var(--accent); color:var(--accent); } .badge.done { border-color:#1a7a3a; color:#1a7a3a; }
 .badge.failed, .badge.stalled, .badge.error { border-color:var(--warn); color:var(--warn); }

@@ -288,3 +288,62 @@ func TestQuantile(t *testing.T) {
 		t.Errorf("rank in +Inf = %v, want last finite bound", got)
 	}
 }
+
+func TestPageRendersMarkdownSafely(t *testing.T) {
+	s, store, _ := newUI(t)
+	ctx := context.Background()
+	ent, _ := store.ReadEntity(ctx, "Retry Policy", "widgets")
+	content := "# Retry Policy\n\n<script>alert(1)</script>\n\nRetries on ERR_CONN_RESET (memo://chunk/2). See also memo://chunk/2 and `memo://chunk/3`.\n\n| Case | Retried |\n|---|---|\n| reset | yes |\n\n```\nmemo://chunk/1\n```\n"
+	if _, err := store.WritePage(ctx, kb.PageInput{Namespace: "widgets", Kind: kb.PageKindEntity, SubjectID: ent.ID, Title: "Retry Policy", Content: content, Sources: []int64{2}, Actor: "t", Channel: kb.ChannelTool}); err != nil {
+		t.Fatal(err)
+	}
+	var id string
+	pages, _ := store.ListPages(ctx, kb.PageFilter{})
+	for _, p := range pages {
+		if p.Title == "Retry Policy" {
+			id = p.ID
+		}
+	}
+	code, body := get(t, s.Handler(), "/page/"+id, "")
+	if code != 200 {
+		t.Fatalf("page: %d %s", code, body)
+	}
+	for _, want := range []string{"raw HTML omitted", "<table>", `<a href="/chunk/2">memo://chunk/2</a>`, "<code>memo://chunk/3</code>", "<pre><code>memo://chunk/1\n</code></pre>"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %q in\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "<script>") || strings.Contains(body, "alert(1)") || strings.Contains(body, `href="/chunk/3"`) || strings.Contains(body, `href="/chunk/1"`) {
+		t.Fatalf("unsafe or over-linked render:\n%s", body)
+	}
+	mdPart := body[strings.Index(body, `<div class="md">`):strings.Index(body, "<h2>Built from</h2>")]
+	if strings.Count(mdPart, `href="/chunk/2"`) != 2 {
+		t.Fatalf("both plain citations should link:\n%s", mdPart)
+	}
+	// A revised source marks the page stale; the banner still sits above the content.
+	if _, err := store.Ingest(ctx, kb.IngestInput{Namespace: "widgets", Content: "# Retry Policy\n\nThe Retry Policy now gives up after three attempts.\n", Source: kb.SourceInput{URI: "https://w.example/1", Title: "Retry Policy", Kind: kb.KindDoc, Origin: kb.OriginWeb}, Trust: kb.TrustUser, Actor: "t", Channel: kb.ChannelCLI}); err != nil {
+		t.Fatal(err)
+	}
+	_, body = get(t, s.Handler(), "/page/"+id, "")
+	bannerAt, contentAt := strings.Index(body, "Stale:"), strings.Index(body, `<div class="md">`)
+	if bannerAt < 0 || contentAt < 0 || bannerAt > contentAt {
+		t.Fatalf("stale banner missing or below the content:\n%s", body)
+	}
+}
+
+func TestLinkMemoURIs(t *testing.T) {
+	cases := map[string]string{
+		"see memo://chunk/1.":                      "see [memo://chunk/1](/chunk/1).",
+		"[memo://chunk/1](/chunk/1)":               "[memo://chunk/1](/chunk/1)",
+		"[x](memo://chunk/1)":                      "[x](memo://chunk/1)",
+		"`memo://chunk/1` and memo://fact/abc-1":   "`memo://chunk/1` and [memo://fact/abc-1](/fact/abc-1)",
+		"memo://unknown/1":                         "memo://unknown/1",
+		"```\nmemo://chunk/1\n```\nmemo://chunk/1": "```\nmemo://chunk/1\n```\n[memo://chunk/1](/chunk/1)",
+		"    memo://chunk/1":                       "    memo://chunk/1",
+	}
+	for in, want := range cases {
+		if got := linkMemoURIs(in); got != want {
+			t.Errorf("%q:\n got %q\nwant %q", in, got, want)
+		}
+	}
+}

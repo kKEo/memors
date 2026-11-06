@@ -35,6 +35,14 @@ When Claude hands a summary back, memors-mcp checks it before keeping it:
 Summary pages are always labelled as written by Claude, with their sources listed, so they
 never pass for original material.
 
+In the web face (`memors-mcp ui`) a summary page shows as formatted text, and every `memo://`
+citation in it is a link to the passage it came from. For a browsable site of the whole memory,
+summaries included, export it and build it as a book:
+
+```bash
+memors-mcp export --md ~/kb-export && mdbook build ~/kb-export
+```
+
 ## Decisions that stay with you
 
 Merging two names and settling contradictions affect what the memory treats as true. Claude can

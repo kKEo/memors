@@ -38,7 +38,7 @@ the summary. Flags may come before or after positional arguments.
 | `memors-mcp ls` | ro | Live documents, newest first. `--ns`, `--kind`, `--since YYYY-MM-DD`, `--limit` (50), `--json` |
 | `memors-mcp facts ls` | ro | Facts. `--ns`, `--as-of YYYY-MM-DD`, `--history` includes replaced facts, `--json` |
 | `memors-mcp explore <name>` | ro | Walk the graph from one entity. `--ns`, `--hops 1\|2`, `--as-of`, `--json` |
-| `memors-mcp export --md <dir>` | ro | Markdown files with front matter, plus an `_index.md` per namespace. `--ns` |
+| `memors-mcp export --md <dir>` | ro | Markdown files with front matter, an `_index.md` per namespace, and `README.md`, `SUMMARY.md`, `book.toml`, `.gitbook.yaml` at the root (an mdBook/GitBook source). `--ns` |
 | `memors-mcp export --index` | ro | A compact index for `AGENTS.md` and `CLAUDE.md`. `--ns`, `--library name[@version]`, `--max-bytes` (8192) |
 
 ## Graph and compaction
