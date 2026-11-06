@@ -38,14 +38,14 @@ func TestRenderValidateDescribe(t *testing.T) {
 		t.Fatalf("render: %d %s %s", code, out.String(), errb.String())
 	}
 	svgs, _ := filepath.Glob(filepath.Join(dir, "*.svg"))
-	if len(svgs) != 5 {
+	if len(svgs) != 6 {
 		t.Fatalf("rendered %d files: %v", len(svgs), svgs)
 	}
 	for _, s := range svgs {
 		wellFormed(t, s)
 	}
 	out.Reset()
-	if code := Main(ctx, []string{"validate", fixtures}, &out, &errb); code != 0 || strings.Count(out.String(), ": ok") != 5 {
+	if code := Main(ctx, []string{"validate", fixtures}, &out, &errb); code != 0 || strings.Count(out.String(), ": ok") != 6 {
 		t.Fatalf("validate: %d %s", code, out.String())
 	}
 

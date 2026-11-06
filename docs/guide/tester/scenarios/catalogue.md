@@ -4,7 +4,7 @@
 
 The scenarios the harness should hold, grouped by what they stress. Each entry is a story: actors, steps over time, and what must be observable. A file implements an entry when its name starts with the entry's id (`b2-zombie-fact.yaml`) or its `covers:` names it. The tier says where the scenario will run: `ci` on every pull request with the hash embedder, `nightly` with a real model, `binary` against the built `memors-mcp` process. The priority says how much the story matters: `P1` guards integrity and trust (a failure silently poisons, leaks or loses data), `P2` guards core semantics (wrong but visible, recoverable answers), `P3` covers quality, scale and open decisions. [Order of work](#order-of-work) lists the entries by priority.
 
-**45 entries** · **5 implemented** · **40 planned**
+**45 entries** · **6 implemented** · **39 planned**
 
 | Id | Scenario | Tier | Priority | Gaps | Status |
 |---|---|---|---|---|---|
@@ -33,7 +33,7 @@ The scenarios the harness should hold, grouped by what they stress. Each entry i
 | [C9](#c9) | Concurrent same-URI ingest over HTTP | ci | P1 |  | planned |
 | [C10](#c10) | Spelling variants over time | ci | P3 |  | planned |
 | [D1](#d1) | Poison amplification loop | ci | P1 |  | planned |
-| [D2](#d2) | Revoked but still reachable | ci | P1 | [2](gaps.md#gap-2), [3](gaps.md#gap-3) | planned |
+| [D2](#d2) | Revoked but still reachable | ci | P1 | [2](gaps.md#gap-2), [3](gaps.md#gap-3) | implemented: [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md) |
 | [D3](#d3) | Graph hijack via declared entities | ci | P2 |  | planned |
 | [D4](#d4) | Homoglyph identifiers | ci | P2 |  | planned |
 | [D5](#d5) | Instruction text in reasons and titles | ci | P2 | [9](gaps.md#gap-9) | planned |
@@ -73,7 +73,7 @@ Integrity and trust. A failure silently poisons, leaks or loses data; write thes
 | 5 | [C4](#c4) | Stale re-ingest | ci | [5](gaps.md#gap-5) | planned |
 | 6 | [C9](#c9) | Concurrent same-URI ingest over HTTP | ci |  | planned |
 | 7 | [D1](#d1) | Poison amplification loop | ci |  | planned |
-| 8 | [D2](#d2) | Revoked but still reachable | ci | [2](gaps.md#gap-2), [3](gaps.md#gap-3) | planned |
+| 8 | [D2](#d2) | Revoked but still reachable | ci | [2](gaps.md#gap-2), [3](gaps.md#gap-3) | implemented: [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md) |
 | 9 | [D6](#d6) | Tool-channel privilege probe | ci | [1](gaps.md#gap-1), [16](gaps.md#gap-16) | implemented: [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
 | 10 | [E1](#e1) | Crash between commit and vectors | binary | [13](gaps.md#gap-13) | planned |
 | 11 | [E5](#e5) | Export/import at mid-life | ci | [14](gaps.md#gap-14) | planned |
@@ -410,7 +410,7 @@ Forget the poisoned document; the claim must be unreachable via search at every 
 - **Tier:** ci
 - **Priority:** P1
 - **Gaps:** [2](gaps.md#gap-2), [3](gaps.md#gap-3)
-- **Status:** planned
+- **Status:** implemented by [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md)
 
 <a id="d3"></a>
 

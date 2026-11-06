@@ -4,13 +4,13 @@
 
 Reading the code with scenarios in mind surfaced behaviours that no test pinned down. Some are bugs, some are decisions never taken. Each becomes a scenario tagged `decision: open` that asserts today's behaviour; the owner then decides per gap to keep it, change it, or document it only. A fix is a separate change whose scenario is shown failing first and then flips to `decided` (see [Open and decided](decisions.md)).
 
-**16 gaps** · **3 pinned** by a scenario · **0 decided**
+**16 gaps** · **5 pinned** by a scenario · **0 decided**
 
 | # | Gap | Where | Decision | Pinned by |
 |---|---|---|---|---|
 | [1](#gap-1) | A tool-channel revision of a curated source stays curated | `kb/store.go` `Ingest` | open | [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
-| [2](#gap-2) | A fact whose evidence document is forgotten stays live with no evidence | `kb/schema_v1.go`, `kb/facts.go` `Forget` | open | not yet |
-| [3](#gap-3) | Pages built from forgotten or revised sources are still served | `kb/facts.go`, `retrieve/pages.go` | open | not yet |
+| [2](#gap-2) | A fact whose evidence document is forgotten stays live with no evidence | `kb/schema_v1.go`, `kb/facts.go` `Forget` | open | [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md) |
+| [3](#gap-3) | Pages built from forgotten or revised sources are still served | `kb/facts.go`, `retrieve/pages.go` | open | [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md) |
 | [4](#gap-4) | submit writes page_sources from the payload captured at compact time | `compact/submit.go` | open | not yet |
 | [5](#gap-5) | Re-ingesting an older cached copy creates a new revision with old content | `kb/store.go` `Ingest` | open | not yet |
 | [6](#gap-6) | The actor name is the self-declared ClientInfo.Name | `server/server.go` `clientName` | open | not yet |
@@ -45,7 +45,7 @@ Reading the code with scenarios in mind surfaced behaviours that no test pinned 
 - **Where:** `kb/schema_v1.go`, `kb/facts.go` `Forget`
 - **Decision:** open
 - **Catalogue:** [D2 Revoked but still reachable](catalogue.md#d2)
-- **Pinned by:** no scenario yet
+- **Pinned by:** [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md)
 
 <a id="gap-3"></a>
 
@@ -56,7 +56,7 @@ Such pages are served at `granularity: page` with the old content, flagged `stal
 - **Where:** `kb/facts.go`, `retrieve/pages.go`
 - **Decision:** open
 - **Catalogue:** [D2 Revoked but still reachable](catalogue.md#d2)
-- **Pinned by:** no scenario yet
+- **Pinned by:** [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md)
 
 <a id="gap-4"></a>
 

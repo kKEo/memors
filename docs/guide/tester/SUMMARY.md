@@ -28,6 +28,7 @@
     - [b2-zombie-fact](scenarios/log/b2-zombie-fact.md)
     - [b3-human-corrects-agent-holds-old-id](scenarios/log/b3-human-corrects-agent-holds-old-id.md)
     - [c2-two-agents-disagree](scenarios/log/c2-two-agents-disagree.md)
+    - [d2-revoked-but-still-reachable](scenarios/log/d2-revoked-but-still-reachable.md)
     - [d6-tool-channel-privilege-probe](scenarios/log/d6-tool-channel-privilege-probe.md)
   - [What comes next](scenarios/next.md)
 - [Part IV: Exploratory testing](explore/README.md)
