@@ -4,7 +4,7 @@
 
 The scenarios the harness should hold, grouped by what they stress. Each entry is a story: actors, steps over time, and what must be observable. A file implements an entry when its name starts with the entry's id (`b2-zombie-fact.yaml`) or its `covers:` names it. The tier says where the scenario will run: `ci` on every pull request with the hash embedder, `nightly` with a real model, `binary` against the built `memors-mcp` process. The priority says how much the story matters: `P1` guards integrity and trust (a failure silently poisons, leaks or loses data), `P2` guards core semantics (wrong but visible, recoverable answers), `P3` covers quality, scale and open decisions. [Order of work](#order-of-work) lists the entries by priority.
 
-**45 entries** · **3 implemented** · **42 planned**
+**45 entries** · **5 implemented** · **40 planned**
 
 | Id | Scenario | Tier | Priority | Gaps | Status |
 |---|---|---|---|---|---|
@@ -16,7 +16,7 @@ The scenarios the harness should hold, grouped by what they stress. Each entry i
 | [A6](#a6) | Recency across the horizon | ci | P3 |  | planned |
 | [B1](#b1) | Decline then retry | ci | P2 |  | implemented: [b1-promote-decline-then-accept](log/b1-promote-decline-then-accept.md) |
 | [B2](#b2) | Zombie fact | ci | P2 | [15](gaps.md#gap-15) | implemented: [b2-zombie-fact](log/b2-zombie-fact.md) |
-| [B3](#b3) | Human corrects, agent holds the old id | ci | P1 |  | planned |
+| [B3](#b3) | Human corrects, agent holds the old id | ci | P1 |  | implemented: [b3-human-corrects-agent-holds-old-id](log/b3-human-corrects-agent-holds-old-id.md) |
 | [B4](#b4) | Demote | ci | P2 |  | planned |
 | [B5](#b5) | Partial review | ci | P2 | [11](gaps.md#gap-11) | planned |
 | [B6](#b6) | Promote, then an agent revises | ci | P1 | [1](gaps.md#gap-1) | planned |
@@ -37,7 +37,7 @@ The scenarios the harness should hold, grouped by what they stress. Each entry i
 | [D3](#d3) | Graph hijack via declared entities | ci | P2 |  | planned |
 | [D4](#d4) | Homoglyph identifiers | ci | P2 |  | planned |
 | [D5](#d5) | Instruction text in reasons and titles | ci | P2 | [9](gaps.md#gap-9) | planned |
-| [D6](#d6) | Tool-channel privilege probe | ci | P1 |  | planned |
+| [D6](#d6) | Tool-channel privilege probe | ci | P1 | [1](gaps.md#gap-1), [16](gaps.md#gap-16) | implemented: [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
 | [E1](#e1) | Crash between commit and vectors | binary | P1 | [13](gaps.md#gap-13) | planned |
 | [E2](#e2) | Partial reindex | ci | P2 |  | planned |
 | [E3](#e3) | Migrate a populated file | binary | P2 |  | planned |
@@ -66,7 +66,7 @@ Integrity and trust. A failure silently poisons, leaks or loses data; write thes
 
 | # | Id | Scenario | Tier | Gaps | Status |
 |---|---|---|---|---|---|
-| 1 | [B3](#b3) | Human corrects, agent holds the old id | ci |  | planned |
+| 1 | [B3](#b3) | Human corrects, agent holds the old id | ci |  | implemented: [b3-human-corrects-agent-holds-old-id](log/b3-human-corrects-agent-holds-old-id.md) |
 | 2 | [B6](#b6) | Promote, then an agent revises | ci | [1](gaps.md#gap-1) | planned |
 | 3 | [B8](#b8) | Elicitation on HTTP with several clients | ci | [7](gaps.md#gap-7) | planned |
 | 4 | [C3](#c3) | Spoofed actor | ci | [6](gaps.md#gap-6) | planned |
@@ -74,7 +74,7 @@ Integrity and trust. A failure silently poisons, leaks or loses data; write thes
 | 6 | [C9](#c9) | Concurrent same-URI ingest over HTTP | ci |  | planned |
 | 7 | [D1](#d1) | Poison amplification loop | ci |  | planned |
 | 8 | [D2](#d2) | Revoked but still reachable | ci | [2](gaps.md#gap-2), [3](gaps.md#gap-3) | planned |
-| 9 | [D6](#d6) | Tool-channel privilege probe | ci |  | planned |
+| 9 | [D6](#d6) | Tool-channel privilege probe | ci | [1](gaps.md#gap-1), [16](gaps.md#gap-16) | implemented: [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
 | 10 | [E1](#e1) | Crash between commit and vectors | binary | [13](gaps.md#gap-13) | planned |
 | 11 | [E5](#e5) | Export/import at mid-life | ci | [14](gaps.md#gap-14) | planned |
 
@@ -224,7 +224,7 @@ The human supersedes a curated fact from the CLI; the agent later calls `remembe
 
 - **Tier:** ci
 - **Priority:** P1
-- **Status:** planned
+- **Status:** implemented by [b3-human-corrects-agent-holds-old-id](log/b3-human-corrects-agent-holds-old-id.md)
 
 <a id="b4"></a>
 
@@ -451,7 +451,8 @@ A scripted agent tries every mutation on `user` and `curated` records across all
 
 - **Tier:** ci
 - **Priority:** P1
-- **Status:** planned
+- **Gaps:** [1](gaps.md#gap-1), [16](gaps.md#gap-16)
+- **Status:** implemented by [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md)
 
 ## E. Operational lifecycle
 

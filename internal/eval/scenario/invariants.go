@@ -124,7 +124,9 @@ var Invariants = []invariant{
 		if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND superseded_by IS NULL`).Scan(&live); err != nil {
 			return err
 		}
-		if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM chunks`).Scan(&chunks); err != nil {
+		// Status counts the chunks of live documents only: a revised document
+		// keeps its old revision's chunks as history for as_of queries.
+		if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM chunks c JOIN documents d ON d.id = c.document_id WHERE d.deleted_at IS NULL AND d.superseded_by IS NULL`).Scan(&chunks); err != nil {
 			return err
 		}
 		if st.LiveDocuments != live || st.Chunks != chunks {

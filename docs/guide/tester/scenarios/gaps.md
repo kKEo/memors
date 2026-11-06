@@ -4,11 +4,11 @@
 
 Reading the code with scenarios in mind surfaced behaviours that no test pinned down. Some are bugs, some are decisions never taken. Each becomes a scenario tagged `decision: open` that asserts today's behaviour; the owner then decides per gap to keep it, change it, or document it only. A fix is a separate change whose scenario is shown failing first and then flips to `decided` (see [Open and decided](decisions.md)).
 
-**15 gaps** · **1 pinned** by a scenario · **0 decided**
+**16 gaps** · **3 pinned** by a scenario · **0 decided**
 
 | # | Gap | Where | Decision | Pinned by |
 |---|---|---|---|---|
-| [1](#gap-1) | A tool-channel revision of a curated source stays curated | `kb/store.go` `Ingest` | open | not yet |
+| [1](#gap-1) | A tool-channel revision of a curated source stays curated | `kb/store.go` `Ingest` | open | [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
 | [2](#gap-2) | A fact whose evidence document is forgotten stays live with no evidence | `kb/schema_v1.go`, `kb/facts.go` `Forget` | open | not yet |
 | [3](#gap-3) | Pages built from forgotten or revised sources are still served | `kb/facts.go`, `retrieve/pages.go` | open | not yet |
 | [4](#gap-4) | submit writes page_sources from the payload captured at compact time | `compact/submit.go` | open | not yet |
@@ -23,6 +23,7 @@ Reading the code with scenarios in mind surfaced behaviours that no test pinned 
 | [13](#gap-13) | A crash between the ingest commit and vector storage leaves no job | `kb/store.go` `Ingest`, `embedChunks` | open | not yet |
 | [14](#gap-14) | `export --md` omits facts | `kb/export.go` | open | not yet |
 | [15](#gap-15) | A forgotten fact re-recorded with the same statement is unlinked | `kb/facts.go` `Remember` | open | [b2-zombie-fact](log/b2-zombie-fact.md) |
+| [16](#gap-16) | A superseded revision is served through a fact's evidence chunk | `retrieve/retrieve.go` `factArm` | open | [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
 
 <a id="gap-1"></a>
 
@@ -32,8 +33,8 @@ Reading the code with scenarios in mind surfaced behaviours that no test pinned 
 
 - **Where:** `kb/store.go` `Ingest`
 - **Decision:** open
-- **Catalogue:** [B6 Promote, then an agent revises](catalogue.md#b6)
-- **Pinned by:** no scenario yet
+- **Catalogue:** [B6 Promote, then an agent revises](catalogue.md#b6), [D6 Tool-channel privilege probe](catalogue.md#d6)
+- **Pinned by:** [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md)
 
 <a id="gap-2"></a>
 
@@ -188,3 +189,14 @@ The new fact is a fresh fact; nothing links it to the forget reason.
 - **Decision:** open
 - **Catalogue:** [B2 Zombie fact](catalogue.md#b2)
 - **Pinned by:** [b2-zombie-fact](log/b2-zombie-fact.md)
+
+<a id="gap-16"></a>
+
+## Gap 16: A superseded revision is served through a fact's evidence chunk
+
+Every arm applies the live filter (`superseded_by IS NULL`) except the fact arm, which maps a fact's `evidence_chunk_id` to its document without it. A revised document keeps the old revision's chunks as history, so a fact citing one of them brings the old revision back into document-granularity results, with the source's trust.
+
+- **Where:** `retrieve/retrieve.go` `factArm`
+- **Decision:** open
+- **Catalogue:** [D6 Tool-channel privilege probe](catalogue.md#d6)
+- **Pinned by:** [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md)

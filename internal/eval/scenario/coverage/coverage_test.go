@@ -25,7 +25,7 @@ func load(t *testing.T) *Catalogue {
 
 func TestCatalogue(t *testing.T) {
 	c := load(t)
-	if len(c.Categories) != 6 || len(c.Entries) < 45 || len(c.Gaps) != 15 {
+	if len(c.Categories) != 6 || len(c.Entries) < 45 || len(c.Gaps) < 16 {
 		t.Fatalf("catalogue: %d categories, %d entries, %d gaps", len(c.Categories), len(c.Entries), len(c.Gaps))
 	}
 	for _, e := range c.Entries {

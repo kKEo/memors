@@ -90,19 +90,19 @@ func TestIndexListsFilesAndCoverage(t *testing.T) {
 		t.Fatalf("index: %d %q", code, hdr.Get("Content-Security-Policy"))
 	}
 	for _, must := range []string{
-		`href="/s/b1-promote-decline-then-accept.yaml"`, `href="/s/b2-zombie-fact.yaml"`, `href="/s/c2-two-agents-disagree.yaml"`,
+		`href="/s/b1-promote-decline-then-accept.yaml"`, `href="/s/b2-zombie-fact.yaml"`, `href="/s/b3-human-corrects-agent-holds-old-id.yaml"`, `href="/s/c2-two-agents-disagree.yaml"`, `href="/s/d6-tool-channel-privilege-probe.yaml"`,
 		`href="/s/x9-broken.yaml"`, `<span class="warn">invalid</span>`, "$f1 is not bound",
 		`<span class="badge open">open</span>`, `<span class="badge">gap-15</span>`,
-		`<code>ingest</code></td><td>b1-promote-decline-then-accept, b2-zombie-fact, c2-two-agents-disagree</td>`,
+		`<code>ingest</code></td><td>b1-promote-decline-then-accept, b2-zombie-fact, b3-human-corrects-agent-holds-old-id, c2-two-agents-disagree, d6-tool-channel-privilege-probe</td>`,
 		`<code>lint</code></td><td><span class="badge na">not a tool</span></td><td>c2-two-agents-disagree</td>`,
 		`<code>explore</code></td><td><span class="cell-empty">—</span></td>`,
-		`title="Expiry during the run">A1</span>`, `title="A tool-channel revision of a curated source stays curated">gap-1</span>`,
+		`title="Expiry during the run">A1</span>`, `title="A fact whose evidence document is forgotten stays live with no evidence">gap-2</span>`,
 	} {
 		if !strings.Contains(body, must) {
 			t.Errorf("index lacks %s", must)
 		}
 	}
-	for _, mustNot := range []string{`>B1</span>`, `>B2</span>`, `>C2</span>`, `>gap-15</span>`} {
+	for _, mustNot := range []string{`>B1</span>`, `>B2</span>`, `>B3</span>`, `>C2</span>`, `>D6</span>`, `>gap-1</span>`, `>gap-15</span>`, `>gap-16</span>`} {
 		if strings.Contains(strings.SplitN(body, "Catalogue entries without a scenario", 2)[1], mustNot) {
 			t.Errorf("covered entry listed as uncovered: %s", mustNot)
 		}

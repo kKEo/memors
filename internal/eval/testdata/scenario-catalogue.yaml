@@ -166,6 +166,7 @@ entries:
   - id: D6
     title: Tool-channel privilege probe
     priority: P1
+    gaps: [1, 16]
     detail: A scripted agent tries every mutation on `user` and `curated` records across all ten tools, including revise; every attempt fails with `needs_human` and leaves no audit row.
 
   - id: E1
@@ -314,3 +315,8 @@ gaps:
     where: "`kb/facts.go` `Remember`"
     decision: open
     detail: The new fact is a fresh fact; nothing links it to the forget reason.
+  - id: gap-16
+    title: A superseded revision is served through a fact's evidence chunk
+    where: "`retrieve/retrieve.go` `factArm`"
+    decision: open
+    detail: Every arm applies the live filter (`superseded_by IS NULL`) except the fact arm, which maps a fact's `evidence_chunk_id` to its document without it. A revised document keeps the old revision's chunks as history, so a fact citing one of them brings the old revision back into document-granularity results, with the source's trust.

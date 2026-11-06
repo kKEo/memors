@@ -4,13 +4,15 @@
 
 Every scenario file in [`internal/eval/testdata/scenarios`](https://github.com/kKEo/memors/blob/master/internal/eval/testdata/scenarios), one page each with its story, its picture, its steps and its source. The pages are regenerated from the files, and a test fails when they fall behind, so this list is always what CI runs. Files on the `ci` tier run on every pull request in `TestScenarios` (`go test ./internal/eval/scenario/ -run TestScenarios`).
 
-**3 scenario files** · **3 of 45** [catalogue](../catalogue.md) entries implemented · **1 of 15** [gaps](../gaps.md) pinned · 2 decided, 1 open · 3 ci tier
+**5 scenario files** · **5 of 45** [catalogue](../catalogue.md) entries implemented · **3 of 16** [gaps](../gaps.md) pinned · 3 decided, 2 open · 5 ci tier
 
 | Scenario | Covers | What it checks | Decision | Tiers | Steps | Actors |
 |---|---|---|---|---|---|---|
 | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md) | [B1 Decline then retry](../catalogue.md#b1) | elicitation decline, elicitation accept, CLI promote, tool forget refused | decided | ci | 8 | a1, h |
 | [b2-zombie-fact](b2-zombie-fact.md) | [B2 Zombie fact](../catalogue.md#b2), [gap 15](../gaps.md#gap-15) | an agent re-records a statement a human had forgotten with a reason | open | ci | 8 | a1, h |
+| [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md) | [B3 Human corrects, agent holds the old id](../catalogue.md#b3) | a CLI supersession of a curated fact, then an agent supersedes the stale id | decided | ci | 10 | a1, h |
 | [c2-two-agents-disagree](c2-two-agents-disagree.md) | [C2 Disagreement without a human](../catalogue.md#c2) | agent-to-agent conflict resolved through compact and submit | decided | ci | 10 | a1, a2, a3, h |
+| [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) | [D6 Tool-channel privilege probe](../catalogue.md#d6), [gap 1](../gaps.md#gap-1), [gap 16](../gaps.md#gap-16) | an agent tries every mutation on user and curated records; all refused but revise | open | ci | 21 | a1, h |
 
 ## Coverage
 
@@ -23,22 +25,22 @@ Which scenarios call each operation as an agent (an MCP tool) and as a human (th
 | Operation | As an agent | As a human |
 |---|---|---|
 | `backfill` | *not a tool* | — |
-| `compact` | [c2-two-agents-disagree](c2-two-agents-disagree.md) | — |
+| `compact` | [c2-two-agents-disagree](c2-two-agents-disagree.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) | [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md) |
 | `demote` | *not a tool* | — |
 | `explore` | — | *not a CLI op* |
-| `facts` | *not a tool* | [b2-zombie-fact](b2-zombie-fact.md) |
-| `forget` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md) | [b2-zombie-fact](b2-zombie-fact.md) |
-| `history` | *not a tool* | [c2-two-agents-disagree](c2-two-agents-disagree.md) |
-| `ingest` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) | — |
+| `facts` | *not a tool* | [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
+| `forget` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) | [b2-zombie-fact](b2-zombie-fact.md) |
+| `history` | *not a tool* | [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) |
+| `ingest` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [c2-two-agents-disagree](c2-two-agents-disagree.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) | [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
 | `lint` | *not a tool* | [c2-two-agents-disagree](c2-two-agents-disagree.md) |
 | `merge` | *not a tool* | — |
-| `promote` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md) | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md) |
+| `promote` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md) |
 | `read` | — | [b2-zombie-fact](b2-zombie-fact.md) |
 | `reject` | *not a tool* | — |
-| `remember` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) | — |
-| `search` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) | — |
+| `remember` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [c2-two-agents-disagree](c2-two-agents-disagree.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) | [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
+| `search` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [c2-two-agents-disagree](c2-two-agents-disagree.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) | — |
 | `status` | — | — |
-| `submit` | [c2-two-agents-disagree](c2-two-agents-disagree.md) | — |
+| `submit` | [c2-two-agents-disagree](c2-two-agents-disagree.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) | — |
 | `verify` | *not a tool* | — |
 
 ### Expectation kinds
@@ -47,17 +49,17 @@ See [Writing scenarios](../dsl.md) for what each one checks.
 
 | Kind | Used by |
 |---|---|
-| `error` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md) |
-| `top` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) |
-| `contains` | [b2-zombie-fact](b2-zombie-fact.md) |
-| `excludes` | [b2-zombie-fact](b2-zombie-fact.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) |
+| `error` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
+| `top` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [c2-two-agents-disagree](c2-two-agents-disagree.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
+| `contains` | [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
+| `excludes` | [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) |
 | `abstains` | [b2-zombie-fact](b2-zombie-fact.md) |
-| `count` | [b2-zombie-fact](b2-zombie-fact.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) |
-| `out` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) |
-| `out_contains` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md) |
-| `lint` | [b2-zombie-fact](b2-zombie-fact.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) |
-| `audit` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) |
-| `audit_none` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) |
+| `count` | [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [c2-two-agents-disagree](c2-two-agents-disagree.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
+| `out` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [c2-two-agents-disagree](c2-two-agents-disagree.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
+| `out_contains` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
+| `lint` | [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [c2-two-agents-disagree](c2-two-agents-disagree.md) |
+| `audit` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b2-zombie-fact](b2-zombie-fact.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [c2-two-agents-disagree](c2-two-agents-disagree.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
+| `audit_none` | [b1-promote-decline-then-accept](b1-promote-decline-then-accept.md), [b3-human-corrects-agent-holds-old-id](b3-human-corrects-agent-holds-old-id.md), [c2-two-agents-disagree](c2-two-agents-disagree.md), [d6-tool-channel-privilege-probe](d6-tool-channel-privilege-probe.md) |
 | `status` | — |
 
 ### Invariants skipped
@@ -66,5 +68,5 @@ None: every scenario holds all 15 [invariants](../invariants.md) after every ste
 
 ### Not covered yet
 
-- **Catalogue entries (42):** [A1](../catalogue.md#a1) · [A2](../catalogue.md#a2) · [A3](../catalogue.md#a3) · [A4](../catalogue.md#a4) · [A5](../catalogue.md#a5) · [A6](../catalogue.md#a6) · [B3](../catalogue.md#b3) · [B4](../catalogue.md#b4) · [B5](../catalogue.md#b5) · [B6](../catalogue.md#b6) · [B7](../catalogue.md#b7) · [B8](../catalogue.md#b8) · [C1](../catalogue.md#c1) · [C3](../catalogue.md#c3) · [C4](../catalogue.md#c4) · [C5](../catalogue.md#c5) · [C6](../catalogue.md#c6) · [C7](../catalogue.md#c7) · [C8](../catalogue.md#c8) · [C9](../catalogue.md#c9) · [C10](../catalogue.md#c10) · [D1](../catalogue.md#d1) · [D2](../catalogue.md#d2) · [D3](../catalogue.md#d3) · [D4](../catalogue.md#d4) · [D5](../catalogue.md#d5) · [D6](../catalogue.md#d6) · [E1](../catalogue.md#e1) · [E2](../catalogue.md#e2) · [E3](../catalogue.md#e3) · [E4](../catalogue.md#e4) · [E5](../catalogue.md#e5) · [E6](../catalogue.md#e6) · [E7](../catalogue.md#e7) · [E8](../catalogue.md#e8) · [E9](../catalogue.md#e9) · [F1](../catalogue.md#f1) · [F2](../catalogue.md#f2) · [F3](../catalogue.md#f3) · [F4](../catalogue.md#f4) · [F5](../catalogue.md#f5) · [F6](../catalogue.md#f6)
-- **Gaps (14):** [1](../gaps.md#gap-1) · [2](../gaps.md#gap-2) · [3](../gaps.md#gap-3) · [4](../gaps.md#gap-4) · [5](../gaps.md#gap-5) · [6](../gaps.md#gap-6) · [7](../gaps.md#gap-7) · [8](../gaps.md#gap-8) · [9](../gaps.md#gap-9) · [10](../gaps.md#gap-10) · [11](../gaps.md#gap-11) · [12](../gaps.md#gap-12) · [13](../gaps.md#gap-13) · [14](../gaps.md#gap-14)
+- **Catalogue entries (40):** [A1](../catalogue.md#a1) · [A2](../catalogue.md#a2) · [A3](../catalogue.md#a3) · [A4](../catalogue.md#a4) · [A5](../catalogue.md#a5) · [A6](../catalogue.md#a6) · [B4](../catalogue.md#b4) · [B5](../catalogue.md#b5) · [B6](../catalogue.md#b6) · [B7](../catalogue.md#b7) · [B8](../catalogue.md#b8) · [C1](../catalogue.md#c1) · [C3](../catalogue.md#c3) · [C4](../catalogue.md#c4) · [C5](../catalogue.md#c5) · [C6](../catalogue.md#c6) · [C7](../catalogue.md#c7) · [C8](../catalogue.md#c8) · [C9](../catalogue.md#c9) · [C10](../catalogue.md#c10) · [D1](../catalogue.md#d1) · [D2](../catalogue.md#d2) · [D3](../catalogue.md#d3) · [D4](../catalogue.md#d4) · [D5](../catalogue.md#d5) · [E1](../catalogue.md#e1) · [E2](../catalogue.md#e2) · [E3](../catalogue.md#e3) · [E4](../catalogue.md#e4) · [E5](../catalogue.md#e5) · [E6](../catalogue.md#e6) · [E7](../catalogue.md#e7) · [E8](../catalogue.md#e8) · [E9](../catalogue.md#e9) · [F1](../catalogue.md#f1) · [F2](../catalogue.md#f2) · [F3](../catalogue.md#f3) · [F4](../catalogue.md#f4) · [F5](../catalogue.md#f5) · [F6](../catalogue.md#f6)
+- **Gaps (13):** [2](../gaps.md#gap-2) · [3](../gaps.md#gap-3) · [4](../gaps.md#gap-4) · [5](../gaps.md#gap-5) · [6](../gaps.md#gap-6) · [7](../gaps.md#gap-7) · [8](../gaps.md#gap-8) · [9](../gaps.md#gap-9) · [10](../gaps.md#gap-10) · [11](../gaps.md#gap-11) · [12](../gaps.md#gap-12) · [13](../gaps.md#gap-13) · [14](../gaps.md#gap-14)
