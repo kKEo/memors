@@ -4,7 +4,8 @@ The harness is young: the [catalogue](catalogue.md) shows how many stories are s
 write. In rough order, the planned work is:
 
 1. **Owner decisions on the [gaps](gaps.md):** keep, change, or document only.
-2. **Story files** for catalogue sections A to D and F2, F5, F6 on the `ci` tier. C5, F3 and F4
+2. **Story files** in the catalogue's [order of work](catalogue.md#order-of-work): the `P1`
+   entries (integrity and trust) first, then `P2` (core semantics), then `P3`. C5, F3 and F4
    are tagged `nightly`.
 3. **A seeded random-walk generator** that emits scenario files: random operation sequences
    checked against the same invariant pack, with failing walks saved as files. Plus a

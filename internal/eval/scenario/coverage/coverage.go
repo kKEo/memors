@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -34,7 +35,23 @@ type Entry struct {
 	Detail string `yaml:"detail,omitempty"`
 	// Tier is where the scenario will run: ci (default), nightly or binary.
 	Tier string `yaml:"tier,omitempty"`
-	Gaps []int  `yaml:"gaps,omitempty"`
+	// Priority says how important the story is to have: P1 (integrity and
+	// trust: a failure silently poisons, leaks or loses data), P2 (core
+	// semantics: wrong but visible and recoverable answers) or P3 (quality,
+	// scale and open decisions). Empty means P3.
+	Priority string `yaml:"priority,omitempty"`
+	Gaps     []int  `yaml:"gaps,omitempty"`
+}
+
+// Priorities are the allowed values of Entry.Priority, most important first.
+var Priorities = []string{"P1", "P2", "P3"}
+
+// PriorityOf returns an entry's priority, P3 when none is set.
+func PriorityOf(e Entry) string {
+	if e.Priority == "" {
+		return "P3"
+	}
+	return e.Priority
 }
 
 // Gap is a behaviour found by reading the code that no test pinned down
@@ -74,6 +91,11 @@ func LoadCatalogue(path string) (*Catalogue, error) {
 			return nil, fmt.Errorf("%s: id %s is defined twice", path, id)
 		}
 		seen[k] = true
+	}
+	for _, e := range c.Entries {
+		if e.Priority != "" && !slices.Contains(Priorities, e.Priority) {
+			return nil, fmt.Errorf("%s: entry %s: priority %q is not one of %s", path, e.ID, e.Priority, strings.Join(Priorities, ", "))
+		}
 	}
 	return &c, nil
 }

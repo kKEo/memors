@@ -233,16 +233,13 @@ func (g *gen) catalogue() []byte {
 	b.WriteString("# Catalogue\n\n")
 	g.banner(&b, code(g.cfg.CataloguePath))
 	done := len(g.cat.Entries) - len(g.ix.Uncovered)
-	b.WriteString("The scenarios the harness should hold, grouped by what they stress. Each entry is a story: actors, steps over time, and what must be observable. A file implements an entry when its name starts with the entry's id (`b2-zombie-fact.yaml`) or its `covers:` names it. The tier says where the scenario will run: `ci` on every pull request with the hash embedder, `nightly` with a real model, `binary` against the built `memors-mcp` process.\n\n")
+	b.WriteString("The scenarios the harness should hold, grouped by what they stress. Each entry is a story: actors, steps over time, and what must be observable. A file implements an entry when its name starts with the entry's id (`b2-zombie-fact.yaml`) or its `covers:` names it. The tier says where the scenario will run: `ci` on every pull request with the hash embedder, `nightly` with a real model, `binary` against the built `memors-mcp` process. The priority says how much the story matters: `P1` guards integrity and trust (a failure silently poisons, leaks or loses data), `P2` guards core semantics (wrong but visible, recoverable answers), `P3` covers quality, scale and open decisions. [Order of work](#order-of-work) lists the entries by priority.\n\n")
 	fmt.Fprintf(&b, "**%d entries** · **%d implemented** · **%d planned**\n\n", len(g.cat.Entries), done, len(g.cat.Entries)-done)
-	b.WriteString("| Id | Scenario | Tier | Gaps | Status |\n|---|---|---|---|---|\n")
+	b.WriteString("| Id | Scenario | Tier | Priority | Gaps | Status |\n|---|---|---|---|---|---|\n")
 	for _, e := range g.cat.Entries {
-		status := "planned"
-		if by := g.files(e.ID, "scenarios"); len(by) > 0 {
-			status = "implemented: " + strings.Join(by, ", ")
-		}
-		fmt.Fprintf(&b, "| [%s](#%s) | %s | %s | %s | %s |\n", e.ID, anchor(e.ID), cell(e.Title), tierOf(e), g.gapLinks(e.Gaps), status)
+		fmt.Fprintf(&b, "| [%s](#%s) | %s | %s | %s | %s | %s |\n", e.ID, anchor(e.ID), cell(e.Title), tierOf(e), coverage.PriorityOf(e), g.gapLinks(e.Gaps), g.status(e))
 	}
+	g.orderOfWork(&b)
 	var last string
 	for _, e := range g.cat.Entries {
 		c := g.cat.Category(e)
@@ -255,6 +252,7 @@ func (g *gen) catalogue() []byte {
 		}
 		fmt.Fprintf(&b, "\n<a id=\"%s\"></a>\n\n### %s %s\n\n%s\n\n", anchor(e.ID), e.ID, e.Title, e.Detail)
 		fmt.Fprintf(&b, "- **Tier:** %s\n", tierOf(e))
+		fmt.Fprintf(&b, "- **Priority:** %s\n", coverage.PriorityOf(e))
 		if len(e.Gaps) > 0 {
 			fmt.Fprintf(&b, "- **Gaps:** %s\n", g.gapLinks(e.Gaps))
 		}
@@ -265,6 +263,44 @@ func (g *gen) catalogue() []byte {
 		}
 	}
 	return b.Bytes()
+}
+
+// status is the catalogue table's status cell for an entry.
+func (g *gen) status(e coverage.Entry) string {
+	if by := g.files(e.ID, "scenarios"); len(by) > 0 {
+		return "implemented: " + strings.Join(by, ", ")
+	}
+	return "planned"
+}
+
+// priorityIntro says what each priority level means, for the order of work.
+var priorityIntro = map[string]string{
+	"P1": "Integrity and trust. A failure silently poisons, leaks or loses data; write these first.",
+	"P2": "Core semantics. Wrong answers that are visible and recoverable.",
+	"P3": "Quality, scale and open decisions. Useful, but no data at risk; the nightly tier lives here.",
+}
+
+// orderOfWork writes the entries grouped by priority, in catalogue order
+// inside each group, so a contributor knows which story to write next.
+func (g *gen) orderOfWork(b *bytes.Buffer) {
+	b.WriteString("\n<a id=\"order-of-work\"></a>\n\n## Order of work\n\nThe same entries by priority. Inside a priority the order is the catalogue's; implemented entries keep their place so the view stays comparable.\n")
+	for _, p := range coverage.Priorities {
+		var rows []coverage.Entry
+		for _, e := range g.cat.Entries {
+			if coverage.PriorityOf(e) == p {
+				rows = append(rows, e)
+			}
+		}
+		fmt.Fprintf(b, "\n### %s (%d)\n\n%s\n\n", p, len(rows), priorityIntro[p])
+		if len(rows) == 0 {
+			b.WriteString("No entries.\n")
+			continue
+		}
+		b.WriteString("| # | Id | Scenario | Tier | Gaps | Status |\n|---|---|---|---|---|---|\n")
+		for i, e := range rows {
+			fmt.Fprintf(b, "| %d | [%s](#%s) | %s | %s | %s | %s |\n", i+1, e.ID, anchor(e.ID), cell(e.Title), tierOf(e), g.gapLinks(e.Gaps), g.status(e))
+		}
+	}
 }
 
 func (g *gen) gapLinks(gaps []int) string {

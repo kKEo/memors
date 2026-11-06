@@ -63,6 +63,7 @@ func TestLoadCatalogueRejectsTyposAndDuplicates(t *testing.T) {
 	for name, body := range map[string]string{
 		"typo.yaml": "entries:\n  - {id: A1, titel: x}\n",
 		"dup.yaml":  "entries:\n  - {id: A1, title: x}\ngaps:\n  - {id: a1, title: y}\n",
+		"prio.yaml": "entries:\n  - {id: A1, title: x, priority: P9}\n",
 	} {
 		p := filepath.Join(d, name)
 		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {

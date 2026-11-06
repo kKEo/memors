@@ -6,6 +6,10 @@
 # directory so LoadDir never mistakes it for a scenario.
 #
 # Text fields are markdown. tier: ci (default) | nightly | binary.
+# priority on an entry: P1 (integrity and trust: a failure silently poisons,
+# leaks or loses data) | P2 (core semantics: wrong but visible, recoverable
+# answers) | P3 (quality, scale, open decisions; the default). Within a
+# priority the order of work is the order of the entries in this file.
 # decision on a gap: open (not decided yet) | keep | change | document.
 categories:
   - id: A
@@ -30,163 +34,208 @@ categories:
 entries:
   - id: A1
     title: Expiry during the run
+    priority: P2
     gaps: [8]
     detail: Fact with `valid_to` day 10; query at day 5 and 15; `lint` at 15 reports `expired-fact`; search behaviour per gap 8.
   - id: A2
     title: Out-of-order arrival
+    priority: P2
     detail: Day 20 an agent records F2; day 25 a human records F1 with `valid_from` day 1. `as_of` day 22 returns F2 (recorded time); `facts --as-of`, `history` and the conflict detector agree with each other.
   - id: A3
     title: Backdated supersession chain
+    priority: P2
     detail: F1 (valid Jan) → F2 (valid Mar) supersedes → F3 (valid Feb, late evidence) supersedes F2; `history` shows both clocks without contradiction.
   - id: A4
     title: Re-confirmed note never refreshes
+    priority: P3
     detail: The same note re-ingested unchanged at day 0/100/200 is a dedup no-op each time, so recency keeps ageing it. Decide whether re-ingest bumps freshness.
   - id: A5
     title: Revision churn
+    priority: P2
     detail: One document revised 30 times with a page on it; `built_from_rev` monotonic, one open stale item at a time, `as_of` per day returns that day's revision, the final page cites live chunks.
   - id: A6
     title: Recency across the horizon
+    priority: P3
     detail: Identical notes at ages 0/30/365/730 plus one `curated` document; documents do not age, notes newest first; a one-second clock move must not flip ties.
 
   - id: B1
     title: Decline then retry
+    priority: P2
     detail: "Declined: nothing changes, the CLI command comes back, no audit row. Accepted: audited on the elicitation channel."
   - id: B2
     title: Zombie fact
+    priority: P2
     gaps: [15]
     detail: A human forgets an agent fact with a reason; the agent records the same statement again and nothing links the two.
   - id: B3
     title: Human corrects, agent holds the old id
+    priority: P1
     detail: The human supersedes a curated fact from the CLI; the agent later calls `remember` with `supersedes` on the old id and gets "already superseded"; its fact must land as a conflict item against the human's, not vanish.
   - id: B4
     title: Demote
+    priority: P2
     detail: "A curated document demoted to `agent`; `scope.min_trust: user` excludes it; facts citing it keep their own trust; pages built from it are unchanged."
   - id: B5
     title: Partial review
+    priority: P2
     gaps: [11]
     detail: Of 6 items the human resolves 2, skips 2, ignores 2; the next `compact` must not re-propose skipped items without two new passages.
   - id: B6
     title: Promote, then an agent revises
+    priority: P1
     gaps: [1]
     detail: A human promotes a source to `curated`; an agent then re-ingests a changed copy through the tool channel.
   - id: B7
     title: Merge stickiness
+    priority: P3
     detail: The human rejects merge A~B; agents keep writing both spellings; the resolver must not re-open the pair (verified sticky; keep as a regression); after an accept, new ingests of B resolve to A and `explore` shows the alias.
   - id: B8
     title: Elicitation on HTTP with several clients
+    priority: P1
     gaps: [7]
     detail: Several clients on one `serve --http` server; one answers a promote dialog meant for another.
 
   - id: C1
     title: Same claim, different words
+    priority: P3
     gaps: [10]
     detail: Three agents remember paraphrases with the same `about`; today one conflict item per pair; all three vote for one evidence passage.
   - id: C2
     title: Disagreement without a human
+    priority: P2
     detail: Two agents' facts conflict; lint reports it; a third agent resolves it through `compact` and `submit`; the loser is history, raw rows unchanged.
   - id: C3
     title: Spoofed actor
+    priority: P1
     gaps: [6]
     detail: Two sessions named `claude-code` on `serve --http`.
   - id: C4
     title: Stale re-ingest
+    priority: P1
     gaps: [5]
     detail: An agent re-ingests an older cached copy of a document that has moved on.
   - id: C5
     title: Drowning by chatter
+    priority: P3
     tier: nightly
     detail: 500 agent notes of generic standup text from 5 agents plus 5 curated documents; curated answers keep recall@5; abstention queries still abstain (real model).
   - id: C6
     title: Namespace spill
+    priority: P3
     detail: One agent writes to `personal`; another searches unscoped; measure the contamination rate so a future change is comparable.
   - id: C7
     title: Submit after concurrent ingest
+    priority: P2
     gaps: [4]
     detail: A page is submitted after passages it should cite were added or revised since `compact`.
   - id: C8
     title: Two agents, one work item
+    priority: P2
     detail: Both compact, both submit; the second gets "already done"; the first page is not overwritten; one `submit` audit row.
   - id: C9
     title: Concurrent same-URI ingest over HTTP
+    priority: P1
     detail: Exactly one live revision per source, contiguous revision numbers, both audit rows.
   - id: C10
     title: Spelling variants over time
+    priority: P3
     detail: Four spellings of one name from four agents; merge precision stays at or above 0.95 as the stream grows; after human merges, `explore` from any spelling reaches one neighbourhood.
 
   - id: D1
     title: Poison amplification loop
+    priority: P1
     detail: A web page with a fact-shaped sentence about a trusted entity; an agent remembers it citing that chunk; chunk and fact now vote together. The curated answer's rank must not drop a band.
   - id: D2
     title: Revoked but still reachable
+    priority: P1
     gaps: [2, 3]
     detail: Forget the poisoned document; the claim must be unreachable via search at every granularity, `explore`, the page and the citing fact.
   - id: D3
     title: Graph hijack via declared entities
+    priority: P2
     detail: Junk ingested with a declared entity name; multi-hop queries about that entity must not surface it above the real pages.
   - id: D4
     title: Homoglyph identifiers
+    priority: P2
     detail: An identifier with a Cyrillic letter; the exact arm and the merge resolver must not silently merge it with the ASCII one.
   - id: D5
     title: Instruction text in reasons and titles
+    priority: P2
     gaps: [9]
     detail: A tool-channel forget plants instruction-shaped text in a tombstone reason or a title.
   - id: D6
     title: Tool-channel privilege probe
+    priority: P1
     detail: A scripted agent tries every mutation on `user` and `curated` records across all ten tools, including revise; every attempt fails with `needs_human` and leaves no audit row.
 
   - id: E1
     title: Crash between commit and vectors
+    priority: P1
     tier: binary
     gaps: [13]
     detail: The process is killed between the ingest commit and vector storage.
   - id: E2
     title: Partial reindex
+    priority: P2
     detail: Switch model, interrupt `reindex` at 50%; queries say which model's vectors ran; `degraded` semantics defined.
   - id: E3
     title: Migrate a populated file
+    priority: P2
     tier: binary
     detail: An older knowledge-base file with real content is migrated by the built binary.
   - id: E4
     title: Backup mid-write
+    priority: P2
     tier: binary
     detail: A backup is taken while agents are writing.
   - id: E5
     title: Export/import at mid-life
+    priority: P1
     gaps: [14]
     detail: Export and re-import a knowledge base that holds documents, facts and pages.
   - id: E6
     title: Index resource under growth
+    priority: P3
     detail: With 10k documents `memo://index` truncates deterministically and prefers live, high-trust, recent entries.
   - id: E7
     title: Graph cache under continuous ingest
+    priority: P3
     detail: Structural-arm p95 while another agent ingests every second.
   - id: E8
     title: Graph cache same-count revision
+    priority: P3
     gaps: [12]
     detail: A revision that keeps the live mention count unchanged.
   - id: E9
     title: Log prune during use
+    priority: P3
     detail: "`log prune` runs while searches and tool calls are being logged."
 
   - id: F1
     title: Time-indexed labels
+    priority: P3
     detail: Ground truth generated from a planted fact timeline; facts with validity windows first, documents and notes generated from them, queries at several days with the relevant set derived from the timeline.
   - id: F2
     title: Trust vs freshness boundary
+    priority: P2
     detail: An agent fact (new) against a curated fact (old) inside and just outside the 10% tiebreak; small content perturbations must not flip the order.
   - id: F3
     title: Abstention under contamination
+    priority: P3
     tier: nightly
     detail: Abstention queries keep abstaining as unrelated content accumulates (real model).
   - id: F4
     title: Non-English notes
+    priority: P3
     tier: nightly
     detail: Notes and queries in languages other than English (real model).
   - id: F5
     title: Determinism
+    priority: P2
     detail: The same scenario twice gives identical ranked lists.
   - id: F6
     title: Metamorphic relations
+    priority: P2
     detail: Adding irrelevant documents must not reorder the existing top-k; scoped results are a subset of unscoped; duplicating a document must not double its score; `exclude_ids` paging is consistent with the unpaged list.
 
 gaps:
