@@ -4,26 +4,27 @@
 
 Reading the code with scenarios in mind surfaced behaviours that no test pinned down. Some are bugs, some are decisions never taken. Each becomes a scenario tagged `decision: open` that asserts today's behaviour; the owner then decides per gap to keep it, change it, or document it only. A fix is a separate change whose scenario is shown failing first and then flips to `decided` (see [Open and decided](decisions.md)).
 
-**16 gaps** · **5 pinned** by a scenario · **0 decided**
+**17 gaps** · **10 pinned** by a scenario · **0 decided**
 
 | # | Gap | Where | Decision | Pinned by |
 |---|---|---|---|---|
-| [1](#gap-1) | A tool-channel revision of a curated source stays curated | `kb/store.go` `Ingest` | open | [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
+| [1](#gap-1) | A tool-channel revision of a curated source stays curated | `kb/store.go` `Ingest` | open | [b6-promote-then-agent-revises](log/b6-promote-then-agent-revises.md), [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
 | [2](#gap-2) | A fact whose evidence document is forgotten stays live with no evidence | `kb/schema_v1.go`, `kb/facts.go` `Forget` | open | [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md) |
 | [3](#gap-3) | Pages built from forgotten or revised sources are still served | `kb/facts.go`, `retrieve/pages.go` | open | [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md) |
 | [4](#gap-4) | submit writes page_sources from the payload captured at compact time | `compact/submit.go` | open | not yet |
-| [5](#gap-5) | Re-ingesting an older cached copy creates a new revision with old content | `kb/store.go` `Ingest` | open | not yet |
-| [6](#gap-6) | The actor name is the self-declared ClientInfo.Name | `server/server.go` `clientName` | open | not yet |
-| [7](#gap-7) | The elicitation request state is unsigned | `server/server.go` `promoteState` | open | not yet |
+| [5](#gap-5) | Re-ingesting an older cached copy creates a new revision with old content | `kb/store.go` `Ingest` | open | [c4-stale-reingest](log/c4-stale-reingest.md) |
+| [6](#gap-6) | The actor name is the self-declared ClientInfo.Name | `server/server.go` `clientName` | open | [c3-spoofed-actor](log/c3-spoofed-actor.md) |
+| [7](#gap-7) | The elicitation request state is unsigned | `server/server.go` `promoteState` | open | [b8-elicitation-several-clients](log/b8-elicitation-several-clients.md) |
 | [8](#gap-8) | A fact past valid_to is served by default | `retrieve/retrieve.go`, `compact/lint.go` | open | not yet |
 | [9](#gap-9) | A tombstone's reason is served verbatim | `kb/read.go` | open | not yet |
 | [10](#gap-10) | Paraphrased agreements become conflict items | `compact/compact.go` `Conflicts` | open | not yet |
 | [11](#gap-11) | A skipped work item is re-created on the next compact | `kb/pages.go` | open | not yet |
 | [12](#gap-12) | The graph cache rebuilds on mention count only | `retrieve/arm_graph.go` `graphFor` | open | not yet |
-| [13](#gap-13) | A crash between the ingest commit and vector storage leaves no job | `kb/store.go` `Ingest`, `embedChunks` | open | not yet |
+| [13](#gap-13) | A crash between the ingest commit and vector storage leaves no job | `kb/store.go` `Ingest`, `embedChunks` | open | [e1-crash-between-commit-and-vectors](log/e1-crash-between-commit-and-vectors.md) |
 | [14](#gap-14) | `export --md` omits facts | `kb/export.go` | open | not yet |
 | [15](#gap-15) | A forgotten fact re-recorded with the same statement is unlinked | `kb/facts.go` `Remember` | open | [b2-zombie-fact](log/b2-zombie-fact.md) |
-| [16](#gap-16) | A superseded revision is served through a fact's evidence chunk | `retrieve/retrieve.go` `factArm` | open | [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
+| [16](#gap-16) | A superseded revision is served through a fact's evidence chunk | `retrieve/retrieve.go` `factArm` | open | [b6-promote-then-agent-revises](log/b6-promote-then-agent-revises.md), [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
+| [17](#gap-17) | A fact's vote lifts its evidence document over a more trusted answer | `retrieve/retrieve.go` `factArm`, fusion weights | open | [d1-poison-amplification-loop](log/d1-poison-amplification-loop.md) |
 
 <a id="gap-1"></a>
 
@@ -34,7 +35,7 @@ Reading the code with scenarios in mind surfaced behaviours that no test pinned 
 - **Where:** `kb/store.go` `Ingest`
 - **Decision:** open
 - **Catalogue:** [B6 Promote, then an agent revises](catalogue.md#b6), [D6 Tool-channel privilege probe](catalogue.md#d6)
-- **Pinned by:** [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md)
+- **Pinned by:** [b6-promote-then-agent-revises](log/b6-promote-then-agent-revises.md), [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md)
 
 <a id="gap-2"></a>
 
@@ -78,7 +79,7 @@ Dedup compares only the current revision's hash, so an old copy becomes revision
 - **Where:** `kb/store.go` `Ingest`
 - **Decision:** open
 - **Catalogue:** [C4 Stale re-ingest](catalogue.md#c4)
-- **Pinned by:** no scenario yet
+- **Pinned by:** [c4-stale-reingest](log/c4-stale-reingest.md)
 
 <a id="gap-6"></a>
 
@@ -89,7 +90,7 @@ The actor in audit, the call log and the live page is the client's own name; two
 - **Where:** `server/server.go` `clientName`
 - **Decision:** open
 - **Catalogue:** [C3 Spoofed actor](catalogue.md#c3)
-- **Pinned by:** no scenario yet
+- **Pinned by:** [c3-spoofed-actor](log/c3-spoofed-actor.md)
 
 <a id="gap-7"></a>
 
@@ -100,7 +101,7 @@ The state is plain text; a client that advertises the capability can answer its 
 - **Where:** `server/server.go` `promoteState`
 - **Decision:** open
 - **Catalogue:** [B8 Elicitation on HTTP with several clients](catalogue.md#b8)
-- **Pinned by:** no scenario yet
+- **Pinned by:** [b8-elicitation-several-clients](log/b8-elicitation-several-clients.md)
 
 <a id="gap-8"></a>
 
@@ -166,7 +167,7 @@ Jobs are enqueued only when the embedder is absent or fails; chunks are left wit
 - **Where:** `kb/store.go` `Ingest`, `embedChunks`
 - **Decision:** open
 - **Catalogue:** [E1 Crash between commit and vectors](catalogue.md#e1)
-- **Pinned by:** no scenario yet
+- **Pinned by:** [e1-crash-between-commit-and-vectors](log/e1-crash-between-commit-and-vectors.md)
 
 <a id="gap-14"></a>
 
@@ -199,4 +200,15 @@ Every arm applies the live filter (`superseded_by IS NULL`) except the fact arm,
 - **Where:** `retrieve/retrieve.go` `factArm`
 - **Decision:** open
 - **Catalogue:** [D6 Tool-channel privilege probe](catalogue.md#d6)
-- **Pinned by:** [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md)
+- **Pinned by:** [b6-promote-then-agent-revises](log/b6-promote-then-agent-revises.md), [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md)
+
+<a id="gap-17"></a>
+
+## Gap 17: A fact's vote lifts its evidence document over a more trusted answer
+
+At document and chunk granularity the fact arm votes for a fact's evidence document on top of the keyword and semantic votes that document already has. Remembering one agent fact that cites a passage is enough to move a weak agent document above a moderate curated one; trust only breaks near-ties. Any agent can lift any passage this way.
+
+- **Where:** `retrieve/retrieve.go` `factArm`, fusion weights
+- **Decision:** open
+- **Catalogue:** [D1 Poison amplification loop](catalogue.md#d1)
+- **Pinned by:** [d1-poison-amplification-loop](log/d1-poison-amplification-loop.md)

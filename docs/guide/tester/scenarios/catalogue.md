@@ -4,7 +4,7 @@
 
 The scenarios the harness should hold, grouped by what they stress. Each entry is a story: actors, steps over time, and what must be observable. A file implements an entry when its name starts with the entry's id (`b2-zombie-fact.yaml`) or its `covers:` names it. The tier says where the scenario will run: `ci` on every pull request with the hash embedder, `nightly` with a real model, `binary` against the built `memors-mcp` process. The priority says how much the story matters: `P1` guards integrity and trust (a failure silently poisons, leaks or loses data), `P2` guards core semantics (wrong but visible, recoverable answers), `P3` covers quality, scale and open decisions. [Order of work](#order-of-work) lists the entries by priority.
 
-**45 entries** · **6 implemented** · **39 planned**
+**45 entries** · **13 implemented** · **32 planned**
 
 | Id | Scenario | Tier | Priority | Gaps | Status |
 |---|---|---|---|---|---|
@@ -19,26 +19,26 @@ The scenarios the harness should hold, grouped by what they stress. Each entry i
 | [B3](#b3) | Human corrects, agent holds the old id | ci | P1 |  | implemented: [b3-human-corrects-agent-holds-old-id](log/b3-human-corrects-agent-holds-old-id.md) |
 | [B4](#b4) | Demote | ci | P2 |  | planned |
 | [B5](#b5) | Partial review | ci | P2 | [11](gaps.md#gap-11) | planned |
-| [B6](#b6) | Promote, then an agent revises | ci | P1 | [1](gaps.md#gap-1) | planned |
+| [B6](#b6) | Promote, then an agent revises | ci | P1 | [1](gaps.md#gap-1) | implemented: [b6-promote-then-agent-revises](log/b6-promote-then-agent-revises.md) |
 | [B7](#b7) | Merge stickiness | ci | P3 |  | planned |
-| [B8](#b8) | Elicitation on HTTP with several clients | ci | P1 | [7](gaps.md#gap-7) | planned |
+| [B8](#b8) | Elicitation on HTTP with several clients | ci | P1 | [7](gaps.md#gap-7) | implemented: [b8-elicitation-several-clients](log/b8-elicitation-several-clients.md) |
 | [C1](#c1) | Same claim, different words | ci | P3 | [10](gaps.md#gap-10) | planned |
 | [C2](#c2) | Disagreement without a human | ci | P2 |  | implemented: [c2-two-agents-disagree](log/c2-two-agents-disagree.md) |
-| [C3](#c3) | Spoofed actor | ci | P1 | [6](gaps.md#gap-6) | planned |
-| [C4](#c4) | Stale re-ingest | ci | P1 | [5](gaps.md#gap-5) | planned |
+| [C3](#c3) | Spoofed actor | ci | P1 | [6](gaps.md#gap-6) | implemented: [c3-spoofed-actor](log/c3-spoofed-actor.md) |
+| [C4](#c4) | Stale re-ingest | ci | P1 | [5](gaps.md#gap-5) | implemented: [c4-stale-reingest](log/c4-stale-reingest.md) |
 | [C5](#c5) | Drowning by chatter | nightly | P3 |  | planned |
 | [C6](#c6) | Namespace spill | ci | P3 |  | planned |
 | [C7](#c7) | Submit after concurrent ingest | ci | P2 | [4](gaps.md#gap-4) | planned |
 | [C8](#c8) | Two agents, one work item | ci | P2 |  | planned |
-| [C9](#c9) | Concurrent same-URI ingest over HTTP | ci | P1 |  | planned |
+| [C9](#c9) | Concurrent same-URI ingest over HTTP | ci | P1 |  | implemented: [c9-concurrent-same-uri-ingest](log/c9-concurrent-same-uri-ingest.md) |
 | [C10](#c10) | Spelling variants over time | ci | P3 |  | planned |
-| [D1](#d1) | Poison amplification loop | ci | P1 |  | planned |
+| [D1](#d1) | Poison amplification loop | ci | P1 | [17](gaps.md#gap-17) | implemented: [d1-poison-amplification-loop](log/d1-poison-amplification-loop.md) |
 | [D2](#d2) | Revoked but still reachable | ci | P1 | [2](gaps.md#gap-2), [3](gaps.md#gap-3) | implemented: [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md) |
 | [D3](#d3) | Graph hijack via declared entities | ci | P2 |  | planned |
 | [D4](#d4) | Homoglyph identifiers | ci | P2 |  | planned |
 | [D5](#d5) | Instruction text in reasons and titles | ci | P2 | [9](gaps.md#gap-9) | planned |
 | [D6](#d6) | Tool-channel privilege probe | ci | P1 | [1](gaps.md#gap-1), [16](gaps.md#gap-16) | implemented: [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
-| [E1](#e1) | Crash between commit and vectors | binary | P1 | [13](gaps.md#gap-13) | planned |
+| [E1](#e1) | Crash between commit and vectors | binary | P1 | [13](gaps.md#gap-13) | implemented: [e1-crash-between-commit-and-vectors](log/e1-crash-between-commit-and-vectors.md) |
 | [E2](#e2) | Partial reindex | ci | P2 |  | planned |
 | [E3](#e3) | Migrate a populated file | binary | P2 |  | planned |
 | [E4](#e4) | Backup mid-write | binary | P2 |  | planned |
@@ -67,15 +67,15 @@ Integrity and trust. A failure silently poisons, leaks or loses data; write thes
 | # | Id | Scenario | Tier | Gaps | Status |
 |---|---|---|---|---|---|
 | 1 | [B3](#b3) | Human corrects, agent holds the old id | ci |  | implemented: [b3-human-corrects-agent-holds-old-id](log/b3-human-corrects-agent-holds-old-id.md) |
-| 2 | [B6](#b6) | Promote, then an agent revises | ci | [1](gaps.md#gap-1) | planned |
-| 3 | [B8](#b8) | Elicitation on HTTP with several clients | ci | [7](gaps.md#gap-7) | planned |
-| 4 | [C3](#c3) | Spoofed actor | ci | [6](gaps.md#gap-6) | planned |
-| 5 | [C4](#c4) | Stale re-ingest | ci | [5](gaps.md#gap-5) | planned |
-| 6 | [C9](#c9) | Concurrent same-URI ingest over HTTP | ci |  | planned |
-| 7 | [D1](#d1) | Poison amplification loop | ci |  | planned |
+| 2 | [B6](#b6) | Promote, then an agent revises | ci | [1](gaps.md#gap-1) | implemented: [b6-promote-then-agent-revises](log/b6-promote-then-agent-revises.md) |
+| 3 | [B8](#b8) | Elicitation on HTTP with several clients | ci | [7](gaps.md#gap-7) | implemented: [b8-elicitation-several-clients](log/b8-elicitation-several-clients.md) |
+| 4 | [C3](#c3) | Spoofed actor | ci | [6](gaps.md#gap-6) | implemented: [c3-spoofed-actor](log/c3-spoofed-actor.md) |
+| 5 | [C4](#c4) | Stale re-ingest | ci | [5](gaps.md#gap-5) | implemented: [c4-stale-reingest](log/c4-stale-reingest.md) |
+| 6 | [C9](#c9) | Concurrent same-URI ingest over HTTP | ci |  | implemented: [c9-concurrent-same-uri-ingest](log/c9-concurrent-same-uri-ingest.md) |
+| 7 | [D1](#d1) | Poison amplification loop | ci | [17](gaps.md#gap-17) | implemented: [d1-poison-amplification-loop](log/d1-poison-amplification-loop.md) |
 | 8 | [D2](#d2) | Revoked but still reachable | ci | [2](gaps.md#gap-2), [3](gaps.md#gap-3) | implemented: [d2-revoked-but-still-reachable](log/d2-revoked-but-still-reachable.md) |
 | 9 | [D6](#d6) | Tool-channel privilege probe | ci | [1](gaps.md#gap-1), [16](gaps.md#gap-16) | implemented: [d6-tool-channel-privilege-probe](log/d6-tool-channel-privilege-probe.md) |
-| 10 | [E1](#e1) | Crash between commit and vectors | binary | [13](gaps.md#gap-13) | planned |
+| 10 | [E1](#e1) | Crash between commit and vectors | binary | [13](gaps.md#gap-13) | implemented: [e1-crash-between-commit-and-vectors](log/e1-crash-between-commit-and-vectors.md) |
 | 11 | [E5](#e5) | Export/import at mid-life | ci | [14](gaps.md#gap-14) | planned |
 
 ### P2 (20)
@@ -256,7 +256,7 @@ A human promotes a source to `curated`; an agent then re-ingests a changed copy 
 - **Tier:** ci
 - **Priority:** P1
 - **Gaps:** [1](gaps.md#gap-1)
-- **Status:** planned
+- **Status:** implemented by [b6-promote-then-agent-revises](log/b6-promote-then-agent-revises.md)
 
 <a id="b7"></a>
 
@@ -277,7 +277,7 @@ Several clients on one `serve --http` server; one answers a promote dialog meant
 - **Tier:** ci
 - **Priority:** P1
 - **Gaps:** [7](gaps.md#gap-7)
-- **Status:** planned
+- **Status:** implemented by [b8-elicitation-several-clients](log/b8-elicitation-several-clients.md)
 
 ## C. Many agents writing notes
 
@@ -313,7 +313,7 @@ Two sessions named `claude-code` on `serve --http`.
 - **Tier:** ci
 - **Priority:** P1
 - **Gaps:** [6](gaps.md#gap-6)
-- **Status:** planned
+- **Status:** implemented by [c3-spoofed-actor](log/c3-spoofed-actor.md)
 
 <a id="c4"></a>
 
@@ -324,7 +324,7 @@ An agent re-ingests an older cached copy of a document that has moved on.
 - **Tier:** ci
 - **Priority:** P1
 - **Gaps:** [5](gaps.md#gap-5)
-- **Status:** planned
+- **Status:** implemented by [c4-stale-reingest](log/c4-stale-reingest.md)
 
 <a id="c5"></a>
 
@@ -375,7 +375,7 @@ Exactly one live revision per source, contiguous revision numbers, both audit ro
 
 - **Tier:** ci
 - **Priority:** P1
-- **Status:** planned
+- **Status:** implemented by [c9-concurrent-same-uri-ingest](log/c9-concurrent-same-uri-ingest.md)
 
 <a id="c10"></a>
 
@@ -399,7 +399,8 @@ A web page with a fact-shaped sentence about a trusted entity; an agent remember
 
 - **Tier:** ci
 - **Priority:** P1
-- **Status:** planned
+- **Gaps:** [17](gaps.md#gap-17)
+- **Status:** implemented by [d1-poison-amplification-loop](log/d1-poison-amplification-loop.md)
 
 <a id="d2"></a>
 
@@ -467,7 +468,7 @@ The process is killed between the ingest commit and vector storage.
 - **Tier:** binary
 - **Priority:** P1
 - **Gaps:** [13](gaps.md#gap-13)
-- **Status:** planned
+- **Status:** implemented by [e1-crash-between-commit-and-vectors](log/e1-crash-between-commit-and-vectors.md)
 
 <a id="e2"></a>
 

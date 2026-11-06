@@ -90,11 +90,11 @@ func TestIndexListsFilesAndCoverage(t *testing.T) {
 		t.Fatalf("index: %d %q", code, hdr.Get("Content-Security-Policy"))
 	}
 	for _, must := range []string{
-		`href="/s/b1-promote-decline-then-accept.yaml"`, `href="/s/b2-zombie-fact.yaml"`, `href="/s/b3-human-corrects-agent-holds-old-id.yaml"`, `href="/s/c2-two-agents-disagree.yaml"`, `href="/s/d2-revoked-but-still-reachable.yaml"`, `href="/s/d6-tool-channel-privilege-probe.yaml"`,
+		`href="/s/b1-promote-decline-then-accept.yaml"`, `href="/s/b2-zombie-fact.yaml"`, `href="/s/b3-human-corrects-agent-holds-old-id.yaml"`, `href="/s/b6-promote-then-agent-revises.yaml"`, `href="/s/b8-elicitation-several-clients.yaml"`, `href="/s/c2-two-agents-disagree.yaml"`, `href="/s/c3-spoofed-actor.yaml"`, `href="/s/c4-stale-reingest.yaml"`, `href="/s/c9-concurrent-same-uri-ingest.yaml"`, `href="/s/d1-poison-amplification-loop.yaml"`, `href="/s/d2-revoked-but-still-reachable.yaml"`, `href="/s/d6-tool-channel-privilege-probe.yaml"`, `href="/s/e1-crash-between-commit-and-vectors.yaml"`,
 		`href="/s/x9-broken.yaml"`, `<span class="warn">invalid</span>`, "$f1 is not bound",
 		`<span class="badge open">open</span>`, `<span class="badge">gap-15</span>`,
-		`<code>ingest</code></td><td>b1-promote-decline-then-accept, b2-zombie-fact, b3-human-corrects-agent-holds-old-id, c2-two-agents-disagree, d2-revoked-but-still-reachable, d6-tool-channel-privilege-probe</td>`,
-		`<code>lint</code></td><td><span class="badge na">not a tool</span></td><td>c2-two-agents-disagree, d2-revoked-but-still-reachable</td>`,
+		`<code>ingest</code></td><td>b1-promote-decline-then-accept, b2-zombie-fact, b3-human-corrects-agent-holds-old-id, b6-promote-then-agent-revises, b8-elicitation-several-clients, c2-two-agents-disagree, c3-spoofed-actor, c4-stale-reingest, c9-concurrent-same-uri-ingest, d1-poison-amplification-loop, d2-revoked-but-still-reachable, d6-tool-channel-privilege-probe, e1-crash-between-commit-and-vectors</td>`,
+		`<code>lint</code></td><td><span class="badge na">not a tool</span></td><td>b6-promote-then-agent-revises, c2-two-agents-disagree, c4-stale-reingest, d1-poison-amplification-loop, d2-revoked-but-still-reachable</td>`,
 		`<code>status</code></td><td><span class="cell-empty">—</span></td>`,
 		`title="Expiry during the run">A1</span>`, `title="submit writes page_sources from the payload captured at compact time">gap-4</span>`,
 	} {
@@ -102,7 +102,7 @@ func TestIndexListsFilesAndCoverage(t *testing.T) {
 			t.Errorf("index lacks %s", must)
 		}
 	}
-	for _, mustNot := range []string{`>B1</span>`, `>B2</span>`, `>B3</span>`, `>C2</span>`, `>D2</span>`, `>D6</span>`, `>gap-1</span>`, `>gap-2</span>`, `>gap-3</span>`, `>gap-15</span>`, `>gap-16</span>`} {
+	for _, mustNot := range []string{`>B1</span>`, `>B2</span>`, `>B3</span>`, `>B6</span>`, `>B8</span>`, `>C2</span>`, `>gap-7</span>`, `>C3</span>`, `>C4</span>`, `>C9</span>`, `>gap-5</span>`, `>gap-6</span>`, `>D1</span>`, `>D2</span>`, `>D6</span>`, `>E1</span>`, `>gap-13</span>`, `>gap-1</span>`, `>gap-2</span>`, `>gap-3</span>`, `>gap-15</span>`, `>gap-16</span>`, `>gap-17</span>`} {
 		if strings.Contains(strings.SplitN(body, "Catalogue entries without a scenario", 2)[1], mustNot) {
 			t.Errorf("covered entry listed as uncovered: %s", mustNot)
 		}

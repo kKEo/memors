@@ -144,6 +144,7 @@ entries:
   - id: D1
     title: Poison amplification loop
     priority: P1
+    gaps: [17]
     detail: A web page with a fact-shaped sentence about a trusted entity; an agent remembers it citing that chunk; chunk and fact now vote together. The curated answer's rank must not drop a band.
   - id: D2
     title: Revoked but still reachable
@@ -320,3 +321,8 @@ gaps:
     where: "`retrieve/retrieve.go` `factArm`"
     decision: open
     detail: Every arm applies the live filter (`superseded_by IS NULL`) except the fact arm, which maps a fact's `evidence_chunk_id` to its document without it. A revised document keeps the old revision's chunks as history, so a fact citing one of them brings the old revision back into document-granularity results, with the source's trust.
+  - id: gap-17
+    title: A fact's vote lifts its evidence document over a more trusted answer
+    where: "`retrieve/retrieve.go` `factArm`, fusion weights"
+    decision: open
+    detail: At document and chunk granularity the fact arm votes for a fact's evidence document on top of the keyword and semantic votes that document already has. Remembering one agent fact that cites a passage is enough to move a weak agent document above a moderate curated one; trust only breaks near-ties. Any agent can lift any passage this way.
