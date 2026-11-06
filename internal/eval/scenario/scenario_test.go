@@ -55,6 +55,8 @@ func TestValidateRejectsBadScripts(t *testing.T) {
 		"replay no actor": "name: x\nactors: {a: {kind: agent}}\nsteps: [{actor: a, op: promote, args: {uri: u, to: user}, replay: {state: s, answer: accept}}]\n",
 		"replay answer":   "name: x\nactors: {a: {kind: agent, elicitation: decline}}\nsteps: [{actor: a, op: promote, args: {uri: u, to: user}, replay: {state: s, answer: maybe}}]\n",
 		"replay unbound":  "name: x\nactors: {a: {kind: agent, elicitation: decline}}\nsteps: [{actor: a, op: promote, args: {uri: u, to: user}, replay: {state: \"promote:$nope:user\", answer: accept}}]\n",
+		"crash_at value":  "name: x\nactors: {a: {kind: agent}}\nsteps: [{actor: a, op: ingest, args: {content: hi, source: {uri: u}}, crash_at: after-commit}]\n",
+		"crash_at on op":  "name: x\nactors: {a: {kind: agent}}\nsteps: [{actor: a, op: search, args: {query: hi}, crash_at: before-vectors}]\n",
 		"replay on human": "name: x\nactors: {h: {kind: human}}\nsteps: [{actor: h, op: promote, args: {uri: u, to: user}, replay: {state: s, answer: accept}}]\n",
 	}
 	for name, src := range cases {

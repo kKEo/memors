@@ -328,6 +328,10 @@ func (r *Runner) execute(ctx context.Context, st Step, args map[string]any) outc
 	if st.Op == "compact" || st.Op == "submit" {
 		o.before, _ = eval.RawChecksum(ctx, r.db, false)
 	}
+	if st.CrashAt == "before-vectors" {
+		r.store.SetFault(kb.FaultCrashBeforeVectors)
+		defer r.store.SetFault("")
+	}
 	switch a.Kind {
 	case "agent":
 		o.out, o.err = r.callTool(ctx, r.agents[st.Actor], st, args)

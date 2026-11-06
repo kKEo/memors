@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="656" height="1742" viewBox="0 0 656 1742" role="img" aria-labelledby="t d" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#171a1f">
+<title id="t">e1-crash-between-commit-and-vectors</title>
+<desc id="d">e1-crash-between-commit-and-vectors: 10 steps over 1 day from 2026-12-01 (decision open: pins current behaviour). Actors: a1 (agent, claude-code), h (human). a committed ingest with no vectors leaves no job; only verify --repair recovers it. 1. [0d] a1 ingest # Deploy freeze → $before; expects 2 things. 2. a1 ingest # Incident bridge; expects 2 things. 3. h status; expects 4 things. 4. a1 search incident bridge scribe; expects 1 thing. 5. a1 search incident bridge scribe; expects 1 thing. 6. h verify; expects 1 thing. 7. [1d] h verify; expects 2 things. 8. h backfill; expects 3 things. 9. a1 search incident bridge scribe; expects 2 things. 10. h verify; expects 1 thing.</desc>
+<defs><marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#8a8f96"/></marker></defs>
+<rect class="bg" x="0" y="0" width="656" height="1742" fill="#faf8f4"/>
+<g class="header" id="header">
+<text x="12" y="36" id="hdr-name" data-path="name" font-size="16" font-weight="600">e1-crash-between-commit-and-vectors</text>
+<g class="desc" id="hdr-description" data-path="description">
+<text x="12" y="56" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif" fill="#6d727a">a committed ingest with no vectors leaves no job; only verify --repair recovers it</text>
+</g>
+<g class="chip chip-open"><rect x="12" y="62" width="104" height="18" rx="9" fill="#fdf3d7" stroke="#b8860b"/><text x="18" y="75" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#7a5a0a">decision: open</text></g>
+<g class="chip chip-meta"><rect x="120" y="62" width="71" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="126" y="75" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">tiers: ci</text></g>
+<g class="chip chip-meta"><rect x="195" y="62" width="124" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="201" y="75" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">clock: 2026-12-01</text></g>
+<g class="chip chip-meta"><rect x="323" y="62" width="137" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="329" y="75" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">10 steps over 1 day</text></g>
+<g class="chip chip-meta"><rect x="464" y="62" width="131" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="470" y="75" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">covers: E1, gap-13</text></g>
+</g>
+<g class="lanes">
+<g class="lane lane-agent" id="lane-a1" data-path="actors.a1">
+<rect x="118" y="100" width="250" height="1602" fill="#eef3f8" fill-opacity="0.45"/>
+<rect x="118" y="100" width="250" height="50" rx="6" fill="#eef3f8" stroke="#5b7ea3"/>
+<text x="126" y="118" font-weight="600" font-size="13">a1</text>
+<text x="126" y="133" font-size="11" fill="#6d727a">agent · claude-code</text>
+</g>
+<g class="lane lane-human" id="lane-h" data-path="actors.h">
+<rect x="386" y="100" width="250" height="1602" fill="#eef5f2" fill-opacity="0.45"/>
+<rect x="386" y="100" width="250" height="50" rx="6" fill="#eef5f2" stroke="#3b8572"/>
+<text x="394" y="118" font-weight="600" font-size="13">h</text>
+<text x="394" y="133" font-size="11" fill="#6d727a">human</text>
+</g>
+</g>
+<g class="row" id="row-1" data-index="1" data-path="steps.0">
+<text x="12" y="172" font-weight="600">1 · 0d</text>
+<text x="12" y="187" font-size="11" fill="#6d727a">2026-12-01</text>
+<g class="step" id="step-1" data-path="steps.0">
+<rect class="box" x="118" y="158" width="250" height="172" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="126" y="181" class="op" font-weight="600" font-size="13" data-path="steps.0.op">ingest</text>
+<text class="bind" id="bind-before" data-path="steps.0.bind" x="360" y="181" text-anchor="end" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="600" fill="#1f5c4f">$before</text>
+<g class="field" id="step-1-arg-namespace" data-path="steps.0.args.namespace">
+<text x="126" y="200" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">namespace: ops</text>
+</g>
+<g class="field" id="step-1-arg-content" data-path="steps.0.args.content">
+<title>content: # Deploy freeze
+
+No production deploys between December 20 and January 3 without a director&#39;s sign-off.
+</title>
+<text x="126" y="216" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">content: # Deploy freeze</text>
+<text x="126" y="232" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">No production deploys between</text>
+<a href="?expand=step-1-arg-content"><text class="more" x="126" y="248" font-size="11" fill="#36577a">… more</text></a>
+</g>
+<g class="field" id="step-1-arg-source" data-path="steps.0.args.source">
+<title>source: {uri: https://ops.example/freeze, title: Deploy freeze, kind: doc, origin: web}</title>
+<text x="126" y="264" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">source: {uri:</text>
+<text x="126" y="280" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">https://ops.example/freeze,</text>
+<a href="?expand=step-1-arg-source"><text class="more" x="126" y="296" font-size="11" fill="#36577a">… more</text></a>
+</g>
+<g class="chip chip-out" id="step-1-chip-1"><rect x="126" y="300" width="118" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="132" y="313" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out embedded = 1</text></g>
+<g class="chip chip-out" id="step-1-chip-2"><rect x="248" y="300" width="111" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="254" y="313" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out pending = 0</text></g>
+</g>
+</g>
+<g class="row" id="row-2" data-index="2" data-path="steps.1">
+<text x="12" y="358" font-weight="600">2 · 0d</text>
+<text x="12" y="388" font-size="10" fill="#8a4a24">skips verify-cl…</text>
+<g class="step" id="step-2" data-path="steps.1">
+<rect class="box" x="118" y="344" width="250" height="242" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="126" y="367" class="op" font-weight="600" font-size="13" data-path="steps.1.op">ingest</text>
+<g class="field" id="step-2-arg-namespace" data-path="steps.1.args.namespace">
+<text x="126" y="386" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">namespace: ops</text>
+</g>
+<g class="field" id="step-2-arg-content" data-path="steps.1.args.content">
+<title>content: # Incident bridge
+
+Open the incident bridge within five minutes of a page and name a scribe before anything else.
+</title>
+<text x="126" y="402" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">content: # Incident bridge</text>
+<text x="126" y="418" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Open the incident bridge within</text>
+<a href="?expand=step-2-arg-content"><text class="more" x="126" y="434" font-size="11" fill="#36577a">… more</text></a>
+</g>
+<g class="field" id="step-2-arg-source" data-path="steps.1.args.source">
+<title>source: {uri: https://ops.example/incident-bridge, title: Incident bridge, kind: doc, origin: web}</title>
+<text x="126" y="450" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">source: {uri:</text>
+<text x="126" y="466" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">https://ops.example/incident-bri</text>
+<a href="?expand=step-2-arg-source"><text class="more" x="126" y="482" font-size="11" fill="#36577a">… more</text></a>
+</g>
+<g class="chip chip-error" id="step-2-chip-1"><rect x="126" y="486" width="177" height="18" rx="9" fill="#fbf1ea" stroke="#a85a2c"/><text x="132" y="499" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#8a4a24">error ∋ &#34;simulated crash&#34;</text></g>
+<g class="chip chip-audit" id="step-2-chip-2"><rect x="126" y="508" width="223" height="18" rx="9" fill="#f3f0ea" stroke="#d3cec4"/><text x="132" y="521" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#4a4f57">audit ingest by claude-code/tool</text></g>
+<g class="note" id="step-2-note" data-path="steps.1.note">
+<title>the process dies after the commit; the client gets no result</title>
+<text x="126" y="542" font-style="italic" fill="#6d727a">the process dies after the</text>
+<text x="126" y="558" font-style="italic" fill="#6d727a">commit; the client gets no</text>
+<a href="?expand=step-2-note"><text class="more" x="126" y="574" font-size="11" fill="#36577a">… more</text></a>
+</g>
+</g>
+</g>
+<g class="row" id="row-3" data-index="3" data-path="steps.2">
+<text x="12" y="614" font-weight="600">3 · 0d</text>
+<text x="12" y="644" font-size="10" fill="#8a4a24">skips verify-cl…</text>
+<g class="step" id="step-3" data-path="steps.2">
+<rect class="box" x="386" y="600" width="250" height="174" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="394" y="623" class="op" font-weight="600" font-size="13" data-path="steps.2.op">status</text>
+<g class="chip chip-status" id="step-3-chip-1"><rect x="394" y="630" width="177" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="643" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">status live_documents = 2</text></g>
+<g class="chip chip-status" id="step-3-chip-2"><rect x="394" y="652" width="124" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="665" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">status chunks = 2</text></g>
+<g class="chip chip-status" id="step-3-chip-3"><rect x="394" y="674" width="157" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="687" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">status jobs_queued = 0</text></g>
+<g class="chip chip-status" id="step-3-chip-4"><rect x="394" y="696" width="157" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="709" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">status jobs_failed = 0</text></g>
+<g class="note" id="step-3-note" data-path="steps.2.note">
+<title>gap 13: the document and its chunk are there, and no job will ever embed it</title>
+<text x="394" y="730" font-style="italic" fill="#6d727a">gap 13: the document and its</text>
+<text x="394" y="746" font-style="italic" fill="#6d727a">chunk are there, and no job will</text>
+<a href="?expand=step-3-note"><text class="more" x="394" y="762" font-size="11" fill="#36577a">… more</text></a>
+</g>
+</g>
+</g>
+<g class="row" id="row-4" data-index="4" data-path="steps.3">
+<text x="12" y="802" font-weight="600">4 · 0d</text>
+<text x="12" y="832" font-size="10" fill="#8a4a24">skips verify-cl…</text>
+<g class="step" id="step-4" data-path="steps.3">
+<rect class="box" x="118" y="788" width="250" height="140" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="126" y="811" class="op" font-weight="600" font-size="13" data-path="steps.3.op">search</text>
+<g class="field" id="step-4-arg-query" data-path="steps.3.args.query">
+<text x="126" y="830" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">query: incident bridge scribe</text>
+</g>
+<g class="field" id="step-4-arg-granularity" data-path="steps.3.args.granularity">
+<text x="126" y="846" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">granularity: document</text>
+</g>
+<g class="field" id="step-4-arg-mode" data-path="steps.3.args.mode">
+<text x="126" y="862" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">mode: keyword</text>
+</g>
+<g class="chip chip-count" id="step-4-chip-1"><rect x="126" y="866" width="58" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="132" y="879" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">count 1</text></g>
+<g class="note" id="step-4-note" data-path="steps.3.note">
+<text x="126" y="900" font-style="italic" fill="#6d727a">keyword search finds the</text>
+<text x="126" y="916" font-style="italic" fill="#6d727a">half-written document</text>
+</g>
+</g>
+</g>
+<g class="row" id="row-5" data-index="5" data-path="steps.4">
+<text x="12" y="956" font-weight="600">5 · 0d</text>
+<text x="12" y="986" font-size="10" fill="#8a4a24">skips verify-cl…</text>
+<g class="step" id="step-5" data-path="steps.4">
+<rect class="box" x="118" y="942" width="250" height="140" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="126" y="965" class="op" font-weight="600" font-size="13" data-path="steps.4.op">search</text>
+<g class="field" id="step-5-arg-query" data-path="steps.4.args.query">
+<text x="126" y="984" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">query: incident bridge scribe</text>
+</g>
+<g class="field" id="step-5-arg-granularity" data-path="steps.4.args.granularity">
+<text x="126" y="1000" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">granularity: document</text>
+</g>
+<g class="field" id="step-5-arg-mode" data-path="steps.4.args.mode">
+<text x="126" y="1016" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">mode: semantic</text>
+</g>
+<g class="chip chip-abstains" id="step-5-chip-1"><rect x="126" y="1020" width="65" height="18" rx="9" fill="#fbf1ea" stroke="#a85a2c"/><text x="132" y="1033" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#8a4a24">abstains</text></g>
+<g class="note" id="step-5-note" data-path="steps.4.note">
+<text x="126" y="1054" font-style="italic" fill="#6d727a">gap 13: semantic search cannot,</text>
+<text x="126" y="1070" font-style="italic" fill="#6d727a">and nothing tells the agent why</text>
+</g>
+</g>
+</g>
+<g class="row" id="row-6" data-index="6" data-path="steps.5">
+<text x="12" y="1110" font-weight="600">6 · 0d</text>
+<text x="12" y="1140" font-size="10" fill="#8a4a24">skips verify-cl…</text>
+<g class="step" id="step-6" data-path="steps.5">
+<rect class="box" x="386" y="1096" width="250" height="92" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="394" y="1119" class="op" font-weight="600" font-size="13" data-path="steps.5.op">verify</text>
+<g class="chip chip-out" id="step-6-chip-1"><rect x="394" y="1126" width="124" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="1139" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out clean = false</text></g>
+<g class="note" id="step-6-note" data-path="steps.5.note">
+<text x="394" y="1160" font-style="italic" fill="#6d727a">verify sees the chunk without a</text>
+<text x="394" y="1176" font-style="italic" fill="#6d727a">vector</text>
+</g>
+</g>
+</g>
+<g class="row" id="row-7" data-index="7" data-path="steps.6">
+<line x1="12" y1="1200" x2="636" y2="1200" stroke="#d3cec4" stroke-dasharray="2 4"/>
+<text x="12" y="1226" font-weight="600">7 · 1d</text>
+<text x="12" y="1241" font-size="11" fill="#6d727a">2026-12-02 +1d</text>
+<text x="12" y="1256" font-size="10" fill="#8a4a24">skips verify-cl…</text>
+<g class="step" id="step-7" data-path="steps.6">
+<rect class="box" x="386" y="1212" width="250" height="146" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="394" y="1235" class="op" font-weight="600" font-size="13" data-path="steps.6.op">verify</text>
+<g class="field" id="step-7-arg-repair" data-path="steps.6.args.repair">
+<text x="394" y="1254" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">repair: true</text>
+</g>
+<g class="chip chip-out" id="step-7-chip-1"><rect x="394" y="1258" width="124" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="1271" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out clean = false</text></g>
+<g class="chip chip-status" id="step-7-chip-2"><rect x="394" y="1280" width="157" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="1293" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">status jobs_queued = 1</text></g>
+<g class="note" id="step-7-note" data-path="steps.6.note">
+<title>gap 13: only a human running verify --repair queues the missing vectors</title>
+<text x="394" y="1314" font-style="italic" fill="#6d727a">gap 13: only a human running</text>
+<text x="394" y="1330" font-style="italic" fill="#6d727a">verify --repair queues the</text>
+<a href="?expand=step-7-note"><text class="more" x="394" y="1346" font-size="11" fill="#36577a">… more</text></a>
+</g>
+</g>
+</g>
+<g class="row" id="row-8" data-index="8" data-path="steps.7">
+<text x="12" y="1386" font-weight="600">8 · 1d</text>
+<g class="step" id="step-8" data-path="steps.7">
+<rect class="box" x="386" y="1372" width="250" height="104" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="394" y="1395" class="op" font-weight="600" font-size="13" data-path="steps.7.op">backfill</text>
+<g class="chip chip-out" id="step-8-chip-1"><rect x="394" y="1402" width="118" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="1415" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out embedded = 1</text></g>
+<g class="chip chip-status" id="step-8-chip-2"><rect x="394" y="1424" width="157" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="1437" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">status jobs_queued = 0</text></g>
+<g class="chip chip-status" id="step-8-chip-3"><rect x="394" y="1446" width="157" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="1459" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">status jobs_failed = 0</text></g>
+</g>
+</g>
+<g class="row" id="row-9" data-index="9" data-path="steps.8">
+<text x="12" y="1504" font-weight="600">9 · 1d</text>
+<g class="step" id="step-9" data-path="steps.8">
+<rect class="box" x="118" y="1490" width="250" height="124" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="126" y="1513" class="op" font-weight="600" font-size="13" data-path="steps.8.op">search</text>
+<g class="field" id="step-9-arg-query" data-path="steps.8.args.query">
+<text x="126" y="1532" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">query: incident bridge scribe</text>
+</g>
+<g class="field" id="step-9-arg-granularity" data-path="steps.8.args.granularity">
+<text x="126" y="1548" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">granularity: document</text>
+</g>
+<g class="field" id="step-9-arg-mode" data-path="steps.8.args.mode">
+<text x="126" y="1564" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">mode: semantic</text>
+</g>
+<g class="chip chip-ok" id="step-9-chip-1"><rect x="126" y="1568" width="58" height="18" rx="9" fill="#eef5f2" stroke="#3b8572"/><text x="132" y="1581" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#1f5c4f">answers</text></g>
+<g class="chip chip-count" id="step-9-chip-2"><rect x="188" y="1568" width="58" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="194" y="1581" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">count 1</text></g>
+<g class="note" id="step-9-note" data-path="steps.8.note">
+<text x="126" y="1602" font-style="italic" fill="#6d727a">recovered</text>
+</g>
+</g>
+</g>
+<g class="row" id="row-10" data-index="10" data-path="steps.9">
+<text x="12" y="1642" font-weight="600">10 · 1d</text>
+<g class="step" id="step-10" data-path="steps.9">
+<rect class="box" x="386" y="1628" width="250" height="60" rx="6" fill="#ffffff" stroke="#d3cec4" stroke-width="1"/>
+<text x="394" y="1651" class="op" font-weight="600" font-size="13" data-path="steps.9.op">verify</text>
+<g class="chip chip-out" id="step-10-chip-1"><rect x="394" y="1658" width="118" height="18" rx="9" fill="#eef3f8" stroke="#5b7ea3"/><text x="400" y="1671" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#36577a">out clean = true</text></g>
+</g>
+</g>
+<text x="12" y="1724" class="legend" font-size="11" fill="#6d727a">one box = one step · $name = what the step binds, dashed arrows lead to the steps that use it · chips = ex…</text>
+</svg>

@@ -56,6 +56,7 @@ type Store struct {
 	embedder embedding.Embedder
 	chunking chunk.Options
 	now      func() time.Time
+	fault    Fault
 	metrics  *storeMetrics
 }
 
@@ -71,6 +72,21 @@ func NewStore(db *sql.DB, embedder embedding.Embedder) *Store {
 	}
 	return s
 }
+
+// Fault is a failure the store injects on request, for the scenario harness
+// only. The zero value injects nothing.
+type Fault string
+
+// FaultCrashBeforeVectors makes the next Ingest return ErrSimulatedCrash
+// after its transaction committed and before any vector is stored.
+const FaultCrashBeforeVectors Fault = "crash-before-vectors"
+
+// ErrSimulatedCrash is what an injected crash returns.
+var ErrSimulatedCrash = errors.New("simulated crash: the write committed, then the process died before vectors were stored")
+
+// SetFault arms a fault for the next write that honours it (the empty fault
+// disarms). Not safe to use while other writes are in flight.
+func (s *Store) SetFault(f Fault) { s.fault = f }
 
 // DB exposes the underlying connection for read-side packages.
 func (s *Store) DB() *sql.DB { return s.db }
@@ -279,6 +295,13 @@ func (s *Store) Ingest(ctx context.Context, in IngestInput) (*IngestResult, erro
 	// Vectors: embed outside any transaction, then store. Never swallowed:
 	// a failure or a missing embedder leaves a queued job and a count the
 	// caller and `status` can see.
+	if s.fault == FaultCrashBeforeVectors {
+		// A simulated crash for the scenario harness: the transaction above
+		// is durable, nothing below it runs, and the caller sees no result,
+		// exactly as if the process had died here.
+		s.fault = ""
+		return nil, ErrSimulatedCrash
+	}
 	embedded, jobID, err := s.embedChunks(ctx, ids, chunks, title, in.Context)
 	if err != nil {
 		return nil, err

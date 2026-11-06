@@ -152,7 +152,11 @@ type Step struct {
 	// Replay sends the tool call with a ready-made dialog answer instead of
 	// waiting to be asked: the request state another session was given and
 	// the answer, as if this client's human had confirmed it.
-	Replay     *Replay        `yaml:"replay,omitempty"`
+	Replay *Replay `yaml:"replay,omitempty"`
+	// CrashAt makes the store fail this step as a crashed process would:
+	// "before-vectors" on an ingest commits the document and dies before
+	// any vector is stored. The step reports an error and binds nothing.
+	CrashAt    string         `yaml:"crash_at,omitempty"`
 	Expect     *Expect        `yaml:"expect,omitempty"`
 	Invariants *InvariantOpts `yaml:"invariants,omitempty"`
 	// Parallel runs these steps concurrently (each on its own actor
@@ -220,6 +224,7 @@ var (
 	humanOps = set("ingest", "remember", "forget", "promote", "demote", "merge", "reject", "compact", "submit", "lint", "verify", "backfill", "status", "search", "read", "history", "facts")
 	tiers    = set("ci", "nightly", "binary")
 	answers  = set("none", "accept", "decline", "cancel")
+	crashAts = set("before-vectors")
 	refRe    = regexp.MustCompile(`\$([A-Za-z_][A-Za-z0-9_-]*)(?:\.([A-Za-z_][A-Za-z0-9_]*))?`)
 	atRe     = regexp.MustCompile(`^(\d+)([dhms])$`)
 )
@@ -569,6 +574,14 @@ func (sc *Scenario) validateStep(where, path string, st Step, bound map[string]b
 	}
 	if len(st.Select) > 0 && st.Op != "compact" {
 		fail(".select", "%s: select applies to compact steps only", where)
+	}
+	if st.CrashAt != "" {
+		if !crashAts[st.CrashAt] {
+			fail(".crash_at", "%s: crash_at %q: want before-vectors", where, st.CrashAt)
+		}
+		if st.Op != "ingest" {
+			fail(".crash_at", "%s: crash_at applies to ingest steps only", where)
+		}
 	}
 	for _, ref := range refsIn(st.Args) {
 		if !bound[ref] {

@@ -82,6 +82,7 @@ assistants connected to one server.
 | `select` | On `compact` only: which work item to bind (`{kind: conflict, subject: pager}`) |
 | `elicit` | On agent steps: override the actor's dialog answer for this step (`accept`, `decline`, `cancel`) |
 | `replay` | On agent steps: `{state: "promote:$f1:user", answer: accept}` sends the call with a ready-made dialog answer, as if this client had been asked that question and its human had answered. The actor's `elicitation` must not be `none`. For scenarios about forged or misdirected dialogs |
+| `crash_at` | On `ingest` steps: `before-vectors` commits the document and then fails the step as a crashed process would, before any vector is stored. The step reports an error and binds nothing. For crash and recovery stories (E1) |
 | `expect` | What must be observable after the step |
 | `invariants` | `{skip: [name]}` after this step only |
 | `note` | Free text, shown in the picture and the step table. Say why the step matters, or which gap it shows |
@@ -199,6 +200,7 @@ when:
 - a step names an unknown actor, or an op its actor kind cannot perform
   (`op "demote" is not a tool an agent can call`)
 - `elicit` is used on a human, or on an agent whose `elicitation` is `none`
+- `crash_at` has a value other than `before-vectors`, or sits on a step that is not an `ingest`
 - `replay` is used on a human, on an agent whose `elicitation` is `none`, without `state`, or with an answer other than `accept`, `decline` or `cancel`
 - `select` is used on anything but `compact`
 - a `$name` is used before any step binds it
