@@ -55,7 +55,13 @@ func New(store *kb.Store, search *retrieve.Service, version string, opts ...Opti
 		"pf":   func(v *float64) string { return ptrF(v, 3) },
 		"pi":   func(v *int) string { return ptrI(v) },
 		"date": func(t time.Time) string { return t.UTC().Format("2006-01-02") },
-		"dt":   func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04") },
+		"dt":   func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04:05") },
+		"pdt": func(t *time.Time) string {
+			if t == nil {
+				return ""
+			}
+			return t.UTC().Format("2006-01-02 15:04:05")
+		},
 		"pdate": func(t *time.Time) string {
 			if t == nil {
 				return ""

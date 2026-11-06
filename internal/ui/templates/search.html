@@ -20,7 +20,7 @@
 <table><tr><th>arm</th><th class="num">rank</th><th class="num">raw</th><th></th><th class="num">contribution</th><th>matched</th></tr>
 {{range .Why.Arms}}<tr><td>{{.Arm}}</td><td class="num">{{pi .Rank}}</td><td class="num">{{pf .Raw}}</td><td class="muted">{{.RawKind}}</td><td class="num">{{f5 .Contribution}}</td><td>{{join .MatchedTerms ", "}}</td></tr>{{end}}</table>
 {{if .Why.Graph}}<p class="muted">graph: seeds {{join .Why.Graph.Seeds ", "}} · score {{f5 .Why.Graph.PPRScore}} · hops {{.Why.Graph.Hops}}{{if .Why.Graph.HubPenalised}} · hub penalised{{end}}</p>{{end}}
-{{if .Why.Time}}<p class="muted">recorded {{date .Why.Time.RecordedAt}}{{if .Why.Time.ValidFrom}} · valid from {{pdate .Why.Time.ValidFrom}}{{end}}{{if .Why.Time.ValidTo}} · valid to {{pdate .Why.Time.ValidTo}}{{end}}{{if .Why.Time.SupersededBy}} · superseded by {{.Why.Time.SupersededBy}}{{end}}</p>{{end}}
+{{if .Why.Time}}<p class="muted">recorded {{dt .Why.Time.RecordedAt}}{{if .Why.Time.ValidFrom}} · valid from {{pdate .Why.Time.ValidFrom}}{{end}}{{if .Why.Time.ValidTo}} · valid to {{pdate .Why.Time.ValidTo}}{{end}}{{if .Why.Time.SupersededBy}} · superseded by {{.Why.Time.SupersededBy}}{{end}}</p>{{end}}
 </details></td></tr>{{end}}{{end}}</table>
 {{if .Truncated}}<p class="muted">{{.Truncated}} more result(s) did not fit; narrow with {{.NarrowHint}}.</p>{{end}}{{end}}
 {{with .Trace}}<h2>Trace</h2><table>
