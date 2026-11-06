@@ -239,6 +239,10 @@ func (b *builder) row(i int, st scenario.Step) {
 	}
 	if len(st.Parallel) > 0 {
 		r.Parallel = true
+		// The group itself is step i+1: its bracket carries the step id so
+		// overlays, links and the studio address the group like any step.
+		r.GroupID = b.ids.get("step", strconv.Itoa(i+1))
+		b.pathID[path] = r.GroupID
 		if st.Note != "" {
 			r.Note = b.block(b.ids.get("step", strconv.Itoa(i+1), "note"), path+".note", st.Note, int(float64(b.lanesWidth())/charW))
 		}

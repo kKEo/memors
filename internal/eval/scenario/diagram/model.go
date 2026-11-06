@@ -124,6 +124,8 @@ type Lane struct {
 
 // Row is one top-level step (or a parallel group).
 type Row struct {
+	// GroupID is the step id of a parallel group (step-N); empty otherwise.
+	GroupID   string
 	ID, Path  string
 	Index     int
 	At        string

@@ -210,8 +210,10 @@ func (w *writer) row(d *Diagram, r *Row) {
 	}
 	if r.Parallel && r.Bracket != nil {
 		b := r.Bracket
+		w.p(`<g class="group" id="%s" data-path="%s">`+"\n", esc(r.GroupID), esc(r.Path))
 		w.p(`<rect x="%d" y="%d" width="%d" height="%d" rx="8" fill="none" stroke="%s" stroke-dasharray="6 4"/>`+"\n", b.X, b.Y, b.W, b.H, cUnknownLine)
 		w.text(b.X+pad, b.Y+13, `font-size="11" font-weight="600" fill="`+cMuted+`"`, "parallel")
+		w.p("</g>\n")
 		y := b.Y + b.H
 		if r.Note.Full != "" {
 			w.block(&r.Note, b.X, y+12, `font-style="italic" fill="`+cMuted+`"`, "note")
