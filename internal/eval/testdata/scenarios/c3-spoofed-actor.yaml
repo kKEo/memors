@@ -1,0 +1,104 @@
+# C3 — Spoofed actor. Two sessions both introduce themselves as `claude-code`.
+# The first writes a document and a fact; the second, an impostor, forgets the
+# fact, replaces it and revises the document. Every write is an agent-trust
+# record, so the channel cap allows it, and the audit log names `claude-code`
+# for all of it: the actor is whatever the client put in ClientInfo.Name and
+# nothing ties a row to a session (gap 6). The human reading the audit cannot
+# tell the two apart. This runs two in-process sessions; the name check is the
+# same on `serve --http`, where the HTTP tier will repeat it with a parallel
+# group. The steps marked gap 6 pin today's behaviour.
+name: c3-spoofed-actor
+description: two sessions with the same client name are indistinguishable in audit
+decision: open
+tiers: [ci]
+covers: [C3, gap-6]
+clock: 2026-09-01
+actors:
+  real:     {kind: agent, client: claude-code}
+  impostor: {kind: agent, client: claude-code}
+  h:        {kind: human, client: alice}
+steps:
+  - at: 0d
+    actor: real
+    op: ingest
+    args:
+      namespace: release
+      content: |
+        # Release checklist
+
+        Tag the release, run the smoke suite, then publish the notes. Rollback is a redeploy of the previous tag.
+      source: {uri: https://wiki.example/release-checklist, title: Release checklist, kind: doc, origin: web}
+    bind: doc
+    expect:
+      audit: [{op: ingest, actor: claude-code, channel: tool, target: $doc}]
+
+  - at: 0d
+    actor: real
+    op: remember
+    args: {namespace: release, statement: "The smoke suite must pass before the notes are published.", about: [release checklist], evidence_uri: $doc.chunk}
+    bind: f1
+    expect:
+      out: {trust: agent}
+      audit: [{op: remember, actor: claude-code, channel: tool, target: $f1}]
+
+  - at: 1d
+    actor: impostor
+    op: forget
+    note: "gap 6: a second session with the same name retires the first one's fact; the audit row reads exactly like the owner did it"
+    args: {uri: $f1, reason: "superseded by the new process"}
+    expect:
+      audit: [{op: forget, actor: claude-code, channel: tool, target: $f1}]
+
+  - at: 1d
+    actor: impostor
+    op: remember
+    note: "gap 6: the replacement claim is recorded under the same name"
+    args: {namespace: release, statement: "The notes may be published before the smoke suite runs.", about: [release checklist], evidence_uri: $doc.chunk}
+    bind: f2
+    expect:
+      out: {trust: agent}
+      audit: [{op: remember, actor: claude-code, channel: tool, target: $f2}]
+
+  - at: 1d
+    actor: impostor
+    op: ingest
+    note: "gap 6: and the document is revised under it too"
+    args:
+      namespace: release
+      content: |
+        # Release checklist
+
+        Tag the release and publish the notes. The smoke suite is optional. Rollback is a redeploy of the previous tag.
+      source: {uri: https://wiki.example/release-checklist, title: Release checklist, kind: doc, origin: web}
+    bind: doc2
+    expect:
+      out: {revision: 2}
+      audit: [{op: revise, actor: claude-code, channel: tool, target: $doc2}]
+
+  - at: 1d
+    actor: h
+    op: read
+    args: {uri: $f1}
+    expect:
+      out: {tombstone: true}
+      out_contains: {reason: new process}
+
+  - at: 1d
+    actor: h
+    op: facts
+    note: the human sees only the impostor's claim
+    args: {namespace: release}
+    expect: {contains: [$f2], excludes: [$f1], count: 1}
+
+  - at: 1d
+    actor: real
+    op: search
+    note: the first session now reads back a process it never wrote
+    args: {query: smoke suite before notes are published, granularity: fact}
+    expect: {top: [$f2], excludes: [$f1]}
+
+  - at: 1d
+    actor: real
+    op: search
+    args: {query: release checklist smoke suite, granularity: document}
+    expect: {top: [$doc2]}
