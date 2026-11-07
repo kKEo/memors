@@ -1,8 +1,9 @@
-// Package webpolicy decides where a stats window may go. The window shows
-// one memors-mcp server's pages; documents on those pages can link anywhere
-// (their text comes from the knowledge base), so anything off that server
-// either opens in the default browser, when the user clicked it, or is
-// refused.
+// Package webpolicy decides where a window may go. The window shows one
+// server's pages; documents on those pages can link anywhere (their text
+// comes from the knowledge base), so anything off that server either opens
+// in the default browser, when the user clicked it, or is refused. One more
+// link is honoured: CloseURL, which every tray page offers as its Dismiss
+// button, closes the window when the user clicks it.
 package webpolicy
 
 import (
@@ -18,7 +19,11 @@ const (
 	Allow    Decision = iota // load it in the window
 	External                 // open it in the default browser instead
 	Deny                     // do nothing
+	Close                    // close the window
 )
+
+// CloseURL is the link a page's Dismiss button points at.
+const CloseURL = "memors-tray://close"
 
 // Decide judges a navigation to target in a window showing origin (a base
 // URL such as http://127.0.0.1:8765). clicked is true when the user
@@ -33,6 +38,12 @@ func Decide(origin, target string, clicked bool) Decision {
 		return Deny
 	}
 	scheme := strings.ToLower(t.Scheme)
+	if scheme == "memors-tray" {
+		if clicked && strings.EqualFold(t.Host, "close") && t.Path == "" {
+			return Close
+		}
+		return Deny
+	}
 	if scheme != "http" && scheme != "https" {
 		return Deny
 	}

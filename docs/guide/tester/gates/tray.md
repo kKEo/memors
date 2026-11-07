@@ -13,12 +13,12 @@ make tray-test        # cd tray && go vet ./... && go test ./... -race -count=1
 |---|---|
 | `app` | Agents appearing and leaving, unreachable servers, start/stop/restart, autostart, shutdown, a bad config shown to the user, first-run behaviour, the update check and its menu, relaunch after an update |
 | `supervisor` | Starting and stopping the server, crashes, killing a stubborn process, the child's environment, log rotation, stopping a server the tray did not start |
-| `setup` | The setup wizard (install, knowledge base, failure paths), settings (save, refuse bad input, conflicts), access control, connect pages for each client, the updates page |
+| `setup` | The setup wizard (install, knowledge base, failure paths), settings (save, refuse bad input, conflicts), access control, connect pages for each client, the updates page, the Dismiss button on every page |
 | `installer` | Install, refusing bad downloads, release lookup errors, the tray's own install and app bundle |
 | `menu` | How each menu item renders |
 | `discover` | Finding servers, refusing untrusted directories |
 | `client` | Reading `/live.json` and the login link, errors, loopback only |
-| small packages | `config`, `home`, `locate`, `loginitem`, `update`, `webpolicy`, `icon` |
+| small packages | `config`, `home`, `locate`, `loginitem`, `update`, `webpolicy` (including the Dismiss link), `icon` |
 
 Most supervisor tests do not start a real server. The test binary re-executes itself as a fake
 `memors-mcp serve --http` (`TRAY_FAKE_MEMORS`, `TRAY_FAKE_MODE` in `supervisor_test.go`), so
@@ -43,3 +43,17 @@ run before a release.
 CI also checks that the tray binary does not link the server's dependencies (SQLite, the model
 runtime, the MCP SDK). It builds the app bundle, verifies its code signature and that it
 contains both `x86_64` and `arm64`, and runs it with `-version`.
+
+## Manual checks: closing windows
+
+The Objective-C window layer (`internal/macwin`) has no tests. After a change to it, build the
+app (`make tray && ./tray/memors-tray`) and check by hand:
+
+1. **Settings…** → **Dismiss** with no edits: the window closes at once.
+2. Tick a checkbox, then **Dismiss**: a sheet asks "Discard unsaved changes?". **Keep Editing**
+   leaves the window and the edit in place; **Dismiss** again → **Discard** closes it.
+3. Make the same edit, then ⌘W, then the red close box: the same sheet appears each time.
+4. Type in **Environment for servers** and **Save**: the page reloads and **Dismiss** now closes
+   without asking (the saved values are the new defaults).
+5. The setup assistant, **Updates** and **Configure Your Agent…** pages show the button and close.
+6. **Open Stats Window**, type in the search box, ⌘W: closes without asking (only POST forms count).

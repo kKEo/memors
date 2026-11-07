@@ -57,6 +57,8 @@ header.top {
 }
 .mark { width: 34px; height: 34px; border-radius: 9px; background: #1f5c4f; display: grid; place-items: center; flex: none; }
 .mark svg { width: 19px; height: 19px; }
+header.top .title { flex: 1; min-width: 0; }
+header.top .dismiss { flex: none; }
 .app { font-weight: 600; font-size: 14px; }
 .sub { color: var(--muted); font-size: 12px; }
 

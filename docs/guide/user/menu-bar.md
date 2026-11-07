@@ -122,6 +122,10 @@ If the server asks for a token, the window logs in by itself. There is nothing t
 - **Advanced**: extra environment for the servers, and the Web Inspector for MemoRS Tray's
   windows. Links open `tray.json` and the logs folder.
 
+Every MemoRS Tray window has a **Dismiss** button in its header; ⌘W and the close box do the
+same. If a form has changes you have not saved, the window asks first: **Keep Editing** returns
+to the form, **Discard** closes it and drops the changes.
+
 The window shows what is saved in `~/.memors-mcp/tray.json`. You can also edit the file by hand:
 
 ```json

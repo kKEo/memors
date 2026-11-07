@@ -1,7 +1,7 @@
 {{define "connect_gone.html"}}{{template "head" .}}
 <h1>This server is not running</h1>
 <p class="lede">Start it from the menu bar, then choose <b>Configure Your Agent…</b> in its menu again.</p>
-<div class="actions"><span class="muted">Close this window with ⌘W.</span></div>
+<div class="actions"><span class="muted">Dismiss this window when you are done.</span></div>
 {{template "foot" .}}{{end}}
 
 {{define "connect_summary"}}<section class="group"><h2>Server</h2>
@@ -27,7 +27,7 @@
 <div class="row"><div><div class="label">Other MCP client</div><div class="hint">Cursor, VS Code, Windsurf or any client that speaks MCP over HTTP.</div></div>
 <a class="button{{if eq .Agent "other"}} primary{{end}}" href="/connect/other?server={{.Server}}&amp;step=2">Choose</a></div>
 </section>
-<div class="actions"><span class="muted">Close this window with ⌘W.</span></div>
+<div class="actions"><span class="muted">Dismiss this window when you are done.</span></div>
 {{end}}{{template "foot" .}}{{end}}
 
 {{define "connect_step.html"}}{{template "head" .}}{{with .Data}}
@@ -139,7 +139,7 @@
 {{- end}}
 
 <div class="actions">
-{{- if not .Next}}<span class="muted">All set. Close this window with ⌘W.</span><a class="button" href="/connect?server={{.Server}}">Configure another agent</a>{{end}}
+{{- if not .Next}}<span class="muted">All set. Dismiss this window when you are done.</span><a class="button" href="/connect?server={{.Server}}">Configure another agent</a>{{end}}
 <a class="button" href="{{.Back}}">Back</a>
 {{- if .Next}}<a class="button primary" href="{{.Next}}">Next</a>{{end}}
 </div>

@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"github.com/kKEo/memors/tray/internal/webpolicy"
 	"html"
 	"net/http"
 	"net/url"
@@ -192,5 +193,21 @@ func TestWizardDoneLinksToConnect(t *testing.T) {
 	_, body = h.get(h.s.Origin() + "/wizard/done?kb=work")
 	if !strings.Contains(body, `href="/connect?server=http%3A%2F%2F127.0.0.1%3A8765"`) {
 		t.Errorf("no link once it runs:\n%s", body)
+	}
+}
+
+// TestPagesOfferDismiss: every page carries the Dismiss button, a link the
+// window turns into a close (webpolicy.CloseURL).
+func TestPagesOfferDismiss(t *testing.T) {
+	h, _ := connectHarness(t)
+	const want = `href="` + webpolicy.CloseURL + `"`
+	for _, page := range []string{
+		"/settings", "/settings/server/new", "/wizard", "/wizard/install", "/wizard/kb", "/wizard/done", "/updates",
+		"/connect?" + url.Values{"server": {connectServer}}.Encode(), connectPage("claude-code", 2),
+		"/connect?server=" + url.QueryEscape("http://127.0.0.1:9"), // the "server gone" page
+	} {
+		if body := h.enter(page); !strings.Contains(body, want) {
+			t.Errorf("%s has no Dismiss button", page)
+		}
 	}
 }

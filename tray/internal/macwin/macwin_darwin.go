@@ -64,7 +64,8 @@ func (w *Windows) ShowMessage(key, text string) {
 		return
 	}
 	page := `<!doctype html><meta charset="utf-8"><body style="font:15px -apple-system,sans-serif;color:#555;` +
-		`display:grid;place-items:center;height:90vh;margin:0"><p>` + html.EscapeString(text) + `</p></body>`
+		`display:grid;place-items:center;height:90vh;margin:0"><div style="text-align:center"><p>` + html.EscapeString(text) +
+		`</p><p><a href="` + webpolicy.CloseURL + `" style="color:#1f5c4f;font-weight:600">Dismiss</a></p></div></body>`
 	ck, ch := C.CString(key), C.CString(page)
 	defer C.free(unsafe.Pointer(ck))
 	defer C.free(unsafe.Pointer(ch))

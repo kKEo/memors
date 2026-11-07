@@ -2,10 +2,16 @@
 // server, living on the run loop fyne.io/systray already owns.
 //
 // Each window has a private, non-persistent website data store (the login
-// cookie never reaches disk), JavaScript off (memors-mcp's UI has none), and
-// a navigation delegate that asks Go (webpolicy) about every navigation:
+// cookie never reaches disk), content JavaScript off (the pages have none),
+// and a navigation delegate that asks Go (webpolicy) about every navigation:
 // the server's own pages load in the window, links elsewhere open in the
-// default browser, everything else is refused.
+// default browser, the tray's own close link closes the window, everything
+// else is refused.
+//
+// Closing a window (its Dismiss button, ⌘W or the close box) first asks
+// whether the page has unsaved form changes. The check is a script the tray
+// evaluates itself, which WebKit allows even with content JavaScript off,
+// and a sheet asks before edits are thrown away.
 
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
@@ -15,12 +21,31 @@
 extern int macwinDecide(char *key, char *url, int clicked);
 extern void macwinClosed(char *key);
 
-enum { decideAllow = 0, decideExternal = 1 };
+enum { decideAllow = 0, decideExternal = 1, decideDeny = 2, decideClose = 3 };
+
+// dirtyProbe reports whether any control in a POST form on the page differs
+// from the value it loaded with. GET forms (such as a search box) don't count.
+static NSString *const dirtyProbe =
+    @"(function(){"
+     "for (const f of document.querySelectorAll('form')) {"
+     "  if (f.method !== 'post') continue;"
+     "  for (const el of f.elements) {"
+     "    if (el.disabled) continue;"
+     "    const t = (el.type || '').toLowerCase();"
+     "    if (t === 'hidden' || t === 'submit' || t === 'button' || t === 'reset') continue;"
+     "    if (t === 'checkbox' || t === 'radio') { if (el.checked !== el.defaultChecked) return true; continue; }"
+     "    if (el.tagName === 'SELECT') { for (const o of el.options) if (o.selected !== o.defaultSelected) return true; continue; }"
+     "    if ('defaultValue' in el && el.value !== el.defaultValue) return true;"
+     "  }"
+     "}"
+     "return false;"
+     "})()";
 
 @interface MWWindow : NSObject <NSWindowDelegate, WKNavigationDelegate, WKUIDelegate>
 @property (copy) NSString *key;
 @property (strong) NSWindow *window;
 @property (strong) WKWebView *web;
+@property BOOL closeConfirmed; // the unsaved-changes check has passed; let the next close through
 @end
 
 static NSMutableDictionary<NSString *, MWWindow *> *windows;
@@ -44,6 +69,8 @@ static int decide(NSString *key, NSURL *url, BOOL clicked) {
 	decisionHandler(WKNavigationActionPolicyCancel);
 	if (d == decideExternal) {
 		[[NSWorkspace sharedWorkspace] openURL:url];
+	} else if (d == decideClose) {
+		[self.window performClose:nil];
 	}
 }
 
@@ -58,8 +85,48 @@ static int decide(NSString *key, NSURL *url, BOOL clicked) {
 		[webView loadRequest:action.request];
 	} else if (d == decideExternal) {
 		[[NSWorkspace sharedWorkspace] openURL:action.request.URL];
+	} else if (d == decideClose) {
+		[self.window performClose:nil];
 	}
 	return nil;
+}
+
+// windowShouldClose runs for the Dismiss button, ⌘W and the close box. The
+// answer needs the page, which only arrives asynchronously, so the close is
+// refused here and finished from the completion handler.
+- (BOOL)windowShouldClose:(NSWindow *)sender {
+	if (self.closeConfirmed) {
+		return YES;
+	}
+	__weak MWWindow *weakSelf = self;
+	[self.web evaluateJavaScript:dirtyProbe completionHandler:^(id result, NSError *error) {
+		MWWindow *mw = weakSelf;
+		if (mw == nil) {
+			return;
+		}
+		BOOL dirty = error == nil && [result isKindOfClass:[NSNumber class]] && [result boolValue];
+		if (!dirty) {
+			[mw finishClose];
+			return;
+		}
+		NSAlert *alert = [[NSAlert alloc] init];
+		alert.alertStyle = NSAlertStyleWarning;
+		alert.messageText = @"Discard unsaved changes?";
+		alert.informativeText = @"This form has changes that have not been saved.";
+		[alert addButtonWithTitle:@"Keep Editing"];
+		[alert addButtonWithTitle:@"Discard"];
+		[alert beginSheetModalForWindow:mw.window completionHandler:^(NSModalResponse response) {
+			if (response == NSAlertSecondButtonReturn) {
+				[mw finishClose];
+			}
+		}];
+	}];
+	return NO;
+}
+
+- (void)finishClose {
+	self.closeConfirmed = YES;
+	[self.window close];
 }
 
 - (void)windowWillClose:(NSNotification *)notification {
@@ -141,6 +208,7 @@ static MWWindow *newWindow(NSString *key, NSString *title) {
 
 	MWWindow *mw = [[MWWindow alloc] init];
 	mw.key = key;
+	mw.closeConfirmed = NO;
 	mw.web = [[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 1100, 760) configuration:conf];
 	mw.web.navigationDelegate = mw;
 	mw.web.UIDelegate = mw;
