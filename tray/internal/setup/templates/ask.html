@@ -1,0 +1,41 @@
+{{define "ask_gone.html"}}{{template "head" .}}
+<h1>This server is not running</h1>
+<p class="lede">Start it from the menu bar, then choose <b>Ask the Knowledge Base…</b> in its menu again.</p>
+<div class="actions"><span class="muted">Dismiss this window when you are done.</span></div>
+{{template "foot" .}}{{end}}
+
+{{define "ask.html"}}{{template "head" .}}{{with .Data}}
+<h1>Ask <b>{{.KB}}</b></h1>
+<p class="lede">Your question goes to Claude Code, run headless with only this server's MCP attached: no other tools, skills or plugins. It searches the knowledge base and answers from what it finds.</p>
+{{- if .MTLS}}<div class="banner err">This server asks for a client certificate (mTLS), which Claude Code cannot present from here.</div>
+{{- else if not .ClaudeOK}}<div class="banner warn">{{.ClaudeWhy}}</div>{{end}}
+{{- if .Err}}<div class="banner err">{{.Err}}</div>{{end}}
+{{- range $i, $e := .History}}{{$n := inc $i}}
+<section class="group ask">
+<div class="row stack"><div class="question">{{$e.Question}}</div>
+<pre class="answer">{{$e.Answer}}</pre>
+<div class="row meta"><span class="hint">{{$e.Took}} · {{$e.Turns}} step{{if ne $e.Turns 1}}s{{end}}</span>
+<form method="post" action="/ask/copy"><input type="hidden" name="server" value="{{$.Data.Server}}"><input type="hidden" name="n" value="{{$n}}"><button class="link">{{if eq $.Data.Copied $n}}Copied ✓{{else}}Copy answer{{end}}</button></form></div>
+</div>
+</section>
+{{- end}}
+{{- if .Pending}}
+<section class="group ask">
+<div class="row stack"><div class="question">{{.Pending}}</div>
+<div class="thinking"><span class="dot"></span> Searching the knowledge base… {{.Since}}</div>
+</div>
+</section>
+{{- else if and .ClaudeOK (not .MTLS)}}
+<form method="post" action="/ask" class="askform">
+<input type="hidden" name="server" value="{{.Server}}">
+<section class="group">
+<div class="row stack"><label class="label" for="question">{{if .History}}Follow-up question{{else}}Your question{{end}}</label>
+<textarea id="question" name="question" rows="3" maxlength="4000" placeholder="What does the knowledge base say about…" required autofocus></textarea></div>
+</section>
+<div class="actions"><span class="hint">Each answer takes a few seconds to a minute. Earlier answers give follow-ups their context.</span><button class="primary">Ask</button></div>
+</form>
+{{- end}}
+{{- if .History}}
+<form method="post" action="/ask/clear" class="links"><input type="hidden" name="server" value="{{.Server}}"><button class="link">Clear conversation</button></form>
+{{- end}}
+{{end}}{{template "foot" .}}{{end}}

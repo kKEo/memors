@@ -63,6 +63,7 @@ func TestServerWithAgents(t *testing.T) {
 	in := Input{Now: now, Servers: []ServerView{running(snap)}, KBs: []string{"crportal", "default"}, Memors: "m", MemorsOK: true, StopsOnQuit: 1}
 	got := titles(Build(in), "")
 	want := `crportal · 127.0.0.1:8765 · running
+  > Ask the Knowledge Base…
   > Open Stats Window
   > Open in Browser
   > Configure Your Agent…
@@ -113,7 +114,7 @@ func TestStoppedCrashedAndProblems(t *testing.T) {
 		"⚠ tray.json: bad [off]",
 		"a · crashed (exit status 3)\n  > Start [off]\n  > Show Log\n",
 		"b · stopped\n  > Start [off]\n",
-		"c · box:9 · unreachable (token refused)\n  > Open Stats Window [off]\n  > Open in Browser\n",
+		"c · box:9 · unreachable (token refused)\n  > Ask the Knowledge Base… [off]\n  > Open Stats Window [off]\n  > Open in Browser\n",
 		"Start Server\n  > a [off]\n  > b [off]\n  > ---\n  > Add Server…\n",
 	} {
 		if !strings.Contains(got, want) {

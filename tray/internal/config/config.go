@@ -35,6 +35,9 @@ type Config struct {
 	CheckUpdates *bool `json:"check_updates,omitempty"`
 	// Debug enables the web inspector in stats windows.
 	Debug bool `json:"debug,omitempty"`
+	// ClaudeBinary is the Claude Code executable the Ask window runs;
+	// empty means search for it.
+	ClaudeBinary string `json:"claude_binary,omitempty"`
 }
 
 // Server is one knowledge base memors-tray can start.

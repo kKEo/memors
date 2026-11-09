@@ -147,3 +147,11 @@ button.link { border: 0; background: none; padding: 0; color: var(--accent); fon
 button.link:hover { text-decoration: underline; }
 form.links { margin-top: 18px; color: var(--muted); font-size: 12px; display: flex; gap: 8px; align-items: center; }
 form.links .sep { color: var(--line); }
+
+/* Ask page */
+section.group.ask .question { font-weight: 600; white-space: pre-wrap; overflow-wrap: anywhere; }
+pre.answer { margin: 0; font: inherit; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.row.meta { padding: 0; border-top: 0; }
+.thinking { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.thinking .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: .25; } to { opacity: 1; } }

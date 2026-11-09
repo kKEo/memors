@@ -90,6 +90,7 @@ type Pages interface {
 // Window keys of memors-tray's own pages; servers' windows use their URL.
 const (
 	settingsWindow = "tray:settings"
+	askWindow      = "tray:ask:" // + the server key: one window per server
 	setupWindow    = "tray:setup"
 	connectWindow  = "tray:connect"
 	updatesWindow  = "tray:updates"
@@ -543,6 +544,10 @@ func (a *App) handle(ctx context.Context, act menu.Action) {
 	case menu.ConfigureAgent:
 		if hasView && v.URL != "" {
 			a.openPage(connectWindow, "Configure your agent", "/connect?"+url.Values{"server": {v.Key}}.Encode())
+		}
+	case menu.AskKB:
+		if hasView && v.URL != "" && !v.MTLS {
+			a.openPage(askWindow+v.Key, "Ask "+v.KB, "/ask?"+url.Values{"server": {v.Key}}.Encode())
 		}
 	case menu.ShowLog:
 		a.report("show log", a.d.OpenFile(a.d.Supervisor.LogPath(act.KB), "log"))

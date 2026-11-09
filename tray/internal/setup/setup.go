@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kKEo/memors/tray/internal/ask"
 	"github.com/kKEo/memors/tray/internal/installer"
 	"github.com/kKEo/memors/tray/internal/menu"
 	"github.com/kKEo/memors/tray/internal/update"
@@ -89,6 +90,11 @@ type Deps struct {
 	Connection func(server string) (menu.ServerView, bool)
 	// Updates knows the newest release; nil disables the Updates page.
 	Updates Updates
+	// Ask answers a question about a running server's knowledge base
+	// (*ask.Runner); FindClaude says whether Claude Code is there to do
+	// it. Nil disables the Ask page.
+	Ask        func(ctx context.Context, srv ask.Server, question string, history []ask.Exchange) (ask.Answer, error)
+	FindClaude func(configured string) (string, error)
 	// AppBundle is the MemoRS Tray.app to update in place, or why it
 	// cannot be (installer.ErrNotUpdatable).
 	AppBundle func() (string, error)
@@ -108,6 +114,7 @@ type Server struct {
 	hs       *http.Server
 	job      *job
 	trayJob  *trayJob
+	asks     map[string]*conversation // Ask windows, by server key
 	latest   *installer.Release
 	latestAt time.Time
 }
@@ -200,6 +207,10 @@ func (s *Server) Handler() http.Handler {
 	app.HandleFunc("POST /updates/check", s.checkUpdates)
 	app.HandleFunc("POST /updates/tray", s.startTrayUpdate)
 	app.HandleFunc("GET /updates/progress", s.trayProgress)
+	app.HandleFunc("GET /ask", s.askPage)
+	app.HandleFunc("POST /ask", s.askQuestion)
+	app.HandleFunc("POST /ask/clear", s.askClear)
+	app.HandleFunc("POST /ask/copy", s.askCopy)
 	app.HandleFunc("GET /connect", s.connectChoose)
 	app.HandleFunc("GET /connect/{agent}", s.connectStep)
 	app.HandleFunc("POST /connect/copy", s.connectCopy)

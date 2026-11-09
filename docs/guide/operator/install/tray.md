@@ -124,6 +124,7 @@ the settings pages never undo each other.
 | Key | Meaning |
 |---|---|
 | `memors_binary` | Path to memors-mcp. Default: next to the app, then `$PATH`, `~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, `~/go/bin` |
+| `claude_binary` | Path to Claude Code, for **Ask the Knowledge Base…**. Default: `$PATH`, then `~/.local/bin`, `~/.claude/local`, `/opt/homebrew/bin`, `/usr/local/bin`, `~/.npm-global/bin`, `~/.bun/bin`, `~/.volta/bin` |
 | `servers[].kb` | Knowledge-base name (`MEMORS_KB`) |
 | `servers[].addr` | Loopback `host:port`. Assigned from 8765–8799 when you first start the knowledge base from the menu |
 | `servers[].auth` | `none` (default) or `token` (`<MEMORS_HOME>/http-token`) |

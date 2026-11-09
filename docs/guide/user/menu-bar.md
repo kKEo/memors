@@ -65,12 +65,31 @@ minutes is dropped by the server and shows up again with its next request.
   `127.0.0.1:8765`, or the next free port. It remembers the address, so the URL you give your
   agents never changes. **Add Server…** at the bottom of that list opens the form that sets up
   a server for a knowledge base that does not exist yet, with its own address and access setting.
+- **Ask the Knowledge Base…** in a running server's submenu opens a window where you type a
+  question and get an answer from that knowledge base (see below).
 - **Configure Your Agent…** in a running server's submenu opens a window that walks you
   through connecting an agent to that server (see below).
 - **Stop**, **Restart** and **Show Log** are in the same submenu. Servers you started in a
   terminal appear too, and you can stop them from here.
 - Quitting MemoRS Tray stops the servers it started. To keep them running, set
   `"stop_on_quit": false`.
+
+## Ask the knowledge base
+
+**Ask the Knowledge Base…** opens a small conversation window for one running server. Type a
+question and press **Ask**; the answer appears in a few seconds to a minute, and follow-up
+questions see the earlier answers. **Copy answer** puts one answer on the clipboard and
+**Clear conversation** starts over.
+
+Under the hood MemoRS Tray runs Claude Code in headless mode with nothing but that server's
+MCP attached: no other MCP servers, skills, plugins, hooks or built-in tools. Claude can only
+search and read the knowledge base, so the answer comes from your memory, not from the web or
+your files. Each question is one Claude Code run, billed to the Claude account you are logged
+in to.
+
+It needs Claude Code installed; the window says so when it is not found. MemoRS Tray looks on
+`$PATH` and in the usual install folders; `claude_binary` in `tray.json` points it elsewhere.
+Servers that require a client certificate (mTLS) cannot be asked this way.
 
 ## Configure your agent
 
@@ -145,6 +164,8 @@ The window shows what is saved in `~/.memors-mcp/tray.json`. You can also edit t
 - `env` passes settings to every server MemoRS Tray starts. Apps opened from the Dock do not see
   your terminal's variables, so put settings such as `MEMORS_MODEL` here.
 - `memors_binary` is the memors-mcp to run; the setup assistant sets it to what it installed.
+- `claude_binary` is the Claude Code executable **Ask the Knowledge Base…** runs, when it is
+  not on `$PATH` or in a usual install folder.
 
 Logs live in `~/.memors-mcp/logs/`: one file per server (`serve-<name>.log`) and `tray.log`.
 

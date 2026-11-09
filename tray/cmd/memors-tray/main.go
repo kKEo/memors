@@ -22,6 +22,7 @@ import (
 	"github.com/kKEo/memors/internal/live"
 	"github.com/kKEo/memors/internal/runfile"
 	"github.com/kKEo/memors/tray/internal/app"
+	"github.com/kKEo/memors/tray/internal/ask"
 	"github.com/kKEo/memors/tray/internal/client"
 	"github.com/kKEo/memors/tray/internal/config"
 	"github.com/kKEo/memors/tray/internal/discover"
@@ -98,7 +99,15 @@ func run() int {
 		}
 		return installer.AppBundle(exe)
 	}
+	asker := &ask.Runner{Env: os.Environ(), Logf: logf, Configured: func() string {
+		if cfg, err := config.Load(config.Path(homeDir)); err == nil {
+			return cfg.ClaudeBinary
+		}
+		return ""
+	}}
 	pages, err := setup.Start(setup.Deps{
+		Ask:           asker.Ask,
+		FindClaude:    ask.Binary,
 		Home:          homeDir,
 		TrayVersion:   buildVersion(),
 		GOARCH:        runtime.GOARCH,

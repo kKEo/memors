@@ -36,6 +36,7 @@ const (
 	OpenUpdates  // the Updates page
 	CheckUpdates // the Updates page, after asking GitHub again
 	AddServer    // the Settings form that adds a server for a new knowledge base
+	AskKB        // the window that asks a running server's knowledge base a question
 )
 
 // Action is a click: what to do, to which server or knowledge base.
@@ -202,6 +203,7 @@ func header(s ServerView, in Input) Item {
 	if s.State.up() {
 		reachable := s.URL != "" && s.State != Stopping
 		children = append(children,
+			act("ask", "Ask the Knowledge Base…", AskKB, reachable && !s.MTLS),
 			act("stats", "Open Stats Window", OpenStats, reachable && !s.MTLS),
 			act("browser", "Open in Browser", OpenBrowser, reachable),
 			act("connect", "Configure Your Agent…", ConfigureAgent, s.URL != ""),

@@ -423,6 +423,11 @@ func TestFirstRunOpensTheAssistant(t *testing.T) {
 	if len(h2.win.opens) != 2 || !strings.HasPrefix(h2.win.opens[1], "tray:settings|http://127.0.0.1:1/enter?next=/settings/server/new|") {
 		t.Errorf("add-server window = %q", h2.win.opens)
 	}
+	h2.a.views = map[string]view{"http://127.0.0.1:8765": {ServerView: menu.ServerView{Key: "http://127.0.0.1:8765", KB: "work", URL: "http://127.0.0.1:8765", State: menu.Running}}}
+	h2.a.handle(context.Background(), menu.Action{Kind: menu.AskKB, Server: "http://127.0.0.1:8765"})
+	if len(h2.win.opens) != 3 || !strings.HasPrefix(h2.win.opens[2], "tray:ask:http://127.0.0.1:8765|http://127.0.0.1:1/enter?next=/ask?server=http%3A%2F%2F127.0.0.1%3A8765|") {
+		t.Errorf("ask window = %q", h2.win.opens)
+	}
 }
 
 // The setup pages save tray.json and ask for a server: it starts with the
