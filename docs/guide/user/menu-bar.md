@@ -63,7 +63,8 @@ minutes is dropped by the server and shows up again with its next request.
 
 - **Start Server ▸** lists your memories. Pick one and MemoRS Tray starts a server for it on
   `127.0.0.1:8765`, or the next free port. It remembers the address, so the URL you give your
-  agents never changes.
+  agents never changes. **Add Server…** at the bottom of that list opens the form that sets up
+  a server for a knowledge base that does not exist yet, with its own address and access setting.
 - **Configure Your Agent…** in a running server's submenu opens a window that walks you
   through connecting an agent to that server (see below).
 - **Stop**, **Restart** and **Show Log** are in the same submenu. Servers you started in a

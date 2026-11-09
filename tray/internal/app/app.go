@@ -570,6 +570,8 @@ func (a *App) handle(ctx context.Context, act menu.Action) {
 		a.d.Quit()
 	case menu.OpenSettings:
 		a.openPage(settingsWindow, "MemoRS Tray Settings", "/settings")
+	case menu.AddServer:
+		a.openPage(settingsWindow, "MemoRS Tray Settings", "/settings/server/new")
 	case menu.OpenSetup:
 		a.openPage(setupWindow, "Set up memors-mcp", "/wizard")
 	case menu.OpenUpdates:

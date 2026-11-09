@@ -419,6 +419,10 @@ func TestFirstRunOpensTheAssistant(t *testing.T) {
 	if len(h2.win.opens) != 1 || !strings.HasPrefix(h2.win.opens[0], "tray:settings|http://127.0.0.1:1/enter?next=/settings|") {
 		t.Errorf("settings window = %q", h2.win.opens)
 	}
+	h2.a.handle(context.Background(), menu.Action{Kind: menu.AddServer})
+	if len(h2.win.opens) != 2 || !strings.HasPrefix(h2.win.opens[1], "tray:settings|http://127.0.0.1:1/enter?next=/settings/server/new|") {
+		t.Errorf("add-server window = %q", h2.win.opens)
+	}
 }
 
 // The setup pages save tray.json and ask for a server: it starts with the

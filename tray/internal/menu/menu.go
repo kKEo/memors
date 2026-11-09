@@ -35,6 +35,7 @@ const (
 	OpenSetup    // the assistant that installs memors-mcp and sets up a knowledge base
 	OpenUpdates  // the Updates page
 	CheckUpdates // the Updates page, after asking GitHub again
+	AddServer    // the Settings form that adds a server for a new knowledge base
 )
 
 // Action is a click: what to do, to which server or knowledge base.
@@ -304,6 +305,7 @@ func startMenu(in Input, servers []ServerView) Item {
 		}
 		children = append(children, Item{Key: "start:none", Title: title, Disabled: true})
 	}
+	children = append(children, sep("start:add"), Item{Key: "start:add", Title: "Add Server…", Tooltip: "Set up a server for a new knowledge base", Action: Action{Kind: AddServer}})
 	return Item{Key: "start", Title: "Start Server", Children: children}
 }
 

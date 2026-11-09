@@ -40,6 +40,8 @@ func TestEmpty(t *testing.T) {
 ---
 Start Server
   > No knowledge bases yet (memors-mcp ingest creates one) [off]
+  > ---
+  > Add Server…
 Settings…
 Install or Update memors-mcp…
 Check for Updates…
@@ -74,6 +76,8 @@ func TestServerWithAgents(t *testing.T) {
 ---
 Start Server
   > default
+  > ---
+  > Add Server…
 Settings…
 Install or Update memors-mcp…
 Check for Updates…
@@ -110,7 +114,7 @@ func TestStoppedCrashedAndProblems(t *testing.T) {
 		"a · crashed (exit status 3)\n  > Start [off]\n  > Show Log\n",
 		"b · stopped\n  > Start [off]\n",
 		"c · box:9 · unreachable (token refused)\n  > Open Stats Window [off]\n  > Open in Browser\n",
-		"Start Server\n  > a [off]\n  > b [off]\n",
+		"Start Server\n  > a [off]\n  > b [off]\n  > ---\n  > Add Server…\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("menu lacks %q:\n%s", want, got)
