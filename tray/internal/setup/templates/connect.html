@@ -49,8 +49,28 @@
 {{- end}}
 </div>
 </section>
+<section class="group"><h2>2 · Optional: let Claude use it without being asked</h2>
+<div class="row stack">
+<div>The <b>memors-hooks</b> plugin shows Claude what the knowledge base holds when a session starts, points at pages already stored after a web fetch, and reminds it to record what it learned. Run these in the project folder:</div>
+<pre class="cmd">{{.PluginCmd}}</pre>
+{{template "copy" (dict "D" . "What" "plugin" "Label" "Copy commands")}}
+</div>
+{{- if .Marker}}
+<div class="row stack">
+<div>Then tell the plugin which knowledge base this project uses. It reads the name from a <code>.memors-kb</code> file in the project folder; without it the plugin reads <code>default</code>, not <b>{{.KB}}</b>.</div>
+<pre class="cmd">{{.Marker}}</pre>
+{{template "copy" (dict "D" . "What" "marker" "Label" "Copy command")}}
+<div class="hint">Commit the file with the project, so everyone's Claude reads the same knowledge base.</div>
+</div>
+{{- else}}
+<div class="row stack"><div>Then set <code>MEMORS_KB</code> to <b>{{.KB}}</b> for the project: this name cannot go into a <code>.memors-kb</code> file, which takes letters, digits, <code>.</code>, <code>_</code> and <code>-</code> only.</div></div>
+{{- end}}
+<div class="row stack">
+<div class="hint">The plugin brings a server of its own, <code>plugin:memors-hooks:memors</code>. While this server runs, that one refuses to start, so there is one engine per knowledge base, and <code>/mcp</code> lists it as failed. That is expected: select it in <code>/mcp</code> and disable it. The plugin's hooks keep working with <b>{{.Name}}</b>.</div>
+</div>
+</section>
 {{- else if eq .Agent "claude-desktop"}}
-<p class="lede">Claude Desktop starts its MCP servers itself. It runs its own memors-mcp on the same knowledge base, next to this server.</p>
+<p class="lede">Claude Desktop starts its MCP servers itself. It runs its own memors-mcp on the same knowledge base, next to this server; the entry below allows that with <code>MEMORS_SERVE_SHARED</code>.</p>
 {{- if .DesktopWhy}}
 <div class="banner err">{{.DesktopWhy}}</div>
 {{- else}}
@@ -114,6 +134,10 @@
 <section class="group"><h2>Not connected?</h2>
 <div class="row stack">
 <div>Check that <b>{{.KB}}</b> is running in the menu bar, and that the address is <code>{{.URL}}</code>.</div>
+{{- if eq .Agent "claude-code"}}
+<div>With the memors-hooks plugin, a second entry <code>plugin:memors-hooks:memors</code> marked as failed is not a problem: it stepped aside for <b>{{.Name}}</b>. Disable it in <code>/mcp</code>.</div>
+<div>If the session start mentions the <code>default</code> knowledge base instead of <b>{{.KB}}</b>, the <code>.memors-kb</code> file is missing from the project folder.</div>
+{{- end}}
 {{- if eq .Auth "token"}}<div>A 401 error means the token is missing or out of date.</div>{{end}}
 </div>
 </section>
@@ -134,7 +158,7 @@
 </div>
 </section>
 <section class="group"><h2>Optional: teach the agent</h2>
-<div class="row stack"><div>Add <code>SKILL.md</code> from the memors-mcp release to the agent's skills, or a line such as <i>"Search {{.Name}} before answering questions about this project"</i> to its instructions (<code>CLAUDE.md</code> for Claude Code). It then looks things up without being asked.</div></div>
+<div class="row stack">{{if eq .Agent "claude-code"}}<div>The memors-hooks plugin from step 2 does this for you: it brings the skill and looks things up at the right moments. Without the plugin:</div>{{end}}<div>Add <code>SKILL.md</code> from the memors-mcp release to the agent's skills, or a line such as <i>"Search {{.Name}} before answering questions about this project"</i> to its instructions (<code>CLAUDE.md</code> for Claude Code). It then looks things up without being asked.</div></div>
 </section>
 {{- end}}
 

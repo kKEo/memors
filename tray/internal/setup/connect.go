@@ -45,6 +45,12 @@ type connectData struct {
 	Command  string // claude mcp add …
 	TokenCmd string // prints the bearer token
 
+	// Claude Code's optional memors-hooks plugin: the command that writes the
+	// project marker naming this knowledge base (empty when the name is not
+	// one a marker can hold) and the commands that install the plugin.
+	Marker    string
+	PluginCmd string
+
 	DesktopFile string // claude_desktop_config.json
 	DesktopJSON string // the entry to merge into it; empty when it cannot be made
 	DesktopWhy  string // why not
@@ -108,7 +114,7 @@ func (s *Server) connectCopy(w http.ResponseWriter, r *http.Request) {
 	if agent == "claude-desktop" {
 		s.desktop(&d)
 	}
-	text := map[string]string{"command": d.Command, "url": d.URL, "token": d.TokenCmd, "json": d.DesktopJSON}[what]
+	text := map[string]string{"command": d.Command, "url": d.URL, "token": d.TokenCmd, "json": d.DesktopJSON, "marker": d.Marker, "plugin": d.PluginCmd}[what]
 	if text == "" || (what == "token" && d.Auth != "token") {
 		http.Redirect(w, r, connectLink(agent, d.Server, url.Values{"step": {"2"}}), http.StatusSeeOther)
 		return
@@ -162,7 +168,29 @@ func (s *Server) connectFor(server string) (connectData, bool) {
 		Server: server, KB: v.KB, Name: menu.ServerName(v.KB), URL: v.URL + "/mcp", Auth: authName(v.Auth), MTLS: v.MTLS,
 		Command:  menu.ClaudeAddCommand(v.KB, v.URL, v.Auth, v.TokenFile, token),
 		TokenCmd: menu.TokenCommand(v.TokenFile, token),
+		Marker:   markerCommand(v.KB), PluginCmd: pluginCommands,
 	}, true
+}
+
+// pluginCommands install the memors-hooks plugin for Claude Code, for the
+// project in the current folder.
+const pluginCommands = "claude plugin marketplace add kKEo/claude-code-plugins-incubator\n" +
+	"claude plugin install memors-hooks@km-plugin-registry --scope project"
+
+// markerCommand writes the .memors-kb project marker the memors-hooks plugin
+// reads. The plugin accepts letters, digits, '.', '_' and '-' (not leading
+// with a mark that is not a letter or digit); other names get no command.
+func markerCommand(kb string) string {
+	for i, r := range kb {
+		alnum := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9'
+		if !alnum && (i == 0 || (r != '.' && r != '_' && r != '-')) {
+			return ""
+		}
+	}
+	if kb == "" {
+		return ""
+	}
+	return "echo " + kb + " > .memors-kb"
 }
 
 // desktop fills in Claude Desktop's entry. Its configuration file takes
@@ -183,7 +211,9 @@ func (s *Server) desktop(d *connectData) {
 		d.DesktopWhy = "memors-mcp was not found (" + err.Error() + "). Install it with Set Up memors-mcp… in the menu bar."
 		return
 	}
-	env := map[string]string{"MEMORS_KB": d.KB}
+	// MEMORS_SERVE_SHARED: memors-mcp refuses to serve a knowledge base that
+	// a `serve --http` already serves, and here that second engine is wanted.
+	env := map[string]string{"MEMORS_KB": d.KB, "MEMORS_SERVE_SHARED": "1"}
 	if srv := cfg.Find(d.KB); srv != nil {
 		for k, v := range srv.Env {
 			env[k] = v

@@ -101,10 +101,15 @@ steps:
    Code**, **Claude Desktop** or **Other MCP client**.
 2. **Add the server**:
    - *Claude Code*: the `claude mcp add` command to run once in a terminal, with a **Copy**
-     button.
+     button. An optional second part sets up the memors-hooks plugin, which makes Claude use
+     the knowledge base without being asked: the commands that install it, and the command
+     that writes the project's `.memors-kb` file so the plugin reads this knowledge base
+     rather than `default`. The plugin's own server refuses to start while this one runs;
+     disable it in `/mcp`.
    - *Claude Desktop*: **Open file** opens `claude_desktop_config.json` (and creates it if Claude
      Desktop has none yet), and **Copy configuration** copies the entry to add. Claude Desktop
-     starts its own memors-mcp on the same knowledge base, so this works only for knowledge
+     starts its own memors-mcp on the same knowledge base (the entry sets
+     `MEMORS_SERVE_SHARED=1` to allow a second engine), so this works only for knowledge
      bases on this Mac, and its activity does not show in the stats window. Restart Claude
      Desktop afterwards.
    - *Other*: the MCP address (Streamable HTTP) and, when the server needs a token, the

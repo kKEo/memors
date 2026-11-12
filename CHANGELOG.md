@@ -5,6 +5,12 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **MemoRS Tray**: the Claude Code page of **Configure Your Agent…** gains an optional second
+  part for the memors-hooks plugin: the install commands, the command that writes the project's
+  `.memors-kb` marker for this knowledge base, and a note that the plugin's own server steps
+  aside for the running one (disable it in `/mcp`). The Check and Start using steps explain the
+  failed plugin entry and a session that reports `default`. The Claude Desktop entry now sets
+  `MEMORS_SERVE_SHARED=1`, because Claude Desktop starts its own server next to the tray's.
 - **One engine per knowledge base**: `memors-mcp serve` now refuses to start when a
   `serve --http` process already serves the same knowledge-base file, found through its run
   file in `<MEMORS_HOME>/run` (stale files of exited servers are ignored). The error names the

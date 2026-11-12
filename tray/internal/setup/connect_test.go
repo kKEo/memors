@@ -76,8 +76,23 @@ func TestConnectClaudeCode(t *testing.T) {
 	if len(h.copied) != 1 || h.copied[0] != want || !strings.Contains(body, "Copied ✓") {
 		t.Errorf("copied %q", h.copied)
 	}
+	for _, s := range []string{"echo work &gt; .memors-kb", "claude plugin install memors-hooks@km-plugin-registry --scope project", "plugin:memors-hooks:memors"} {
+		if !strings.Contains(body, s) {
+			t.Errorf("step 2 lacks the plugin part %q", s)
+		}
+	}
+	h.post("/connect/copy", url.Values{"server": {connectServer}, "agent": {"claude-code"}, "what": {"marker"}})
+	h.post("/connect/copy", url.Values{"server": {connectServer}, "agent": {"claude-code"}, "what": {"plugin"}})
+	if len(h.copied) != 3 || h.copied[1] != "echo work > .memors-kb" || !strings.HasPrefix(h.copied[2], "claude plugin marketplace add ") {
+		t.Errorf("copied %q", h.copied)
+	}
+	for kb, want := range map[string]string{"work": "echo work > .memors-kb", "Room.kit_2-a": "echo Room.kit_2-a > .memors-kb", "my kb": "", "-x": "", "a;b": "", "": ""} {
+		if got := markerCommand(kb); got != want {
+			t.Errorf("markerCommand(%q) = %q, want %q", kb, got, want)
+		}
+	}
 	_, body = h.get(h.s.Origin() + connectPage("claude-code", 3))
-	if !strings.Contains(body, "/mcp</code>") || !strings.Contains(body, "Open Stats Window") {
+	if !strings.Contains(body, "/mcp</code>") || !strings.Contains(body, "Open Stats Window") || !strings.Contains(body, "stepped aside") {
 		t.Errorf("step 3:\n%s", body)
 	}
 	_, body = h.get(h.s.Origin() + connectPage("claude-code", 4))
@@ -92,7 +107,7 @@ func TestConnectClaudeDesktop(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := h.enter(connectPage("claude-desktop", 2))
-	for _, s := range []string{`&#34;memors-work&#34;: {`, `&#34;command&#34;: &#34;/opt/fake/memors-mcp&#34;`, `&#34;MEMORS_KB&#34;: &#34;work&#34;`,
+	for _, s := range []string{`&#34;memors-work&#34;: {`, `&#34;command&#34;: &#34;/opt/fake/memors-mcp&#34;`, `&#34;MEMORS_KB&#34;: &#34;work&#34;`, `&#34;MEMORS_SERVE_SHARED&#34;: &#34;1&#34;`,
 		`&#34;MEMORS_MODEL&#34;: &#34;potion&#34;`, `&#34;MEMORS_HOME&#34;: &#34;` + h.home, "quit Claude Desktop completely"} {
 		if !strings.Contains(body, s) {
 			t.Errorf("step 2 lacks %q\n%s", s, body)
