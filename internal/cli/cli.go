@@ -27,6 +27,7 @@ import (
 	"github.com/kKEo/memors/internal/kb"
 	"github.com/kKEo/memors/internal/obs"
 	"github.com/kKEo/memors/internal/retrieve"
+	"github.com/kKEo/memors/internal/runfile"
 	"github.com/kKEo/memors/internal/server"
 )
 
@@ -228,6 +229,7 @@ Environment:
   MEMORS_OLLAMA_URL, MEMORS_OLLAMA_MODEL   optional local model for 'compact --executor ollama' (loopback by default)
   MEMORS_METRICS_ADDR   same as 'serve --metrics-addr' (loopback only)
   MEMORS_HTTP_ADDR      same as 'serve --http' (loopback unless --allow-remote)
+  MEMORS_SERVE_SHARED=1 let 'serve' start although a 'serve --http' already serves this knowledge base (default: refuse and name it)
   MEMORS_HTTP_AUTH      same as 'serve --auth' (token | none)
   MEMORS_HTTP_TOKEN_FILE  bearer token file (default <MEMORS_HOME>/http-token)
   MEMORS_TLS_CERT, MEMORS_TLS_KEY, MEMORS_TLS_CLIENT_CA   same as 'serve --tls-cert/--tls-key/--tls-client-ca'
@@ -318,6 +320,17 @@ func runServe(ctx context.Context, args []string, stderr io.Writer) error {
 	cfg, err := ResolveConfig(os.Getenv)
 	if err != nil {
 		return err
+	}
+	// One engine per knowledge base: a `serve --http` process advertises
+	// itself in <MEMORS_HOME>/run, and a second server on the same file
+	// (typically a stdio server a client spawned by itself) would load the
+	// model again, run its own backfill and hide from memors-tray. Refuse
+	// and name the running one, unless the operator asks for a second engine.
+	if os.Getenv("MEMORS_SERVE_SHARED") != "1" {
+		if owner, ok := runfile.Owner(runfile.Dir(filepath.Dir(cfg.KBDir)), kb.Path(cfg.KBDir, cfg.DBName)); ok {
+			return fmt.Errorf("knowledge base %q is already served by pid %d at %s/mcp (since %s); connect this client to it instead:\n  claude mcp add --transport http memors %s/mcp\nor set MEMORS_SERVE_SHARED=1 to run a second engine on the same file",
+				cfg.DBName, owner.PID, owner.URL, owner.Started.Format(time.RFC3339), owner.URL)
+		}
 	}
 	// Bind the metrics listener before the store is opened so that a bad
 	// address fails fast without touching the database or starting the

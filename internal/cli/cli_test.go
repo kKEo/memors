@@ -7,10 +7,13 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/kKEo/memors/internal/kb"
 	"github.com/kKEo/memors/internal/retrieve"
+	"github.com/kKEo/memors/internal/runfile"
 )
 
 func env(m map[string]string) Getenv { return func(k string) string { return m[k] } }
@@ -318,5 +321,53 @@ func TestMetricsCommandAndServeMetricsAddr(t *testing.T) {
 	var v map[string]any
 	if code != 0 || json.Unmarshal([]byte(out), &v) != nil || v["kb"] == nil {
 		t.Fatalf("metrics --json: %d %s", code, out)
+	}
+}
+
+func TestServeRefusesWhenHTTPServerOwnsTheKB(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("MEMORS_HOME", home)
+	t.Setenv("MEMORS_KB", "shared")
+	run := func(args ...string) (string, int) {
+		var out, errOut bytes.Buffer
+		code := Main(context.Background(), "test", args, &out, &errOut)
+		return errOut.String(), code
+	}
+	// pid 1 stands in for a live `serve --http`; on Windows use the parent.
+	live := 1
+	if runtime.GOOS == "windows" {
+		live = os.Getppid()
+	}
+	kbPath := kb.Path(filepath.Join(home, "kb"), "shared")
+	if _, err := runfile.Write(runfile.Dir(home), runfile.Info{PID: live, KB: "shared", KBPath: kbPath, URL: "http://127.0.0.1:8765"}); err != nil {
+		t.Fatal(err)
+	}
+	errOut, code := run("serve", "--metrics-addr", "0.0.0.0:0")
+	if code == 0 || !strings.Contains(errOut, "already served by pid") || !strings.Contains(errOut, "http://127.0.0.1:8765/mcp") {
+		t.Fatalf("stdio serve next to an HTTP server: %d %s", code, errOut)
+	}
+	if errOut, _ := run("serve", "--http", "127.0.0.1:0"); !strings.Contains(errOut, "already served by pid") {
+		t.Errorf("second HTTP server not refused: %s", errOut)
+	}
+	// Another knowledge base is unaffected: it fails later, on the metrics address.
+	t.Setenv("MEMORS_KB", "other")
+	if errOut, _ := run("serve", "--metrics-addr", "0.0.0.0:0"); strings.Contains(errOut, "already served") || !strings.Contains(errOut, "loopback") {
+		t.Errorf("other KB blocked: %s", errOut)
+	}
+	// The opt-out skips the check; so does a stale run file.
+	t.Setenv("MEMORS_KB", "shared")
+	t.Setenv("MEMORS_SERVE_SHARED", "1")
+	if errOut, _ := run("serve", "--metrics-addr", "0.0.0.0:0"); strings.Contains(errOut, "already served") || !strings.Contains(errOut, "loopback") {
+		t.Errorf("MEMORS_SERVE_SHARED=1 ignored: %s", errOut)
+	}
+	t.Setenv("MEMORS_SERVE_SHARED", "")
+	if err := os.Remove(filepath.Join(runfile.Dir(home), runfile.Name(live))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runfile.Write(runfile.Dir(home), runfile.Info{PID: 2147483600, KB: "shared", KBPath: kbPath, URL: "http://127.0.0.1:8765"}); err != nil {
+		t.Fatal(err)
+	}
+	if errOut, _ := run("serve", "--metrics-addr", "0.0.0.0:0"); strings.Contains(errOut, "already served") || !strings.Contains(errOut, "loopback") {
+		t.Errorf("stale run file blocked serve: %s", errOut)
 	}
 }

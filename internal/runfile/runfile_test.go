@@ -79,3 +79,39 @@ func TestListReportsBadFiles(t *testing.T) {
 		t.Errorf("missing dir: %v %v", entries, err)
 	}
 }
+
+func TestOwnerSkipsStaleAndForeignFiles(t *testing.T) {
+	dir := t.TempDir()
+	kbPath := filepath.Join(t.TempDir(), "crportal.db")
+	write := func(pid int, kb string) {
+		if _, err := Write(dir, Info{PID: pid, KB: "x", KBPath: kb, URL: "http://127.0.0.1:1"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A live process (ours) serving another file, and a stale file for this
+	// one: neither owns kbPath.
+	write(os.Getpid(), filepath.Join(filepath.Dir(kbPath), "other.db"))
+	write(2147483600, kbPath) // no such process
+	if info, ok := Owner(dir, kbPath); ok {
+		t.Fatalf("stale file counted as owner: %+v", info)
+	}
+	// Our own file for this path is ignored too (a restart over a leftover).
+	write(os.Getpid(), kbPath)
+	if _, ok := Owner(dir, kbPath); ok {
+		t.Fatal("own run file counted as owner")
+	}
+	// A live foreign process owns it. pid 1 is always alive on Unix; use the
+	// parent on Windows where pid 1 need not exist.
+	live := 1
+	if runtime.GOOS == "windows" {
+		live = os.Getppid()
+	}
+	write(live, kbPath)
+	info, ok := Owner(dir, kbPath)
+	if !ok || info.PID != live || info.URL != "http://127.0.0.1:1" {
+		t.Fatalf("Owner = %+v, %v", info, ok)
+	}
+	if _, ok := Owner(filepath.Join(dir, "missing"), kbPath); ok {
+		t.Error("missing dir reported an owner")
+	}
+}

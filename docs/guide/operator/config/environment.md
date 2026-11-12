@@ -31,6 +31,7 @@ Both must agree on `MEMORS_HOME` and `MEMORS_KB` to see the same file.
 | `MEMORS_TLS_CERT` / `MEMORS_TLS_KEY` | empty | Same as `serve --tls-cert` / `--tls-key`: PEM certificate (chain) and key; the server speaks HTTPS |
 | `MEMORS_TLS_CLIENT_CA` | empty | Same as `serve --tls-client-ca`: require client certificates signed by this PEM CA (mTLS) |
 | `MEMORS_PUBLIC_URL` | empty | Same as `serve --public-url`: the URL clients use. Required when remote or behind a proxy |
+| `MEMORS_SERVE_SHARED` | unset | `1` lets `serve` start although a `serve --http` process already serves the same knowledge-base file (it is found through `<MEMORS_HOME>/run`). By default such a start is refused with the running server's URL |
 | `MEMORS_METRICS_ADDR` | empty (off) | Same as `serve --metrics-addr`: serve Prometheus metrics at `http://<addr>/metrics`. Loopback addresses only |
 | `MEMORS_QUERY_LOG` | unset | `1` records every search in `query_log` and every tool call in `call_log`, in the same file. See [Call and query logs](../monitoring/call-log.md) |
 

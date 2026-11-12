@@ -41,6 +41,13 @@ Start the server yourself (a terminal, `launchd` or a `systemd --user` unit), or
 menu-bar app, [MemoRS Tray](tray.md). Clients do not start it, and its logs go to its own
 stderr.
 
+One engine per knowledge base. While it runs, the server advertises itself in
+`<MEMORS_HOME>/run`, and any other `memors-mcp serve` for the same `MEMORS_KB` (for example a
+stdio server a client or a plugin spawns on its own) refuses to start and prints the
+`claude mcp add` line for the running one. Register that URL in the client instead, or set
+`MEMORS_SERVE_SHARED=1` for the spawned server if you really want a second engine on the
+same file. A stale run file left by a crashed server is ignored.
+
 ### For companion apps
 
 Two routes exist for local tools such as MemoRS Tray rather than for people:

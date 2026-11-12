@@ -158,3 +158,27 @@ func pidOf(name string) (int, bool) {
 	pid, err := strconv.Atoi(digits)
 	return pid, err == nil && pid > 0
 }
+
+// Owner reports the live `serve --http` process that already serves the
+// knowledge base file at kbPath, if there is one. Run files whose process
+// has exited are stale and ignored, as is this process's own file.
+// A kbPath that cannot be made absolute is compared as given.
+func Owner(dir, kbPath string) (Info, bool) {
+	want := kbPath
+	if abs, err := filepath.Abs(kbPath); err == nil {
+		want = abs
+	}
+	entries, err := List(dir)
+	if err != nil {
+		return Info{}, false
+	}
+	for _, e := range entries {
+		if e.Err != nil || e.Info.PID == os.Getpid() || e.Info.KBPath != want {
+			continue
+		}
+		if processAlive(e.Info.PID) {
+			return e.Info, true
+		}
+	}
+	return Info{}, false
+}

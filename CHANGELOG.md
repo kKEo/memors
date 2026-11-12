@@ -5,6 +5,13 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **One engine per knowledge base**: `memors-mcp serve` now refuses to start when a
+  `serve --http` process already serves the same knowledge-base file, found through its run
+  file in `<MEMORS_HOME>/run` (stale files of exited servers are ignored). The error names the
+  running server and the `claude mcp add` command for it. Before, a client or plugin that
+  spawned its own stdio server next to a shared HTTP server got a second engine on the same
+  file: a second embedding model in memory, a second startup backfill, and a process the tray
+  could not see. `MEMORS_SERVE_SHARED=1` restores the old behaviour.
 - **MemoRS Tray**: the Servers section of Settings gets an **Add server…** button in place of the
   spare table row. The form's **Save & Run** saves the server, starts it and shows the
   `claude mcp add` command (with Copy) and the link to the agent guide, like the setup assistant.
