@@ -46,6 +46,7 @@ changelog:
       - "^test:"
 release:
   draft: false
+  replace_existing_artifacts: true
   footer: |
     memors-mcp is a pure-Go binary with no runtime dependencies. On first start
     it downloads the default embedding model (granite-embedding-small-english-r2,
