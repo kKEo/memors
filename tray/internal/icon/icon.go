@@ -1,4 +1,4 @@
-// Package icon draws memors-tray's icons (the magnifier mark of memors-mcp) in
+// Package icon draws memors-tray's icons (a brain) in
 // code, so no image files are committed: the menu-bar template image and
 // the app icon the bundle script turns into an .icns.
 package icon
@@ -18,14 +18,14 @@ func Template() []byte {
 	img := image.NewNRGBA(image.Rect(0, 0, n, n))
 	for y := range n {
 		for x := range n {
-			a := magnifier(float64(x)+0.5, float64(y)+0.5, n, 0.08)
+			a := brain(float64(x)+0.5, float64(y)+0.5, n, 0.08)
 			img.SetNRGBA(x, y, color.NRGBA{A: uint8(math.Round(a * 255))})
 		}
 	}
 	return encode(img)
 }
 
-// App is the application icon at size px: a white magnifier on a rounded
+// App is the application icon at size px: a white brain on a rounded
 // forest-green square, inset the way macOS app icons are.
 func App(size int) []byte {
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
@@ -41,7 +41,7 @@ func App(size int) []byte {
 			if box == 0 {
 				continue
 			}
-			mark := magnifier(px-off, py-off, glyph, 0)
+			mark := brain(px-off, py-off, glyph, 0)
 			img.SetNRGBA(x, y, color.NRGBA{
 				R: uint8(lerp(float64(bg.R), 255, mark)),
 				G: uint8(lerp(float64(bg.G), 255, mark)),
@@ -53,18 +53,32 @@ func App(size int) []byte {
 	return encode(img)
 }
 
-// magnifier is the coverage (0..1) of a magnifier glyph filling an n x n
-// box at point (x, y): a ring and a handle with round caps. pad shrinks
-// the glyph inside its box.
-func magnifier(x, y, n, pad float64) float64 {
+// brain is the coverage (0..1) of a brain glyph filling an n x n box at
+// point (x, y): two hemispheres and a lower lobe with a stem, carved by a
+// centre fissure and a few folds. pad shrinks the glyph inside its box.
+func brain(x, y, n, pad float64) float64 {
 	p := n * pad
 	m := n - 2*p
-	x, y = x-p, y-p
-	cx, cy, r, w := m*0.41, m*0.41, m*0.28, m*0.12
-	ring := math.Abs(math.Hypot(x-cx, y-cy)-r) - w/2
-	hw := m * 0.14
-	handle := segment(x, y, cx+r*0.72, cy+r*0.72, m*0.92, m*0.92) - hw/2
-	return coverage(math.Min(ring, handle))
+	x, y = (x-p)/m, (y-p)/m // unit box
+	disc := func(cx, cy, r float64) float64 { return (math.Hypot(x-cx, y-cy) - r) * m }
+	// Lumpy outline: a cluster of discs per hemisphere, mirrored about x = 0.5.
+	lobes := [][3]float64{{0.33, 0.40, 0.25}, {0.24, 0.24, 0.15}, {0.40, 0.16, 0.13}, {0.14, 0.42, 0.13}, {0.22, 0.62, 0.14}, {0.40, 0.64, 0.15}}
+	body := math.Inf(1)
+	for _, l := range lobes {
+		body = math.Min(body, disc(l[0], l[1], l[2]))
+		body = math.Min(body, disc(1-l[0], l[1], l[2]))
+	}
+	body = math.Min(body, segment(x, y, 0.5, 0.66, 0.56, 0.92)*m-0.05*m)
+	cut := func(ax, ay, bx, by float64) float64 { return segment(x, y, ax, ay, bx, by)*m - 0.02*m }
+	carve := cut(0.5, 0.08, 0.5, 0.68)
+	for _, side := range []float64{0, 1} {
+		fx := func(v float64) float64 { return math.Abs(side - v) }
+		carve = math.Min(carve, cut(fx(0.18), 0.30, fx(0.30), 0.38))
+		carve = math.Min(carve, cut(fx(0.30), 0.38, fx(0.40), 0.30))
+		carve = math.Min(carve, cut(fx(0.16), 0.54, fx(0.30), 0.50))
+		carve = math.Min(carve, cut(fx(0.30), 0.50, fx(0.36), 0.58))
+	}
+	return coverage(math.Max(body, -carve))
 }
 
 // segment is the distance from (x, y) to the segment a-b.

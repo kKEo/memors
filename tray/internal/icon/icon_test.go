@@ -11,7 +11,7 @@ func TestIcons(t *testing.T) {
 	if err != nil || tmpl.Bounds().Dx() != 64 {
 		t.Fatalf("template: %v %v", tmpl.Bounds(), err)
 	}
-	// Black on transparent: the corner is empty, the ring is drawn.
+	// Black on transparent: the corner is empty, the brain is drawn.
 	if _, _, _, a := tmpl.At(0, 0).RGBA(); a != 0 {
 		t.Error("template corner not transparent")
 	}
