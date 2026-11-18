@@ -92,14 +92,15 @@ section.group > h2 + .row, section.group > .row:first-child, section.group > inp
 .muted { color: var(--muted); }
 .bad { color: var(--bad); }
 
-input[type=text], select, textarea {
+input[type=text], input[type=password], select, textarea {
   font: inherit; color: var(--text); background: var(--field);
   border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; min-width: 0;
 }
 textarea { width: 100%; min-height: 70px; resize: vertical; font-size: 12px; }
-input[type=text]:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+input[type=text]:focus, input[type=password]:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
 select { max-width: 340px; }
 .wide { width: 100%; }
+input.num { width: 90px; text-align: right; }
 input[type=checkbox], input[type=radio] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
 label.check { display: flex; align-items: center; gap: 8px; }
 .choices { display: flex; flex-direction: column; gap: 6px; }

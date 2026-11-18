@@ -125,6 +125,13 @@ the settings pages never undo each other.
 |---|---|
 | `memors_binary` | Path to memors-mcp. Default: next to the app, then `$PATH`, `~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, `~/go/bin` |
 | `claude_binary` | Path to Claude Code, for **Ask the Knowledge Base…**. Default: `$PATH`, then `~/.local/bin`, `~/.claude/local`, `/opt/homebrew/bin`, `/usr/local/bin`, `~/.npm-global/bin`, `~/.bun/bin`, `~/.volta/bin` |
+| `ask.auth` | How Claude Code signs in for **Ask the Knowledge Base…**: left out (its own login, or whatever credentials MemoRS Tray's environment holds), `api_key`, `oauth_token`, `bedrock`, `vertex` or `foundry` |
+| `ask.model`, `ask.effort` | Claude Code's `--model` (an alias or a full model name) and `--effort` (`low`, `medium`, `high`, `xhigh`, `max`). Default: Claude Code's own |
+| `ask.max_turns` | Steps per answer, 1–100 (default 12) |
+| `ask.timeout_seconds` | Time limit of one question, 10–1800 (default 180) |
+| `ask.max_budget_usd` | Stop a question at this cost (`--max-budget-usd`). Default: no limit |
+| `ask.instructions` | Text added to the end of the system prompt, up to 4000 bytes |
+| `ask.env` | Extra environment for Claude Code only. Applied last, so it wins over what `ask.auth` sets |
 | `servers[].kb` | Knowledge-base name (`MEMORS_KB`) |
 | `servers[].addr` | Loopback `host:port`. Assigned from 8765–8799 when you first start the knowledge base from the menu |
 | `servers[].auth` | `none` (default) or `token` (`<MEMORS_HOME>/http-token`) |
@@ -133,6 +140,48 @@ the settings pages never undo each other.
 | `stop_on_quit` | Stop the servers MemoRS Tray started when it quits (default `true`) |
 | `check_updates` | Ask GitHub once a day whether a newer MemoRS Tray or memors-mcp exists (default `true`) |
 | `debug` | Enable the web inspector in stats windows |
+
+## Ask: how Claude Code runs
+
+**Ask the Knowledge Base…** runs `claude -p` in a private temporary directory with
+`--setting-sources ""`, `--strict-mcp-config`, `--disable-slash-commands`, `--tools ""` and
+`--no-session-persistence`. These flags are fixed. Because no settings file is read, a model,
+an `apiKeyHelper` or an `env` block in `~/.claude/settings.json` has no effect here; the `ask`
+keys above replace them. They are read for every question, so a change needs no restart.
+
+`ask.auth` sets one variable in Claude Code's environment and removes the others' (and
+`ANTHROPIC_AUTH_TOKEN`), so the choice holds whatever MemoRS Tray was started with:
+
+| `ask.auth` | Sets | Credential |
+|---|---|---|
+| left out | nothing; the environment passes as it is | Claude Code's login (Keychain) |
+| `api_key` | `ANTHROPIC_API_KEY` | `$MEMORS_HOME/ask-api-key` |
+| `oauth_token` | `CLAUDE_CODE_OAUTH_TOKEN` | `$MEMORS_HOME/ask-oauth-token`, from `claude setup-token` |
+| `bedrock` | `CLAUDE_CODE_USE_BEDROCK=1` | AWS's own chain; `AWS_PROFILE`, `AWS_REGION` in `ask.env` |
+| `vertex` | `CLAUDE_CODE_USE_VERTEX=1` | Google's own chain; `CLOUD_ML_REGION`, `ANTHROPIC_VERTEX_PROJECT_ID` in `ask.env` |
+| `foundry` | `CLAUDE_CODE_USE_FOUNDRY=1` | `ANTHROPIC_FOUNDRY_RESOURCE` and its key in `ask.env` |
+
+The key and the token are never written to `tray.json`. The settings window stores them in the
+files above (0600, one line), never shows them again, and deletes them when another sign-in is
+saved. To set one by hand, write the file yourself. A question fails with a message that names
+Settings when `ask.auth` needs a file that is missing.
+
+For an LLM gateway, leave `ask.auth` out and put `ANTHROPIC_BASE_URL` and
+`ANTHROPIC_AUTH_TOKEN` in `ask.env`; that token then sits in `tray.json` (0600). A proxy
+(`HTTPS_PROXY`) goes in `ask.env` too.
+
+```json
+{
+  "ask": {
+    "auth": "bedrock",
+    "model": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "effort": "low",
+    "max_turns": 8,
+    "max_budget_usd": 0.25,
+    "env": { "AWS_PROFILE": "work", "AWS_REGION": "eu-central-1" }
+  }
+}
+```
 
 ## Updates
 

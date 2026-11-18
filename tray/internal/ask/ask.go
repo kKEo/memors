@@ -1,7 +1,9 @@
 // Package ask answers a question about a knowledge base by running Claude
 // Code headless (claude -p) with nothing but that knowledge base's MemoRS
 // MCP server attached: no settings, plugins, skills, hooks or built-in
-// tools, so the answer comes from the knowledge base alone.
+// tools, so the answer comes from the knowledge base alone. How claude signs
+// in, which model answers and the limits on one question come from the
+// "ask" settings in tray.json (Options).
 package ask
 
 import (
@@ -13,10 +15,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/kKEo/memors/internal/httpauth"
+	"github.com/kKEo/memors/tray/internal/config"
 )
 
 // ErrNotFound means no claude executable was found.
@@ -25,8 +30,196 @@ var ErrNotFound = errors.New("Claude Code (claude) not found: install it from ht
 // ErrMTLS: claude cannot present a client certificate from here.
 var ErrMTLS = errors.New("this server asks for a client certificate (mTLS), which Claude Code cannot present from here")
 
-// Timeout bounds one question.
-const Timeout = 3 * time.Minute
+// Options is how one question runs: tray.json's "ask" settings, with the
+// key or token read from its file. The zero value is Claude Code as it is
+// logged in, with its default model.
+type Options struct {
+	Binary       string // claude_binary; empty means search for it
+	Auth         string // "", api_key, oauth_token, bedrock, vertex or foundry
+	Secret       string // the API key or OAuth token Auth needs
+	Model        string
+	Effort       string
+	MaxTurns     int           // 0 means config.DefaultAskTurns
+	Timeout      time.Duration // 0 means config.DefaultAskTimeout
+	MaxBudgetUSD float64       // 0 means no limit
+	Instructions string        // added to the end of SystemPrompt
+	Env          map[string]string
+}
+
+// Load reads the options from tray.json under homeDir, and the key or
+// token the chosen sign-in needs from its file.
+func Load(homeDir string) (Options, error) {
+	cfg, err := config.Load(config.Path(homeDir))
+	if err != nil {
+		return Options{}, err
+	}
+	a := cfg.AskSettings()
+	o := Options{
+		Binary: cfg.ClaudeBinary, Auth: a.Auth, Model: a.Model, Effort: a.Effort, MaxTurns: a.MaxTurns,
+		Timeout: time.Duration(a.TimeoutSeconds) * time.Second, MaxBudgetUSD: a.MaxBudgetUSD,
+		Instructions: a.Instructions, Env: a.Env,
+	}
+	if file := SecretFile(homeDir, a.Auth); file != "" {
+		if o.Secret, err = readSecret(file); err != nil {
+			return Options{}, fmt.Errorf("no %s is stored for Ask: enter it in Settings (%w)", SecretName(a.Auth), err)
+		}
+	}
+	return o, nil
+}
+
+func (o Options) timeout() time.Duration {
+	if o.Timeout <= 0 {
+		return config.DefaultAskTimeout * time.Second
+	}
+	return o.Timeout
+}
+
+// SecretFile is where the key or token for a sign-in method is kept,
+// readable by the owner only; empty when the method needs none.
+func SecretFile(homeDir, auth string) string {
+	switch auth {
+	case "api_key":
+		return filepath.Join(homeDir, "ask-api-key")
+	case "oauth_token":
+		return filepath.Join(homeDir, "ask-oauth-token")
+	}
+	return ""
+}
+
+// SecretName is what the secret of a sign-in method is called.
+func SecretName(auth string) string {
+	if auth == "oauth_token" {
+		return "token"
+	}
+	return "API key"
+}
+
+// HasSecret reports whether a key or token is stored for auth.
+func HasSecret(homeDir, auth string) bool {
+	file := SecretFile(homeDir, auth)
+	if file == "" {
+		return false
+	}
+	_, err := readSecret(file)
+	return err == nil
+}
+
+// CheckSecret says what is wrong with a key or token as typed.
+func CheckSecret(secret string) error {
+	switch {
+	case secret == "":
+		return errors.New("it is empty")
+	case len(secret) > 4096:
+		return errors.New("it is too long")
+	case strings.ContainsFunc(secret, func(r rune) bool { return r <= ' ' || r == 0x7f }):
+		return errors.New("it contains spaces or control characters")
+	}
+	return nil
+}
+
+// StoreSecret keeps the key or token for auth, replacing the one stored.
+func StoreSecret(homeDir, auth, secret string) error {
+	file := SecretFile(homeDir, auth)
+	if file == "" {
+		return fmt.Errorf("sign-in %q takes no key or token", auth)
+	}
+	if err := CheckSecret(secret); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(homeDir, 0o700); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(homeDir, ".ask-*.tmp") // 0600
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+	if _, err := tmp.WriteString(secret + "\n"); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), file)
+}
+
+// ForgetSecrets deletes the stored keys and tokens, except the one for
+// keep: a secret does not outlive the sign-in method that used it.
+func ForgetSecrets(homeDir, keep string) error {
+	var errs []error
+	for _, auth := range config.AskAuths {
+		if file := SecretFile(homeDir, auth); file != "" && auth != keep {
+			if err := os.Remove(file); err != nil && !errors.Is(err, os.ErrNotExist) {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func readSecret(file string) (string, error) {
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return "", err
+	}
+	secret := strings.TrimSpace(string(b))
+	if err := CheckSecret(secret); err != nil {
+		return "", fmt.Errorf("%s: %w", filepath.Base(file), err)
+	}
+	return secret, nil
+}
+
+// The variables that select how claude signs in. Choosing a sign-in
+// method removes the others' from claude's environment, so the choice
+// holds whatever MemoRS Tray itself was started with.
+var authVars = map[string]string{
+	"api_key":     "ANTHROPIC_API_KEY",
+	"oauth_token": "CLAUDE_CODE_OAUTH_TOKEN",
+	"bedrock":     "CLAUDE_CODE_USE_BEDROCK",
+	"vertex":      "CLAUDE_CODE_USE_VERTEX",
+	"foundry":     "CLAUDE_CODE_USE_FOUNDRY",
+}
+
+// Env is claude's environment: base, changed for o's sign-in method, with
+// o.Env on top. With no method chosen base is passed on as it is.
+func Env(base []string, o Options) []string {
+	set := map[string]string{}
+	var drop []string
+	if own, ok := authVars[o.Auth]; ok {
+		for _, name := range authVars {
+			drop = append(drop, name)
+		}
+		drop = append(drop, "ANTHROPIC_AUTH_TOKEN")
+		if o.Secret != "" {
+			set[own] = o.Secret
+		} else {
+			set[own] = "1"
+		}
+	}
+	for k, v := range o.Env {
+		set[k] = v
+	}
+	if len(set) == 0 {
+		return base
+	}
+	env := make([]string, 0, len(base)+len(set))
+	for _, kv := range base {
+		name, _, _ := strings.Cut(kv, "=")
+		if _, replaced := set[name]; !replaced && !slices.Contains(drop, name) {
+			env = append(env, kv)
+		}
+	}
+	names := make([]string, 0, len(set))
+	for k := range set {
+		names = append(names, k)
+	}
+	slices.Sort(names)
+	for _, k := range names {
+		env = append(env, k+"="+set[k])
+	}
+	return env
+}
 
 // Server is the MemoRS server to ask.
 type Server struct {
@@ -88,9 +281,14 @@ const SystemPrompt = `You answer questions about one knowledge base, served by t
 	`Be concise and concrete, in plain text with at most light Markdown; mention memo:// identifiers when they help the reader find the source.`
 
 // Args is the command line (after the executable) that asks prompt with
-// the MCP configuration file at mcpConfig and nothing else attached.
-func Args(mcpConfig, prompt string) []string {
-	return []string{
+// the MCP configuration file at mcpConfig and nothing else attached, as o
+// says. The isolation flags are not configurable.
+func Args(mcpConfig, prompt string, o Options) []string {
+	turns := o.MaxTurns
+	if turns <= 0 {
+		turns = config.DefaultAskTurns
+	}
+	args := []string{
 		"-p", "--output-format", "json",
 		"--setting-sources", "", // no user or project settings: no plugins, hooks or MCP servers from them
 		"--strict-mcp-config", "--mcp-config", mcpConfig,
@@ -98,10 +296,22 @@ func Args(mcpConfig, prompt string) []string {
 		"--tools", "",              // no built-in tools
 		"--allowedTools", "mcp__memors__*",
 		"--no-session-persistence",
-		"--max-turns", "12",
+		"--max-turns", strconv.Itoa(turns),
 		"--system-prompt", SystemPrompt,
-		prompt,
 	}
+	if o.Model != "" {
+		args = append(args, "--model", o.Model)
+	}
+	if o.Effort != "" {
+		args = append(args, "--effort", o.Effort)
+	}
+	if o.MaxBudgetUSD > 0 {
+		args = append(args, "--max-budget-usd", strconv.FormatFloat(o.MaxBudgetUSD, 'f', -1, 64))
+	}
+	if text := strings.TrimSpace(o.Instructions); text != "" {
+		args = append(args, "--append-system-prompt="+text) // one argument: the text may start with a dash
+	}
+	return append(args, prompt)
 }
 
 // Prompt is the question with the earlier exchanges in front of it.
@@ -141,17 +351,25 @@ func MCPConfig(srv Server) ([]byte, error) {
 
 // Runner runs claude.
 type Runner struct {
-	// Configured is claude_binary from tray.json (may be empty).
-	Configured func() string
-	Env        []string // the process environment; nil means this process's
-	Logf       func(format string, args ...any)
+	// Options are read for every question (Load), so a change in Settings
+	// applies to the next one; nil means the defaults.
+	Options func() (Options, error)
+	Env     []string // the process environment; nil means this process's
+	Logf    func(format string, args ...any)
 }
 
 // Ask runs one question against srv. The MCP configuration (with the
 // token, if any) goes into a private temporary directory that is also
 // claude's working directory, and is removed afterwards.
 func (r *Runner) Ask(ctx context.Context, srv Server, question string, history []Exchange) (Answer, error) {
-	bin, err := Binary(r.configured())
+	var o Options
+	if r.Options != nil {
+		var err error
+		if o, err = r.Options(); err != nil {
+			return Answer{}, err
+		}
+	}
+	bin, err := Binary(o.Binary)
 	if err != nil {
 		return Answer{}, err
 	}
@@ -168,11 +386,15 @@ func (r *Runner) Ask(ctx context.Context, srv Server, question string, history [
 	if err := os.WriteFile(cfgPath, cfg, 0o600); err != nil {
 		return Answer{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	ctx, cancel := context.WithTimeout(ctx, o.timeout())
 	defer cancel()
-	cmd := exec.CommandContext(ctx, bin, Args(cfgPath, Prompt(question, history))...)
+	cmd := exec.CommandContext(ctx, bin, Args(cfgPath, Prompt(question, history), o)...)
 	cmd.Dir = dir
-	cmd.Env = r.Env
+	base := r.Env
+	if base == nil {
+		base = os.Environ()
+	}
+	cmd.Env = Env(base, o)
 	cmd.Stdin = nil // /dev/null: claude must not wait for piped input
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
@@ -180,7 +402,7 @@ func (r *Runner) Ask(ctx context.Context, srv Server, question string, history [
 	runErr := cmd.Run()
 	took := time.Since(started)
 	if r.Logf != nil {
-		r.Logf("ask %s: claude took %s (exit %v)", srv.URL, took.Round(time.Millisecond), runErr)
+		r.Logf("ask %s: claude took %s (exit %v; sign-in %s, model %s)", srv.URL, took.Round(time.Millisecond), runErr, orDefault(o.Auth), orDefault(o.Model))
 	}
 	var res struct {
 		Result  string  `json:"result"`
@@ -190,7 +412,7 @@ func (r *Runner) Ask(ctx context.Context, srv Server, question string, history [
 	}
 	if jsonErr := json.Unmarshal(bytes.TrimSpace(out.Bytes()), &res); jsonErr != nil || (res.Result == "" && !res.IsError) {
 		if ctx.Err() != nil {
-			return Answer{}, fmt.Errorf("claude gave no answer within %s", Timeout)
+			return Answer{}, fmt.Errorf("claude gave no answer within %s", o.timeout())
 		}
 		detail := strings.TrimSpace(errb.String())
 		if detail == "" {
@@ -207,11 +429,11 @@ func (r *Runner) Ask(ctx context.Context, srv Server, question string, history [
 	return Answer{Text: strings.TrimSpace(res.Result), Turns: res.Turns, Cost: res.Cost, Took: took}, nil
 }
 
-func (r *Runner) configured() string {
-	if r.Configured == nil {
-		return ""
+func orDefault(s string) string {
+	if s == "" {
+		return "default"
 	}
-	return r.Configured()
+	return s
 }
 
 // tail is the last few lines of detail, for an error message.

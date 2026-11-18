@@ -49,7 +49,8 @@ type askData struct {
 	ClaudeOK        bool
 	ClaudeWhy       string
 	MTLS            bool
-	Copied          int // 1-based index of the answer just copied
+	Copied          int    // 1-based index of the answer just copied
+	Setup           string // how Claude Code runs: sign-in, model
 }
 
 // askFor describes server as the Ask page needs it; false when the
@@ -90,6 +91,7 @@ func (s *Server) askPage(w http.ResponseWriter, r *http.Request) {
 		d.Copied = copied
 	}
 	cfg, _, _ := s.loadConfig()
+	d.Setup = askSummary(cfg.AskSettings())
 	if s.d.FindClaude != nil {
 		if _, err := s.d.FindClaude(cfg.ClaudeBinary); err != nil {
 			d.ClaudeWhy = err.Error()

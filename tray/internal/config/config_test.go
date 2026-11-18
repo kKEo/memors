@@ -56,6 +56,18 @@ func TestValidate(t *testing.T) {
 		{"reserved env", Config{Env: map[string]string{"MEMORS_HTTP_AUTH": "none"}}, "set by MemoRS Tray"},
 		{"reserved server env", Config{Servers: []Server{{KB: "a", Addr: "127.0.0.1:1", Env: map[string]string{"MEMORS_KB": "b"}}}}, "set by MemoRS Tray"},
 		{"bad env name", Config{Env: map[string]string{"A=B": "x"}}, "variable name"},
+		{"ask ok", Config{Ask: &Ask{Auth: "bedrock", Model: "us.anthropic.claude-sonnet-4-5-20250929-v1:0", Effort: "high", MaxTurns: 100, TimeoutSeconds: 10, MaxBudgetUSD: 2, Env: map[string]string{"AWS_PROFILE": "work"}}}, ""},
+		{"ask model with a context suffix", Config{Ask: &Ask{Model: "sonnet[1m]"}}, ""},
+		{"ask auth", Config{Ask: &Ask{Auth: "password"}}, "auth must be one of"},
+		{"ask model is a flag", Config{Ask: &Ask{Model: "--settings"}}, "not a model name"},
+		{"ask model with a space", Config{Ask: &Ask{Model: "sonnet --x"}}, "not a model name"},
+		{"ask effort", Config{Ask: &Ask{Effort: "extreme"}}, "effort must be one of"},
+		{"ask turns", Config{Ask: &Ask{MaxTurns: 101}}, "max_turns"},
+		{"ask negative turns", Config{Ask: &Ask{MaxTurns: -1}}, "max_turns"},
+		{"ask timeout", Config{Ask: &Ask{TimeoutSeconds: 5}}, "timeout_seconds"},
+		{"ask budget", Config{Ask: &Ask{MaxBudgetUSD: -1}}, "max_budget_usd"},
+		{"ask instructions", Config{Ask: &Ask{Instructions: strings.Repeat("x", MaxAskInstructions+1)}}, "instructions"},
+		{"ask env name", Config{Ask: &Ask{Env: map[string]string{"A B": "x"}}}, "variable name"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			err := c.cfg.Validate()

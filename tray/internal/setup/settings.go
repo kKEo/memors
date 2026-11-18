@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kKEo/memors/tray/internal/ask"
 	"github.com/kKEo/memors/tray/internal/config"
 	"github.com/kKEo/memors/tray/internal/home"
 )
@@ -43,6 +44,61 @@ type settingsData struct {
 	Debug        bool
 	ConfigPath   string
 	LogsDir      string
+
+	// The Ask section.
+	Back            string // the server whose Ask window led here, for the way back
+	ClaudePath      string
+	ClaudeStatus    string
+	ClaudeOK        bool
+	AskAuth         string
+	AskAuths        []choice
+	AskSecretStored bool
+	AskSecretName   string
+	AskModel        string
+	AskEffort       string
+	AskEfforts      []string
+	AskTurns        string
+	AskTimeout      string
+	AskBudget       string
+	AskInstructions string
+	AskEnv          string
+}
+
+// choice is one option of a select.
+type choice struct{ Value, Label string }
+
+// askAuths are the ways Claude Code can sign in, as the form names them.
+var askAuths = []choice{
+	{"", "Claude Code's own sign-in"},
+	{"api_key", "Anthropic API key"},
+	{"oauth_token", "Long-lived token (claude setup-token)"},
+	{"bedrock", "Amazon Bedrock"},
+	{"vertex", "Google Vertex AI"},
+	{"foundry", "Microsoft Foundry"},
+}
+
+// askAuthLabel is the form's name for a sign-in method.
+func askAuthLabel(auth string) string {
+	for _, c := range askAuths {
+		if c.Value == auth {
+			return c.Label
+		}
+	}
+	return auth
+}
+
+// askSummary is one line on how Ask runs Claude Code.
+func askSummary(a config.Ask) string {
+	parts := []string{askAuthLabel(a.Auth)}
+	if a.Model != "" {
+		parts = append(parts, "model "+a.Model)
+	} else {
+		parts = append(parts, "default model")
+	}
+	if a.Effort != "" {
+		parts = append(parts, a.Effort+" effort")
+	}
+	return strings.Join(parts, " · ")
 }
 
 // maxServers bounds the rows read back from a posted form.
@@ -53,6 +109,7 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
 	d := s.settingsFrom(r.Context(), cfg)
 	d.Rev = rev
 	d.Saved = r.URL.Query().Get("saved") == "1"
+	d.Back = s.backTo(r.URL.Query().Get("back"))
 	if err != nil {
 		d.Errors = append(d.Errors, err.Error()+" (saving this form replaces it)")
 	}
@@ -68,13 +125,24 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 	cur, rev, _ := s.loadConfig()
 	if r.PostForm.Get("rev") != rev {
 		d := s.settingsFrom(r.Context(), cur)
-		d.Rev = rev
+		d.Rev, d.Back = rev, s.backTo(r.PostForm.Get("back"))
 		d.Notice = "tray.json changed while this form was open (MemoRS Tray adds a server when you start a new knowledge base). Nothing was saved: check the values below and save again."
 		w.WriteHeader(http.StatusConflict)
 		s.render(w, "settings.html", page{Title: "Settings", Data: d})
 		return
 	}
 	next, errs := s.fromForm(r.PostForm, cur)
+	auth := next.AskSettings().Auth
+	secret := strings.TrimSpace(r.PostForm.Get("ask_secret"))
+	if file := ask.SecretFile(s.d.Home, auth); file == "" {
+		secret = "" // this sign-in takes none
+	} else if secret != "" {
+		if err := ask.CheckSecret(secret); err != nil {
+			errs = append(errs, fmt.Sprintf("Ask, %s: %v", ask.SecretName(auth), err))
+		}
+	} else if !ask.HasSecret(s.d.Home, auth) {
+		errs = append(errs, fmt.Sprintf("Ask: enter the %s for the sign-in %q", ask.SecretName(auth), askAuthLabel(auth)))
+	}
 	if want := r.PostForm.Get("login") == "on"; want != s.d.Login.Enabled() {
 		var err error
 		if want {
@@ -88,24 +156,49 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(errs) > 0 {
 		d := s.settingsFrom(r.Context(), next)
-		d.Rev, d.Errors = rev, errs
+		d.Rev, d.Errors, d.Back = rev, errs, s.backTo(r.PostForm.Get("back"))
 		d.MemorsMode, d.MemorsPath = r.PostForm.Get("memors_mode"), r.PostForm.Get("memors_path")
 		d.Env = r.PostForm.Get("env")
+		d.ClaudePath, d.AskEnv = r.PostForm.Get("claude_path"), r.PostForm.Get("ask_env")
+		d.AskTurns, d.AskTimeout, d.AskBudget = r.PostForm.Get("ask_max_turns"), r.PostForm.Get("ask_timeout"), r.PostForm.Get("ask_budget")
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		s.render(w, "settings.html", page{Title: "Settings", Data: d})
 		return
+	}
+	if secret != "" { // before tray.json names the sign-in that needs it
+		if err := ask.StoreSecret(s.d.Home, auth, secret); err != nil {
+			http.Error(w, "saving the "+ask.SecretName(auth)+": "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	saved, err := config.SaveIf(config.Path(s.d.Home), next, rev)
 	if err != nil {
 		http.Error(w, "saving tray.json: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	q := url.Values{}
+	if back := s.backTo(r.PostForm.Get("back")); back != "" {
+		q.Set("back", back)
+	}
 	if !saved { // changed between the check above and now
-		http.Redirect(w, r, "/settings", http.StatusSeeOther)
+		http.Redirect(w, r, "/settings?"+q.Encode(), http.StatusSeeOther)
 		return
 	}
+	if err := ask.ForgetSecrets(s.d.Home, auth); err != nil {
+		s.d.Logf("settings: %v", err)
+	}
 	s.d.Notify(Event{Kind: ConfigSaved})
-	http.Redirect(w, r, "/settings?saved=1", http.StatusSeeOther)
+	q.Set("saved", "1")
+	http.Redirect(w, r, "/settings?"+q.Encode(), http.StatusSeeOther)
+}
+
+// backTo is server when it names a running server with an Ask window,
+// else empty.
+func (s *Server) backTo(server string) string {
+	if _, ok := s.askFor(server); !ok {
+		return ""
+	}
+	return server
 }
 
 // fromForm builds the configuration a posted settings form describes.
@@ -130,6 +223,23 @@ func (s *Server) fromForm(f url.Values, cur *config.Config) (*config.Config, []s
 			errs = append(errs, "memors-mcp location: "+err.Error())
 		}
 		next.MemorsBinary = p
+	}
+
+	if p := strings.TrimSpace(f.Get("claude_path")); p != "" {
+		p = expandHome(p)
+		if !filepath.IsAbs(p) {
+			errs = append(errs, "Claude Code location: give the full path to the claude file, or leave it empty to find it automatically")
+		} else if s.d.FindClaude != nil {
+			if _, err := s.d.FindClaude(p); err != nil {
+				errs = append(errs, "Claude Code location: "+p+" is not an executable")
+			}
+		}
+		next.ClaudeBinary = p
+	}
+	a, askErrs := askFromForm(f)
+	errs = append(errs, askErrs...)
+	if !a.IsZero() {
+		next.Ask = &a
 	}
 
 	env, envErrs := parseEnv(f.Get("env"))
@@ -158,6 +268,52 @@ func (s *Server) fromForm(f url.Values, cur *config.Config) (*config.Config, []s
 		errs = append(errs, err.Error())
 	}
 	return next, errs
+}
+
+// askFromForm reads the Ask section. A limit typed as its default is
+// left out of tray.json.
+func askFromForm(f url.Values) (config.Ask, []string) {
+	var errs []string
+	a := config.Ask{
+		Auth:         strings.TrimSpace(f.Get("ask_auth")),
+		Model:        strings.TrimSpace(f.Get("ask_model")),
+		Effort:       strings.TrimSpace(f.Get("ask_effort")),
+		Instructions: strings.TrimSpace(strings.ReplaceAll(f.Get("ask_instructions"), "\r\n", "\n")),
+	}
+	number := func(field, what string, def int) int {
+		v := strings.TrimSpace(f.Get(field))
+		if v == "" {
+			return 0
+		}
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			errs = append(errs, "Ask, "+what+": "+strconv.Quote(v)+" is not a whole number")
+			return 0
+		}
+		if n == def {
+			return 0
+		}
+		if n == 0 {
+			return -1 // out of range, for Validate to say so
+		}
+		return n
+	}
+	a.MaxTurns = number("ask_max_turns", "steps per answer", config.DefaultAskTurns)
+	a.TimeoutSeconds = number("ask_timeout", "time limit", config.DefaultAskTimeout)
+	if v := strings.TrimPrefix(strings.TrimSpace(f.Get("ask_budget")), "$"); v != "" {
+		n, err := strconv.ParseFloat(v, 64)
+		if err != nil || n != n {
+			errs = append(errs, "Ask, cost limit: "+strconv.Quote(v)+" is not an amount in US dollars")
+		} else {
+			a.MaxBudgetUSD = n
+		}
+	}
+	env, envErrs := parseLines(f.Get("ask_env"), "Ask, environment for Claude Code")
+	errs = append(errs, envErrs...)
+	if len(env) > 0 {
+		a.Env = env
+	}
+	return a, errs
 }
 
 // settingsFrom fills the form from a configuration.
@@ -199,6 +355,31 @@ func (s *Server) settingsFrom(ctx context.Context, cfg *config.Config) settingsD
 	}
 	slices.Sort(lines)
 	d.Env = strings.Join(lines, "\n")
+
+	a := cfg.AskSettings()
+	d.ClaudePath, d.ClaudeOK = cfg.ClaudeBinary, true
+	if s.d.FindClaude != nil {
+		if bin, err := s.d.FindClaude(cfg.ClaudeBinary); err != nil {
+			d.ClaudeOK, d.ClaudeStatus = false, err.Error()
+		} else {
+			d.ClaudeStatus = "Claude Code at " + bin
+		}
+	}
+	d.AskAuth, d.AskAuths = a.Auth, askAuths
+	d.AskSecretName = ask.SecretName(a.Auth)
+	d.AskSecretStored = ask.HasSecret(s.d.Home, a.Auth)
+	d.AskModel, d.AskEffort, d.AskEfforts = a.Model, a.Effort, config.AskEfforts
+	d.AskTurns, d.AskTimeout = strconv.Itoa(a.Turns()), strconv.Itoa(a.Timeout())
+	if a.MaxBudgetUSD > 0 {
+		d.AskBudget = strconv.FormatFloat(a.MaxBudgetUSD, 'f', -1, 64)
+	}
+	d.AskInstructions = a.Instructions
+	lines = nil
+	for k, v := range a.Env {
+		lines = append(lines, k+"="+v)
+	}
+	slices.Sort(lines)
+	d.AskEnv = strings.Join(lines, "\n")
 	return d
 }
 
@@ -257,8 +438,20 @@ func memorsLine(bin, version string, err error) string {
 	return "memors-mcp " + version + " at " + bin
 }
 
-// parseEnv reads KEY=value lines; blank lines and # comments are skipped.
+// parseEnv reads the servers' environment (parseLines), where the
+// embedding model has a field of its own.
 func parseEnv(text string) (map[string]string, []string) {
+	env, errs := parseLines(text, "Environment")
+	if _, ok := env["MEMORS_MODEL"]; ok {
+		delete(env, "MEMORS_MODEL")
+		errs = append(errs, "Environment: choose the embedding model with the field above, not MEMORS_MODEL here")
+	}
+	return env, errs
+}
+
+// parseLines reads KEY=value lines; blank lines and # comments are
+// skipped. what names the field in an error.
+func parseLines(text, what string) (map[string]string, []string) {
 	env := map[string]string{}
 	var errs []string
 	for i, line := range strings.Split(text, "\n") {
@@ -268,14 +461,11 @@ func parseEnv(text string) (map[string]string, []string) {
 		}
 		k, v, ok := strings.Cut(line, "=")
 		k = strings.TrimSpace(k)
-		switch {
-		case !ok || k == "":
-			errs = append(errs, fmt.Sprintf("Environment, line %d: write NAME=value", i+1))
-		case k == "MEMORS_MODEL":
-			errs = append(errs, "Environment: choose the embedding model with the field above, not MEMORS_MODEL here")
-		default:
-			env[k] = strings.TrimSpace(v)
+		if !ok || k == "" {
+			errs = append(errs, fmt.Sprintf("%s, line %d: write NAME=value", what, i+1))
+			continue
 		}
+		env[k] = strings.TrimSpace(v)
 	}
 	return env, errs
 }

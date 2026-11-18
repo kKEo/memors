@@ -85,11 +85,36 @@ Under the hood MemoRS Tray runs Claude Code in headless mode with nothing but th
 MCP attached: no other MCP servers, skills, plugins, hooks or built-in tools. Claude can only
 search and read the knowledge base, so the answer comes from your memory, not from the web or
 your files. Each question is one Claude Code run, billed to the Claude account you are logged
-in to.
+in to, unless you choose another sign-in (below).
 
 It needs Claude Code installed; the window says so when it is not found. MemoRS Tray looks on
-`$PATH` and in the usual install folders; `claude_binary` in `tray.json` points it elsewhere.
-Servers that require a client certificate (mTLS) cannot be asked this way.
+`$PATH` and in the usual install folders; **Claude Code location** in Settings points it
+elsewhere. Servers that require a client certificate (mTLS) cannot be asked this way.
+
+### Choosing the account and the model
+
+The line under the question box shows how Claude Code runs, for example *Claude Code's own
+sign-in · default model*. **Ask settings…** next to it opens the **Ask the knowledge base**
+section of Settings; **‹ Back to Ask** returns to the conversation. What you save applies to
+the next question.
+
+- **Sign in with**: *Claude Code's own sign-in* (the account you logged in to with `claude`),
+  an *Anthropic API key*, a *long-lived token* (the one `claude setup-token` prints), or a
+  cloud provider: *Amazon Bedrock*, *Google Vertex AI*, *Microsoft Foundry*.
+- **API key or token**: type it once. MemoRS Tray keeps it in a file only you can read, never
+  shows it again, and deletes it when you save another sign-in. Leave the field empty to keep
+  the stored one.
+- **Model** and **Effort**: an alias such as `sonnet` or `haiku`, or a full model name; a
+  smaller model and a lower effort answer faster and cost less.
+- **Steps per answer**, **Time limit** and **Cost limit per question**: when a question stops.
+  The defaults are 12 steps, 180 seconds and no cost limit.
+- **Extra instructions**: added to what MemoRS Tray tells Claude, for example the language to
+  answer in.
+- **Environment for Claude Code**: `NAME=value` lines for Claude Code only. A cloud provider
+  reads its profile, region or project from here.
+
+Your own Claude Code settings (`~/.claude/settings.json`) are not read by this window, so a
+model or a provider you set there has to be set here as well.
 
 ## Configure your agent
 
@@ -144,6 +169,8 @@ If the server asks for a token, the window logs in by itself. There is nothing t
   saves the server, starts it and shows the `claude mcp add` command to connect Claude Code
   (plus a link to the guide for other agents). Removing a server never deletes the knowledge base
   itself.
+- **Ask the knowledge base**: where Claude Code is, how it signs in, the model, the limits on
+  one question and extra instructions (see [Ask the knowledge base](#ask-the-knowledge-base)).
 - **Advanced**: extra environment for the servers, and the Web Inspector for MemoRS Tray's
   windows. Links open `tray.json` and the logs folder.
 
@@ -171,6 +198,9 @@ The window shows what is saved in `~/.memors-mcp/tray.json`. You can also edit t
 - `memors_binary` is the memors-mcp to run; the setup assistant sets it to what it installed.
 - `claude_binary` is the Claude Code executable **Ask the Knowledge Base…** runs, when it is
   not on `$PATH` or in a usual install folder.
+- `ask` holds the Ask settings, for example
+  `"ask": { "model": "haiku", "effort": "low", "max_turns": 8 }`. The operator guide lists
+  every key.
 
 Logs live in `~/.memors-mcp/logs/`: one file per server (`serve-<name>.log`) and `tray.log`.
 

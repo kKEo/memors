@@ -1,4 +1,5 @@
 {{define "settings.html"}}{{template "head" .}}{{with .Data}}
+{{if .Back}}<p class="links"><a href="/ask?server={{.Back}}">‹ Back to Ask</a></p>{{end}}
 <h1>Settings</h1>
 <p class="lede">Saved in <code>{{tilde .ConfigPath}}</code>. Servers pick up changes the next time they start.</p>
 {{- if .Saved}}<div class="banner ok">Settings saved.</div>{{end}}
@@ -6,6 +7,7 @@
 {{- if .Errors}}<div class="banner err">Nothing was saved:<ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 <form method="post" action="/settings">
 <input type="hidden" name="rev" value="{{.Rev}}">
+<input type="hidden" name="back" value="{{.Back}}">
 
 <section class="group"><h2>General</h2>
 <div class="row"><label class="check"><input type="checkbox" name="login"{{if .Login}} checked{{end}}> Open MemoRS Tray when you log in</label></div>
@@ -41,6 +43,40 @@
 {{- end}}
 </table>
 <div class="row"><div class="hint">An address stays fixed, so the MCP URL your agents use never changes. Removing a server here does not delete its knowledge base. "Token" also keeps other users of this Mac out.</div></div>
+</section>
+
+<section class="group" id="ask"><h2>Ask the knowledge base</h2>
+<div class="row"><div class="hint">How <b>Ask the Knowledge Base…</b> runs Claude Code. It always runs with only the server's MCP attached; your own Claude Code settings are not read, so what it needs is set here. Changes apply to the next question.</div></div>
+<div class="row stack"><div class="status"><span class="dot{{if not .ClaudeOK}} bad{{end}}"></span><span>{{tilde .ClaudeStatus}}</span></div>
+<label class="label" for="claude_path">Claude Code location</label>
+<input type="text" id="claude_path" name="claude_path" value="{{.ClaudePath}}" placeholder="Find automatically ($PATH, ~/.local/bin, Homebrew, …)" class="wide"></div>
+<div class="row"><div><label class="label" for="ask_auth">Sign in with</label>
+<div class="hint">"Claude Code's own sign-in" is the account you logged in to with <code>claude</code>. An API key is billed to that key's Console account. Bedrock, Vertex AI and Foundry take their region, profile or project from the environment below.</div></div>
+<select id="ask_auth" name="ask_auth">{{range .AskAuths}}<option value="{{.Value}}"{{if eq .Value $.Data.AskAuth}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="row"><div><label class="label" for="ask_secret">API key or token</label>
+<div class="hint">{{if .AskSecretStored}}{{if eq .AskSecretName "token"}}A token{{else}}An API key{{end}} is stored. Leave this empty to keep it.{{else}}Only for the API key and long-lived token sign-ins.{{end}} Kept in a file only you can read, never shown again, and deleted when you choose another sign-in.</div></div>
+<input type="password" id="ask_secret" name="ask_secret" value="" autocomplete="off" placeholder="{{if .AskSecretStored}}••••••••{{else}}sk-ant-…{{end}}"></div>
+<div class="row"><div><label class="label" for="ask_model">Model</label>
+<div class="hint">An alias (<code>sonnet</code>, <code>opus</code>, <code>haiku</code>) or a full model name, such as a Bedrock model ID. Empty: Claude Code's default.</div></div>
+<input type="text" id="ask_model" name="ask_model" value="{{.AskModel}}" placeholder="default"></div>
+<div class="row"><div><label class="label" for="ask_effort">Effort</label>
+<div class="hint">How hard the model thinks. Lower is faster and cheaper.</div></div>
+<select id="ask_effort" name="ask_effort"><option value="">Default</option>{{range .AskEfforts}}<option value="{{.}}"{{if eq . $.Data.AskEffort}} selected{{end}}>{{.}}</option>{{end}}</select></div>
+<div class="row"><div><label class="label" for="ask_max_turns">Steps per answer</label>
+<div class="hint">The most searches and reads Claude makes for one question.</div></div>
+<input type="text" id="ask_max_turns" name="ask_max_turns" value="{{.AskTurns}}" inputmode="numeric" class="num"></div>
+<div class="row"><div><label class="label" for="ask_timeout">Time limit, seconds</label>
+<div class="hint">A question with no answer after this long is stopped.</div></div>
+<input type="text" id="ask_timeout" name="ask_timeout" value="{{.AskTimeout}}" inputmode="numeric" class="num"></div>
+<div class="row"><div><label class="label" for="ask_budget">Cost limit per question, US dollars</label>
+<div class="hint">Stops a question once it has cost this much. Empty: no limit.</div></div>
+<input type="text" id="ask_budget" name="ask_budget" value="{{.AskBudget}}" inputmode="decimal" placeholder="no limit" class="num"></div>
+<div class="row stack"><label class="label" for="ask_instructions">Extra instructions</label>
+<textarea id="ask_instructions" name="ask_instructions" maxlength="4000" placeholder="Answer in Polish. Keep answers under ten lines.">{{.AskInstructions}}</textarea>
+<div class="hint">Added to what MemoRS Tray tells Claude: answer from the knowledge base only, concisely.</div></div>
+<div class="row stack"><label class="label" for="ask_env">Environment for Claude Code</label>
+<textarea id="ask_env" name="ask_env" placeholder="AWS_PROFILE=work&#10;AWS_REGION=eu-central-1">{{.AskEnv}}</textarea>
+<div class="hint">One NAME=value per line, for Claude Code only: a cloud provider's settings, a gateway (<code>ANTHROPIC_BASE_URL</code>), a proxy.</div></div>
 </section>
 
 <section class="group"><h2>Advanced</h2>

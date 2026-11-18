@@ -99,12 +99,7 @@ func run() int {
 		}
 		return installer.AppBundle(exe)
 	}
-	asker := &ask.Runner{Env: os.Environ(), Logf: logf, Configured: func() string {
-		if cfg, err := config.Load(config.Path(homeDir)); err == nil {
-			return cfg.ClaudeBinary
-		}
-		return ""
-	}}
+	asker := &ask.Runner{Env: os.Environ(), Logf: logf, Options: func() (ask.Options, error) { return ask.Load(homeDir) }}
 	pages, err := setup.Start(setup.Deps{
 		Ask:           asker.Ask,
 		FindClaude:    ask.Binary,

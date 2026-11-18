@@ -35,7 +35,8 @@
 <div class="actions"><span class="hint">Each answer takes a few seconds to a minute. Earlier answers give follow-ups their context.</span><button class="primary">Ask</button></div>
 </form>
 {{- end}}
-{{- if .History}}
-<form method="post" action="/ask/clear" class="links"><input type="hidden" name="server" value="{{.Server}}"><button class="link">Clear conversation</button></form>
-{{- end}}
+<form method="post" action="/ask/clear" class="links">
+<span>{{.Setup}}</span><span class="sep">·</span><a href="/settings?back={{.Server}}#ask">Ask settings…</a>
+{{- if .History}}<span class="sep">·</span><input type="hidden" name="server" value="{{.Server}}"><button class="link">Clear conversation</button>{{end}}
+</form>
 {{end}}{{template "foot" .}}{{end}}

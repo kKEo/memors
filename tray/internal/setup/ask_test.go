@@ -3,13 +3,18 @@ package setup
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/kKEo/memors/tray/internal/ask"
+	"github.com/kKEo/memors/tray/internal/config"
 	"github.com/kKEo/memors/tray/internal/menu"
 )
 
@@ -147,5 +152,116 @@ func TestAskProblems(t *testing.T) {
 	_, body = h.get(h.s.Origin() + askPage())
 	if !strings.Contains(body, "client certificate") || strings.Contains(body, `name="question"`) {
 		t.Errorf("mTLS server:\n%s", body)
+	}
+}
+
+func TestAskSettings(t *testing.T) {
+	h, _ := askHarness(t)
+	claude := filepath.Join(t.TempDir(), "claude")
+	h.s.d.FindClaude = func(configured string) (string, error) {
+		if configured != "" && configured != claude {
+			return "", errors.New("claude_binary in tray.json is not an executable: " + configured)
+		}
+		return "/opt/fake/claude", nil
+	}
+	// The Ask window says how Claude Code runs and links to its settings.
+	body := h.enter(askPage())
+	for _, want := range []string{"Claude Code&#39;s own sign-in · default model", `href="/settings?back=` + strings.ToLower(url.QueryEscape(connectServer)) + `#ask"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("ask page lacks %q:\n%s", want, body)
+		}
+	}
+	_, body = h.get(h.s.Origin() + "/settings?" + url.Values{"back": {connectServer}}.Encode())
+	for _, want := range []string{`id="ask"`, "Back to Ask", "Claude Code at /opt/fake/claude", `name="ask_max_turns" value="12"`, `name="ask_timeout" value="180"`, "Only for the API key"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("settings page lacks %q", want)
+		}
+	}
+	// An API key sign-in needs its key.
+	form := func(body string, more url.Values) url.Values {
+		f := url.Values{"rev": {rev(t, body)}, "back": {connectServer}, "stop_on_quit": {"on"}, "check_updates": {"on"}}
+		for k, v := range more {
+			f[k] = v
+		}
+		return f
+	}
+	code, got := h.post("/settings", form(body, url.Values{"ask_auth": {"api_key"}}))
+	if code != http.StatusUnprocessableEntity || !strings.Contains(got, "enter the API key") {
+		t.Errorf("API key sign-in without a key: %d", code)
+	}
+	code, got = h.post("/settings", form(body, url.Values{
+		"claude_path": {claude}, "ask_auth": {"api_key"}, "ask_secret": {" sk-ant-secret "}, "ask_model": {"sonnet"}, "ask_effort": {"low"},
+		"ask_max_turns": {"6"}, "ask_timeout": {"180"}, "ask_budget": {"$0.50"}, "ask_instructions": {"Answer in Polish.\r\n"},
+		"ask_env": {"HTTPS_PROXY=http://proxy:3128\n# note\n"},
+	}))
+	if code != 200 || !strings.Contains(got, "Settings saved.") || !strings.Contains(got, "Back to Ask") {
+		t.Fatalf("save: %d\n%s", code, got)
+	}
+	if strings.Contains(got, "sk-ant-secret") {
+		t.Error("the settings page shows the key")
+	}
+	for _, want := range []string{"An API key is stored", `<option value="api_key" selected>`, `name="ask_model" value="sonnet"`, `<option value="low" selected>`, `name="ask_budget" value="0.5"`, "Answer in Polish.</textarea>", "HTTPS_PROXY=http://proxy:3128</textarea>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("saved settings page lacks %q", want)
+		}
+	}
+	c := h.cfg()
+	want := config.Ask{Auth: "api_key", Model: "sonnet", Effort: "low", MaxTurns: 6, MaxBudgetUSD: 0.5, Instructions: "Answer in Polish.", Env: map[string]string{"HTTPS_PROXY": "http://proxy:3128"}}
+	if c.ClaudeBinary != claude || c.Ask == nil || !reflect.DeepEqual(*c.Ask, want) {
+		t.Errorf("saved ask = %+v (claude %q)", c.Ask, c.ClaudeBinary)
+	}
+	raw, _ := os.ReadFile(config.Path(h.home))
+	if strings.Contains(string(raw), "sk-ant-secret") {
+		t.Error("the key is in tray.json")
+	}
+	if o, err := ask.Load(h.home); err != nil || o.Secret != "sk-ant-secret" {
+		t.Errorf("stored key: %+v, %v", o, err)
+	}
+	_, body = h.get(h.s.Origin() + askPage())
+	if !strings.Contains(body, "Anthropic API key · model sonnet · low effort") {
+		t.Errorf("ask page does not name the new setup:\n%s", body)
+	}
+	// Saving again with the key field empty keeps the key and the Claude location.
+	_, body = h.get(h.s.Origin() + "/settings")
+	h.post("/settings", form(body, url.Values{"claude_path": {claude}, "ask_auth": {"api_key"}, "ask_max_turns": {"12"}}))
+	if c := h.cfg(); c.ClaudeBinary != claude || c.Ask == nil || c.Ask.Auth != "api_key" || c.Ask.MaxTurns != 0 || !ask.HasSecret(h.home, "api_key") {
+		t.Errorf("second save: %+v", c.Ask)
+	}
+	// Another sign-in deletes the key; all defaults leave no ask block.
+	_, body = h.get(h.s.Origin() + "/settings")
+	h.post("/settings", form(body, url.Values{"ask_auth": {"bedrock"}, "ask_env": {"AWS_PROFILE=work"}}))
+	if c := h.cfg(); c.Ask == nil || c.Ask.Auth != "bedrock" || c.Ask.Env["AWS_PROFILE"] != "work" || ask.HasSecret(h.home, "api_key") {
+		t.Errorf("after choosing Bedrock: %+v (key kept: %v)", c.Ask, ask.HasSecret(h.home, "api_key"))
+	}
+	_, body = h.get(h.s.Origin() + "/settings")
+	h.post("/settings", form(body, nil))
+	if c := h.cfg(); c.Ask != nil || c.ClaudeBinary != "" {
+		t.Errorf("defaults: ask = %+v", c.Ask)
+	}
+	// Bad values are refused, and nothing is stored.
+	_, body = h.get(h.s.Origin() + "/settings")
+	for _, c := range []struct {
+		form url.Values
+		want string
+	}{
+		{url.Values{"ask_auth": {"password"}}, "auth must be one of"},
+		{url.Values{"ask_model": {"--dangerously-skip-permissions"}}, "not a model name"},
+		{url.Values{"ask_effort": {"heroic"}}, "effort must be one of"},
+		{url.Values{"ask_max_turns": {"many"}}, "not a whole number"},
+		{url.Values{"ask_max_turns": {"0"}}, "max_turns must be between"},
+		{url.Values{"ask_timeout": {"5"}}, "timeout_seconds must be between"},
+		{url.Values{"ask_budget": {"cheap"}}, "not an amount"},
+		{url.Values{"ask_env": {"no equals"}}, "Ask, environment for Claude Code, line 1"},
+		{url.Values{"ask_env": {"BAD NAME=1"}}, "not a variable name"},
+		{url.Values{"ask_auth": {"oauth_token"}, "ask_secret": {"two words"}}, "Ask, token: it contains spaces"},
+		{url.Values{"claude_path": {"/does/not/exist"}}, "Claude Code location"},
+	} {
+		code, got := h.post("/settings", form(body, c.form))
+		if code != http.StatusUnprocessableEntity || !strings.Contains(got, c.want) {
+			t.Errorf("%v: %d, want an error containing %q", c.form, code, c.want)
+		}
+	}
+	if c := h.cfg(); c.Ask != nil || ask.HasSecret(h.home, "oauth_token") {
+		t.Errorf("a refused form was stored: %+v", c.Ask)
 	}
 }

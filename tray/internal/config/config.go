@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,6 +39,114 @@ type Config struct {
 	// ClaudeBinary is the Claude Code executable the Ask window runs;
 	// empty means search for it.
 	ClaudeBinary string `json:"claude_binary,omitempty"`
+	// Ask is how the Ask window runs Claude Code; nil means the defaults.
+	Ask *Ask `json:"ask,omitempty"`
+}
+
+// Ask is how the Ask window runs Claude Code: how it signs in, which
+// model answers, and the limits on one question. The zero value is
+// Claude Code as it is logged in, with its default model.
+type Ask struct {
+	// Auth is how Claude Code signs in: empty (its own login, or whatever
+	// credentials MemoRS Tray's environment holds), api_key, oauth_token,
+	// bedrock, vertex or foundry. The key or token itself is not kept
+	// here but in a file of its own under MEMORS_HOME.
+	Auth string `json:"auth,omitempty"`
+	// Model is claude's --model: an alias (sonnet, opus, haiku) or a full
+	// model name; empty means Claude Code's default.
+	Model string `json:"model,omitempty"`
+	// Effort is claude's --effort; empty means the model's default.
+	Effort string `json:"effort,omitempty"`
+	// MaxTurns bounds the steps of one answer (default DefaultAskTurns).
+	MaxTurns int `json:"max_turns,omitempty"`
+	// TimeoutSeconds bounds one question (default DefaultAskTimeout).
+	TimeoutSeconds int `json:"timeout_seconds,omitempty"`
+	// MaxBudgetUSD stops one question at this cost; 0 means no limit.
+	MaxBudgetUSD float64 `json:"max_budget_usd,omitempty"`
+	// Instructions are added to the end of the system prompt.
+	Instructions string `json:"instructions,omitempty"`
+	// Env is extra environment for Claude Code (AWS_PROFILE,
+	// ANTHROPIC_BASE_URL, ...); it wins over what Auth sets.
+	Env map[string]string `json:"env,omitempty"`
+}
+
+// The Ask defaults and bounds.
+const (
+	DefaultAskTurns    = 12
+	MaxAskTurns        = 100
+	DefaultAskTimeout  = 180 // seconds
+	MinAskTimeout      = 10
+	MaxAskTimeout      = 1800
+	MaxAskInstructions = 4000 // bytes
+)
+
+// AskAuths are the values of Ask.Auth besides empty.
+var AskAuths = []string{"api_key", "oauth_token", "bedrock", "vertex", "foundry"}
+
+// AskEfforts are the values of Ask.Effort besides empty.
+var AskEfforts = []string{"low", "medium", "high", "xhigh", "max"}
+
+// AskSettings is c.Ask, never nil.
+func (c *Config) AskSettings() Ask {
+	if c.Ask == nil {
+		return Ask{}
+	}
+	return *c.Ask
+}
+
+// IsZero reports whether a is all defaults (and so left out of tray.json).
+func (a Ask) IsZero() bool {
+	return a.Auth == "" && a.Model == "" && a.Effort == "" && a.MaxTurns == 0 && a.TimeoutSeconds == 0 &&
+		a.MaxBudgetUSD == 0 && a.Instructions == "" && len(a.Env) == 0
+}
+
+// Turns is the step limit of one answer.
+func (a Ask) Turns() int {
+	if a.MaxTurns == 0 {
+		return DefaultAskTurns
+	}
+	return a.MaxTurns
+}
+
+// Timeout is the time limit of one question, in seconds.
+func (a Ask) Timeout() int {
+	if a.TimeoutSeconds == 0 {
+		return DefaultAskTimeout
+	}
+	return a.TimeoutSeconds
+}
+
+var askModel = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/@\[\]-]*$`)
+
+// Validate checks the Ask settings.
+func (a Ask) Validate() error {
+	if a.Auth != "" && !slices.Contains(AskAuths, a.Auth) {
+		return fmt.Errorf("ask: auth must be one of %s (or left out), not %q", strings.Join(AskAuths, ", "), a.Auth)
+	}
+	if a.Model != "" && (len(a.Model) > 200 || !askModel.MatchString(a.Model)) {
+		return fmt.Errorf("ask: model %q is not a model name", a.Model)
+	}
+	if a.Effort != "" && !slices.Contains(AskEfforts, a.Effort) {
+		return fmt.Errorf("ask: effort must be one of %s (or left out), not %q", strings.Join(AskEfforts, ", "), a.Effort)
+	}
+	if a.MaxTurns != 0 && (a.MaxTurns < 1 || a.MaxTurns > MaxAskTurns) {
+		return fmt.Errorf("ask: max_turns must be between 1 and %d", MaxAskTurns)
+	}
+	if a.TimeoutSeconds != 0 && (a.TimeoutSeconds < MinAskTimeout || a.TimeoutSeconds > MaxAskTimeout) {
+		return fmt.Errorf("ask: timeout_seconds must be between %d and %d", MinAskTimeout, MaxAskTimeout)
+	}
+	if a.MaxBudgetUSD < 0 || a.MaxBudgetUSD > 1000 {
+		return errors.New("ask: max_budget_usd must be between 0 and 1000")
+	}
+	if len(a.Instructions) > MaxAskInstructions {
+		return fmt.Errorf("ask: instructions are longer than %d bytes", MaxAskInstructions)
+	}
+	for k := range a.Env {
+		if !envName.MatchString(k) {
+			return fmt.Errorf("ask: env: %q is not a variable name", k)
+		}
+	}
+	return nil
 }
 
 // Server is one knowledge base memors-tray can start.
@@ -215,6 +324,11 @@ func Reserved(name string) bool {
 func (c *Config) Validate() error {
 	if err := validEnv(c.Env); err != nil {
 		return err
+	}
+	if c.Ask != nil {
+		if err := c.Ask.Validate(); err != nil {
+			return err
+		}
 	}
 	kbs, addrs := map[string]bool{}, map[string]bool{}
 	for _, s := range c.Servers {
