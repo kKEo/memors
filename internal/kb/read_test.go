@@ -83,7 +83,7 @@ func TestStatusAndVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if st.SchemaVersion != 5 || st.Sources != 1 || st.LiveDocuments != 1 || st.Chunks != res.Chunks || st.DefaultModel != "hash" || st.PendingEmbeddings["hash"] != 0 || len(st.Namespaces) != 1 {
+	if st.SchemaVersion != 6 || st.Sources != 1 || st.LiveDocuments != 1 || st.Chunks != res.Chunks || st.DefaultModel != "hash" || st.PendingEmbeddings["hash"] != 0 || len(st.Namespaces) != 1 {
 		t.Fatalf("status %+v", st)
 	}
 	rep, err := s.Verify(ctx, false)
@@ -212,6 +212,18 @@ func TestExportIsAnMdBookSource(t *testing.T) {
 			out[n] = string(b)
 		}
 		return dir, out
+	}
+	// `ingest <dir>` tells a derived page from a document by this front
+	// matter, and skips it: keep the two in step.
+	pageDir, _ := export()
+	pageFiles, _ := filepath.Glob(filepath.Join(pageDir, "personal", "pages", "*.md"))
+	if len(pageFiles) != 1 {
+		t.Fatalf("page files: %v", pageFiles)
+	}
+	rawPage, _ := os.ReadFile(pageFiles[0])
+	pageFM, _ := ParseExported(string(rawPage))
+	if k, _, _ := ParseURI(pageFM.MemoURI); pageFM.Kind != "page" || k != "page" {
+		t.Fatalf("exported page front matter: %+v", pageFM)
 	}
 	dir, root := export()
 	_, again := export()

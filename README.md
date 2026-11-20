@@ -109,9 +109,9 @@ Running the binary with no arguments starts the MCP server on stdio. From the te
 - `memors-mcp trust ls | promote <uri> --to user|curated | demote <uri> --to agent|user` — the human channel for trust; every change is audited
 - `memors-mcp explore <name> [--ns --hops 1|2 --as-of --json]` — walk the graph index from one entity: its passages and the entities mentioned alongside it, with evidence addresses
 - `memors-mcp graph merges [--state open|merged|rejected|all] | merge <id> | reject <id> | rebuild [--ns]` — the review queue of near-duplicate entity names (nothing is merged without a human decision); `rebuild` re-extracts mentions for files written before the graph layer or after an extraction change
-- `memors-mcp compact [--ns --kinds page,stale,conflict,merge,duplicate --lint --json]` — propose compaction work; `--executor ollama [--apply]` writes the page items with a local model (`MEMORS_OLLAMA_URL`, `MEMORS_OLLAMA_MODEL`; dry run unless `--apply`)
+- `memors-mcp compact [--ns --kinds page,stale,conflict,merge,duplicate,outline,topic,overview --lint --json]` — propose compaction work, including the book's outline, chapters and overview; `--executor ollama [--apply]` writes the page, chapter and overview items with a local model (`MEMORS_OLLAMA_URL`, `MEMORS_OLLAMA_MODEL`; dry run unless `--apply`)
 - `memors-mcp submit <item-id> [--content-file page.md | --keep <memo://fact/..> | --accept|--reject | --skip] [--reason ..] [--dry-run]` — the human side of a work item
-- `memors-mcp lint [--ns]` — contradictions, orphan entities, missing or stale pages, expired facts; changes nothing
+- `memors-mcp lint [--ns]` — contradictions, orphan entities, missing or stale pages, expired facts, holes in the book; changes nothing
 - `memors-mcp pages ls [--ns --stale]` — list curated pages
 - `memors-mcp read <memo://doc/...> [--history]` — print a document, chunk, source or fact with its provenance, or its revision chain
 - `memors-mcp ls [--ns --kind --since --json]` — list live documents, newest first

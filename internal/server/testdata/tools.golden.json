@@ -5,12 +5,12 @@
       "openWorldHint": false,
       "readOnlyHint": false
     },
-    "description": "Scan the knowledge base for tidying work you can do: entities with several passages and no page (write one), stale pages (rebuild), two live facts that disagree (pick one), near-duplicate names (merge or keep apart), near-duplicate passages. Each item carries the passages and facts you need. The server never writes a page itself. Example: compact(namespace: \"platform\", kinds: [\"page\", \"conflict\"], lint: true).",
+    "description": "Scan the knowledge base for tidying work you can do: entities with several passages and no page (write one), stale pages (rebuild), two live facts that disagree (pick one), near-duplicate names (merge or keep apart), near-duplicate passages. It also proposes the book people read: an outline that groups the pages into chapters, then a page per chapter (topic), then the overview; each appears once what it is built from is written. Each item carries the material you need. The server never writes a page itself. Example: compact(namespace: \"platform\", kinds: [\"page\", \"conflict\"], lint: true).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
         "kinds": {
-          "description": "Which work to propose: page, stale, conflict, merge, duplicate. Default: all.",
+          "description": "Which work to propose: page, stale, conflict, merge, duplicate, and for the book outline, topic (a chapter page), overview. Default: all.",
           "items": {
             "type": "string"
           },
@@ -24,7 +24,7 @@
           "type": "integer"
         },
         "lint": {
-          "description": "Also return the lint findings (contradictions, orphans, missing or stale pages, expired facts).",
+          "description": "Also return the lint findings (contradictions, orphans, missing or stale pages, expired facts, holes in the book's outline).",
           "type": "boolean"
         },
         "namespace": {
@@ -79,14 +79,14 @@
                 "type": "string"
               },
               "kind": {
-                "description": "page | stale | conflict | merge | duplicate",
+                "description": "page | stale | conflict | merge | duplicate | outline | topic | overview",
                 "type": "string"
               },
               "namespace": {
                 "type": "string"
               },
               "payload": {
-                "description": "Everything needed to do the work: for page/stale items the entity, its passages, the facts to cover (must_cover) and the previous page; for conflict items the two facts and the rule; for merge items the two names"
+                "description": "Everything needed to do the work: for page/stale items the entity, its passages, the facts to cover (must_cover) and the previous page; for conflict items the two facts and the rule; for merge items the two names; for outline items the current chapters and the candidates to place; for topic items the chapter, its members with their pages or passages, the examples to quote and the member names to mention (must_cover); for overview items the chapters with their pages. Book payloads carry a guide line, and a more list of addresses left out for size"
               },
               "state": {
                 "type": "string"
@@ -1596,7 +1596,7 @@
       "openWorldHint": false,
       "readOnlyHint": false
     },
-    "description": "Hand back a page you wrote, a conflict decision or a merge decision. Pages are stored as derived (is_inference) with the passages they cite; the omission check reports facts the page left out. dry_run shows the diff first. Example: submit(item_id: \"01a1…\", content: \"# Ledger Store\\n\\nAppend-only … (memo://chunk/812)\", dry_run: true).",
+    "description": "Hand back a page you wrote, an outline, a conflict decision or a merge decision. Pages are stored as derived (is_inference) with the passages they cite; the checks report facts or members the page left out, sentences nothing backs, and quoted examples that are not word for word from a source. dry_run shows the diff first. Example: submit(item_id: \"01a1…\", content: \"# Ledger Store\\n\\nAppend-only … (memo://chunk/812)\", dry_run: true).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1608,11 +1608,11 @@
           ]
         },
         "content": {
-          "description": "page/stale items: the page in markdown. Cite sources as memo://chunk/\u003cn\u003e; cover every statement in the item's must_cover.",
+          "description": "page/stale/topic/overview items: the page in markdown. Cite sources as memo://chunk/\u003cn\u003e; cover every statement or name in the item's must_cover. In a chapter, quote examples word for word in fenced blocks.",
           "type": "string"
         },
         "dry_run": {
-          "description": "Show the diff and the omission check without writing.",
+          "description": "Show the diff and the checks (omissions, unsupported sentences, misquoted examples) without writing.",
           "type": "boolean"
         },
         "item_id": {
@@ -1623,6 +1623,41 @@
           "description": "conflict items: the memo://fact address to keep; the other is invalidated (kept as history).",
           "type": "string"
         },
+        "outline": {
+          "description": "outline items: the whole outline, chapters in reading order, each with title, a one or two sentence scope, and members as memo://entity/\u003cid\u003e or memo://source/\u003cid\u003e addresses. Keep the id of a chapter that stays.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "members": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "scope": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "members"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "reason": {
           "description": "Why, in one sentence; stored in the audit log.",
           "type": "string"
@@ -1632,7 +1667,7 @@
           "type": "boolean"
         },
         "title": {
-          "description": "page/stale items: the page title (default: the entity name).",
+          "description": "page/stale/topic/overview items: the page title (default: the entity name, the chapter title, or Overview).",
           "type": "string"
         }
       },
@@ -1659,6 +1694,15 @@
         },
         "kind": {
           "type": "string"
+        },
+        "misquoted": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "note": {
           "type": "string"

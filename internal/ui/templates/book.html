@@ -1,0 +1,7 @@
+{{template "head" .}}{{with .Data}}{{if .Book}}<h1>{{.Book.Namespace}} <span class="muted">as a book</span></h1>
+<p class="muted">The overview, then one page per chapter, then the pages and documents each chapter covers. Agents wrote the pages from the stored documents; every page lists what it was built from. The order comes from the outline (<code>memors-mcp outline show --ns {{.Book.Namespace}}</code>).</p>
+{{template "booktoc" .}}
+{{else}}<h1>Book</h1>
+{{if .Namespaces}}<p>Namespaces with an outline:</p><ul>{{range .Namespaces}}<li><a href="/book/{{.}}">{{.}}</a></li>{{end}}</ul>
+{{else}}<p class="muted">No namespace has an outline yet. An outline groups the summary pages into chapters: ask the agent to build the book (it works through <code>compact</code> and <code>submit</code>), or write one with <code>memors-mcp outline show</code> and <code>memors-mcp outline apply</code>.</p>{{end}}
+{{end}}{{end}}{{template "foot" .}}

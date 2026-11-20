@@ -20,6 +20,8 @@ type Result struct {
 	Keep   string `json:"keep,omitempty"`
 	Accept *bool  `json:"accept,omitempty"`
 	Reason string `json:"reason,omitempty"`
+	// outline: the whole outline, chapters in reading order.
+	Outline []OutlineChapterIn `json:"outline,omitempty"`
 	// Skip records that the agent looked and chose to do nothing.
 	Skip bool `json:"skip,omitempty"`
 }
@@ -27,18 +29,24 @@ type Result struct {
 // Report is what submit returns: what would or did change, and what the
 // omission check found.
 type Report struct {
-	ItemID  string   `json:"item_id"`
-	Kind    string   `json:"kind"`
-	Applied bool     `json:"applied"`
-	DryRun  bool     `json:"dry_run"`
-	PageURI string   `json:"page_uri,omitempty"`
-	Diff    string   `json:"diff,omitempty"`
-	Omitted []string `json:"omitted,omitempty"` // must_cover statements not reflected in the page
+	ItemID  string `json:"item_id"`
+	Kind    string `json:"kind"`
+	Applied bool   `json:"applied"`
+	DryRun  bool   `json:"dry_run"`
+	PageURI string `json:"page_uri,omitempty"`
+	Diff    string `json:"diff,omitempty"`
+	// Omitted: must_cover statements not reflected in an entity page; members
+	// a chapter does not name; chapters the overview does not name; pages an
+	// outline leaves in no chapter.
+	Omitted []string `json:"omitted,omitempty"`
 	// Unsupported lists page sentences that share little with any source
 	// passage or recorded fact: the corruption check, at string level.
 	Unsupported []string `json:"unsupported,omitempty"`
-	Warnings    []string `json:"warnings,omitempty"`
-	Note        string   `json:"note,omitempty"`
+	// Misquoted lists fenced blocks and blockquotes of a chapter or overview
+	// page that are not found word for word in the material.
+	Misquoted []string `json:"misquoted,omitempty"`
+	Warnings  []string `json:"warnings,omitempty"`
+	Note      string   `json:"note,omitempty"`
 }
 
 // Submit applies (or previews) the agent's result for an item. Pages are
@@ -162,6 +170,18 @@ func Submit(ctx context.Context, store *kb.Store, itemID string, res Result, dry
 		}
 		rep.Applied = true
 		if err := store.CloseWorkItem(ctx, w.ID, "done", map[string]any{"accepted": *res.Accept, "reason": res.Reason}, actor); err != nil {
+			return nil, err
+		}
+	case KindOutline:
+		if err := submitOutline(ctx, store, w, res, rep, dryRun, actor, channel); err != nil {
+			return nil, err
+		}
+	case KindTopic:
+		if err := submitTopic(ctx, store, w, res, rep, dryRun, actor, channel); err != nil {
+			return nil, err
+		}
+	case KindOverview:
+		if err := submitOverview(ctx, store, w, res, rep, dryRun, actor, channel); err != nil {
 			return nil, err
 		}
 	case KindDuplicate:

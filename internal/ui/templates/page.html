@@ -1,5 +1,3 @@
 {{template "head" .}}{{with .Data}}<h1>{{.Title}} <span class="badge">derived</span>{{if .Stale}} <span class="badge stale">stale</span>{{end}}</h1>
-<p class="muted">{{.Kind}} page · {{.Namespace}} · trust <span class="badge">{{.Trust}}</span> · written by {{.Actor}} · built {{dt .BuiltAt}} rev {{.BuiltFromRev}} · <code>{{.URI}}</code>{{if .SubjectID}} · <a href="/entity/{{.SubjectID}}">entity</a>{{end}}</p>
-{{if .Stale}}<p class="warn">Stale: {{.StaleReason}}. Read the cited passages for the current text.</p>{{end}}
-<div class="md">{{md .Content}}</div>
-<h2>Built from</h2><ul>{{range .Sources}}<li><a href="{{href .}}">{{.}}</a></li>{{end}}</ul>{{end}}{{template "foot" .}}
+<p class="muted">{{.Kind}} page · {{.Namespace}} · trust <span class="badge">{{.Trust}}</span> · written by {{.Actor}} · built {{dt .BuiltAt}} rev {{.BuiltFromRev}} · <code>{{.URI}}</code>{{if and .SubjectID (eq .Kind "entity")}} · <a href="/entity/{{.SubjectID}}">entity</a>{{end}}{{if ne .Kind "entity"}} · <a href="/book/{{.Namespace}}/{{.ID}}">in the book</a>{{end}}</p>
+{{template "pagebody" .}}{{end}}{{template "foot" .}}

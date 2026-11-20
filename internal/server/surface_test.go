@@ -332,6 +332,80 @@ func TestCompactSubmitRoundTrip(t *testing.T) {
 	}
 }
 
+// The book over MCP: with three entity pages written, compact proposes an
+// outline; the submitted outline unlocks a chapter item, whose page reads
+// back as a topic page built from its member pages.
+func TestBookOverMCP(t *testing.T) {
+	cs, _ := newTestSession(t)
+	names := []string{"Ledger Store", "Billing Service", "Quorum Replication"}
+	for i, body := range []string{
+		"The Ledger Store is an append-only table. The Billing Service writes to it. Quorum Replication keeps it durable.",
+		"The Billing Service reads the Ledger Store nightly. Quorum Replication spans three regions.",
+		"Quorum Replication protects the Ledger Store. The Billing Service waits for it.",
+	} {
+		callTool(t, cs, "ingest", map[string]any{"content": fmt.Sprintf("# Note %d\n\n%s\n", i, body), "namespace": "platform",
+			"source": map[string]any{"uri": fmt.Sprintf("https://plat.example/n%d", i), "title": fmt.Sprintf("Note %d", i), "kind": "doc", "origin": "web"}})
+	}
+	out := structured[CompactOut](t, callTool(t, cs, "compact", map[string]any{"namespace": "platform", "kinds": []string{"page"}}))
+	if len(out.Items) != len(names) {
+		t.Fatalf("expected a page item per entity: %+v", out)
+	}
+	for _, it := range out.Items {
+		raw, _ := json.Marshal(it.Payload)
+		var p struct {
+			Entity struct{ Canonical string }
+		}
+		_ = json.Unmarshal(raw, &p)
+		real := structured[SubmitOut](t, callTool(t, cs, "submit", map[string]any{"item_id": it.ID, "content": "# " + p.Entity.Canonical + "\n\nSee memo://chunk/1.\n"}))
+		if !real.Applied {
+			t.Fatalf("page submit: %+v", real)
+		}
+	}
+	if res := callTool(t, cs, "compact", map[string]any{"kinds": []string{"chapter"}}); !res.IsError {
+		t.Fatal("an unknown kind was accepted")
+	}
+	out = structured[CompactOut](t, callTool(t, cs, "compact", map[string]any{"namespace": "platform", "kinds": []string{"outline"}}))
+	if len(out.Items) != 1 || out.Items[0].Kind != "outline" || !strings.Contains(out.Hint, "the outline, chapter pages") {
+		t.Fatalf("outline item: %+v", out)
+	}
+	raw, _ := json.Marshal(out.Items[0].Payload)
+	var op struct {
+		Candidates []struct{ URI, Title string }
+	}
+	_ = json.Unmarshal(raw, &op)
+	var members []string
+	for _, c := range op.Candidates {
+		if strings.HasPrefix(c.URI, "memo://entity/") {
+			members = append(members, c.URI)
+		}
+	}
+	if len(members) != len(names) {
+		t.Fatalf("candidates: %+v", op.Candidates)
+	}
+	set := structured[SubmitOut](t, callTool(t, cs, "submit", map[string]any{"item_id": out.Items[0].ID,
+		"outline": []map[string]any{{"title": "Storage", "scope": "Where the money data lives.", "members": members}}}))
+	if !set.Applied || !strings.Contains(set.Diff, "+ ## Storage") {
+		t.Fatalf("outline submit: %+v", set)
+	}
+	out = structured[CompactOut](t, callTool(t, cs, "compact", map[string]any{"namespace": "platform", "kinds": []string{"topic"}}))
+	if len(out.Items) != 1 || out.Items[0].Kind != "topic" {
+		t.Fatalf("chapter item: %+v", out)
+	}
+	chapter := "# Storage\n\nThe Ledger Store holds the data, the Billing Service writes it, and Quorum Replication keeps it (memo://chunk/1).\n"
+	real := structured[SubmitOut](t, callTool(t, cs, "submit", map[string]any{"item_id": out.Items[0].ID, "content": chapter}))
+	if !real.Applied || real.PageURI == "" || len(real.Omitted) != 0 {
+		t.Fatalf("chapter submit: %+v", real)
+	}
+	rr, err := cs.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: real.PageURI})
+	if err != nil || !strings.Contains(rr.Contents[0].Text, "topic page") || strings.Count(rr.Contents[0].Text, "memo://page/") != len(names) {
+		t.Fatalf("chapter resource should list its member pages: %v %+v", err, rr)
+	}
+	out = structured[CompactOut](t, callTool(t, cs, "compact", map[string]any{"namespace": "platform", "kinds": []string{"overview"}}))
+	if len(out.Items) != 1 || out.Items[0].Kind != "overview" {
+		t.Fatalf("overview item: %+v", out)
+	}
+}
+
 // The ask prompt starts a chat: the client's model gets the search, read and
 // cite rules, and the question follows in the conversation. Its only
 // argument is one word, because Claude Code passes prompt arguments as

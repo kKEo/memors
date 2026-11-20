@@ -163,9 +163,17 @@ func runIngest(ctx context.Context, args []string, stdout, stderr io.Writer) err
 		return runErr
 	}
 
-	var written, dedup, pending int
+	var written, dedup, pending, skipped int
 	for _, it := range items {
 		fm, body := kb.ParseExported(it.content)
+		memoKind, memoID, _ := kb.ParseURI(fm.MemoURI)
+		if fm.Kind == "page" || memoKind == "page" {
+			// A page from `export --md` is derived text: the knowledge base
+			// rebuilds it from its sources, it is never ingested as a document.
+			skipped++
+			fmt.Fprintf(stdout, "skipped (derived page)  %s\n", it.name)
+			continue
+		}
 		if firstNonEmpty(fm.Kind, *kind) == kb.KindCode && fm.MemoURI == "" {
 			body = fenceCode(it.name, body)
 		}
@@ -185,10 +193,8 @@ func runIngest(ctx context.Context, args []string, stdout, stderr io.Writer) err
 				Origin:  firstNonEmpty(fm.Origin, *origin),
 			},
 		}
-		if fm.MemoURI != "" {
-			if _, id, err := kb.ParseURI(fm.MemoURI); err == nil {
-				in.DocumentID = id
-			}
+		if memoKind == "doc" {
+			in.DocumentID = memoID
 		}
 		start := time.Now()
 		res, err := store.Ingest(ctx, in)
@@ -207,11 +213,111 @@ func runIngest(ctx context.Context, args []string, stdout, stderr io.Writer) err
 		}
 	}
 	fmt.Fprintf(stdout, "%d written, %d unchanged", written, dedup)
+	if skipped > 0 {
+		fmt.Fprintf(stdout, ", %d derived pages skipped", skipped)
+	}
 	if pending > 0 {
 		fmt.Fprintf(stdout, ", %d chunk vectors pending (run `memors-mcp backfill`)", pending)
 	}
 	fmt.Fprintln(stdout)
 	return finish(nil)
+}
+
+// runOutline prints a namespace's outline as an editable file, or replaces
+// the outline with an edited one. The CLI is the human channel, so it may
+// change chapters a tool call may not.
+func runOutline(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+	const usage = "usage: memors-mcp outline show [--ns <name>] | outline apply <file|-> [--ns <name>] [--dry-run]"
+	if len(args) == 0 {
+		return errors.New(usage)
+	}
+	fs := flag.NewFlagSet("outline", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	ns := fs.String("ns", "", "namespace (default: the one named in the file, else \"default\")")
+	dryRun := fs.Bool("dry-run", false, "with apply: check the file and print what would change, store nothing")
+	positional, err := parseInterspersed(fs, args[1:])
+	if err != nil {
+		return err
+	}
+	switch args[0] {
+	case "show":
+		if len(positional) != 0 {
+			return errors.New(usage)
+		}
+		store, closeFn, err := openStore(ctx, stderr, kb.Options{ReadOnly: true}, nil)
+		if err != nil {
+			return err
+		}
+		defer closeFn()
+		name := firstNonEmpty(*ns, "default")
+		o, err := store.ReadOutline(ctx, name)
+		if err != nil {
+			return err
+		}
+		cands, err := store.OutlineCandidates(ctx, name)
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(stdout, kb.RenderOutline(o, cands))
+		return err
+	case "apply":
+		if len(positional) != 1 {
+			return errors.New(usage)
+		}
+		var raw []byte
+		if positional[0] == "-" {
+			raw, err = io.ReadAll(os.Stdin)
+		} else {
+			raw, err = os.ReadFile(positional[0])
+		}
+		if err != nil {
+			return err
+		}
+		fileNS, chapters, err := kb.ParseOutline(string(raw))
+		if err != nil {
+			return err
+		}
+		if *ns != "" && fileNS != "" && *ns != fileNS {
+			return fmt.Errorf("the file is the outline of %q, not of %q", fileNS, *ns)
+		}
+		name := firstNonEmpty(*ns, fileNS, "default")
+		// A dry run still opens for writing: the preview runs in a
+		// transaction that is rolled back.
+		store, closeFn, err := openStore(ctx, stderr, kb.Options{}, nil)
+		if err != nil {
+			return err
+		}
+		defer closeFn()
+		before, err := store.ReadOutline(ctx, name)
+		if err != nil {
+			return err
+		}
+		set := store.SetOutline
+		if *dryRun {
+			set = store.PreviewOutline
+		}
+		after, err := set(ctx, name, chapters, "cli", kb.ChannelCLI)
+		if err != nil {
+			return err
+		}
+		was, now := kb.RenderOutline(before, nil), kb.RenderOutline(after, nil)
+		if was == now {
+			fmt.Fprintln(stdout, "no change")
+			return nil
+		}
+		fmt.Fprint(stdout, compact.Diff(was, now))
+		members := 0
+		for _, c := range after.Chapters {
+			members += len(c.Members)
+		}
+		verb := "stored"
+		if *dryRun {
+			verb = "dry run, nothing stored"
+		}
+		fmt.Fprintf(stdout, "%s: %d chapters, %d members in %q\n", verb, len(after.Chapters), members, name)
+		return nil
+	}
+	return errors.New(usage)
 }
 
 func runRead(ctx context.Context, args []string, stdout, stderr io.Writer) error {
@@ -1468,11 +1574,11 @@ func runCompact(ctx context.Context, args []string, stdout, stderr io.Writer) er
 	fs := flag.NewFlagSet("compact", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	ns := fs.String("ns", "", "namespace (default: all)")
-	kinds := fs.String("kinds", "", "comma-separated: page,stale,conflict,merge,duplicate (default: all)")
+	kinds := fs.String("kinds", "", "comma-separated: page,stale,conflict,merge,duplicate,outline,topic,overview (default: all)")
 	lint := fs.Bool("lint", false, "also print lint findings")
 	asJSON := fs.Bool("json", false, "print JSON")
-	executor := fs.String("executor", "", "ollama: write page items with a local model (MEMORS_OLLAMA_URL, MEMORS_OLLAMA_MODEL)")
-	apply := fs.Bool("apply", false, "with --executor: submit the pages instead of a dry run")
+	executor := fs.String("executor", "", "ollama: write page, chapter and overview items with a local model (MEMORS_OLLAMA_URL, MEMORS_OLLAMA_MODEL)")
+	apply := fs.Bool("apply", false, "with --executor: submit the pages instead of a dry run, then go on to the chapters and the overview they unlock")
 	allowRemote := fs.Bool("allow-remote", false, "with --executor: allow a non-loopback MEMORS_OLLAMA_URL")
 	if _, err := parseInterspersed(fs, args); err != nil {
 		return err
@@ -1494,16 +1600,25 @@ func runCompact(ctx context.Context, args []string, stdout, stderr io.Writer) er
 	}
 	var items []kb.WorkItem
 	var findings []compact.Finding
-	for _, n := range namespaces {
-		if _, err := compact.Generate(ctx, store, n, kindList); err != nil {
-			return err
+	scan := func() error {
+		items = nil
+		for _, n := range namespaces {
+			if _, err := compact.Generate(ctx, store, n, kindList); err != nil {
+				return err
+			}
+			list, err := store.ListWorkItems(ctx, n, "", "open", 0)
+			if err != nil {
+				return err
+			}
+			items = append(items, list...)
 		}
-		list, err := store.ListWorkItems(ctx, n, "", "open", 0)
-		if err != nil {
-			return err
-		}
-		items = append(items, list...)
-		if *lint {
+		return nil
+	}
+	if err := scan(); err != nil {
+		return err
+	}
+	if *lint {
+		for _, n := range namespaces {
 			f, err := compact.Lint(ctx, store, n, time.Now())
 			if err != nil {
 				return err
@@ -1519,26 +1634,61 @@ func runCompact(ctx context.Context, args []string, stdout, stderr io.Writer) er
 		if err != nil {
 			return err
 		}
-		for _, w := range items {
-			if w.Kind != compact.KindPage && w.Kind != compact.KindStale {
-				continue
+		// Written pages unlock chapters, and chapters the overview: with
+		// --apply the scan is repeated for those, each item tried once.
+		// Outline items are left to a person or to the calling agent.
+		tried := map[string]bool{}
+		for pass := 0; pass < 3; pass++ {
+			did := false
+			for _, w := range items {
+				if tried[w.ID] {
+					continue
+				}
+				var res compact.Result
+				var err error
+				switch w.Kind {
+				case compact.KindPage, compact.KindStale:
+					var p compact.PagePayload
+					if err := json.Unmarshal(w.Payload, &p); err != nil {
+						return err
+					}
+					fmt.Fprintf(stdout, "ollama writing page for %s …\n", p.Entity.Canonical)
+					res, err = ol.WritePage(ctx, p)
+				case compact.KindTopic:
+					var p compact.TopicPayload
+					if err := json.Unmarshal(w.Payload, &p); err != nil {
+						return err
+					}
+					fmt.Fprintf(stdout, "ollama writing chapter %s …\n", p.Chapter.Title)
+					res, err = ol.WriteTopic(ctx, p)
+				case compact.KindOverview:
+					var p compact.OverviewPayload
+					if err := json.Unmarshal(w.Payload, &p); err != nil {
+						return err
+					}
+					fmt.Fprintf(stdout, "ollama writing the overview of %s …\n", p.Namespace)
+					res, err = ol.WriteOverview(ctx, p)
+				default:
+					continue
+				}
+				tried[w.ID], did = true, true
+				if err != nil {
+					slog.Error("work item failed", "item", w.ID, "err", err)
+					continue
+				}
+				rep, err := compact.Submit(ctx, store, w.ID, res, !*apply, "ollama/"+ol.Model, kb.ChannelWorker)
+				if err != nil {
+					slog.Error("submit failed", "item", w.ID, "err", err)
+					continue
+				}
+				printReport(stdout, rep)
 			}
-			var p compact.PagePayload
-			if err := json.Unmarshal(w.Payload, &p); err != nil {
+			if !*apply || !did {
+				break
+			}
+			if err := scan(); err != nil {
 				return err
 			}
-			fmt.Fprintf(stdout, "ollama writing page for %s …\n", p.Entity.Canonical)
-			res, err := ol.WritePage(ctx, p)
-			if err != nil {
-				slog.Error("work item failed", "item", w.ID, "err", err)
-				continue
-			}
-			rep, err := compact.Submit(ctx, store, w.ID, res, !*apply, "ollama/"+ol.Model, kb.ChannelWorker)
-			if err != nil {
-				slog.Error("submit failed", "item", w.ID, "err", err)
-				continue
-			}
-			printReport(stdout, rep)
 		}
 		return nil
 	}
@@ -1557,7 +1707,7 @@ func runCompact(ctx context.Context, args []string, stdout, stderr io.Writer) er
 		fmt.Fprintf(stdout, "lint %-13s %s  %s\n", f.Kind, f.URI, f.Message)
 	}
 	if len(items) > 0 {
-		fmt.Fprintln(stdout, "next: memors-mcp submit <id> --content-file page.md [--dry-run] | --keep <memo://fact/..> | --accept|--reject | --skip")
+		fmt.Fprintln(stdout, "next: memors-mcp submit <id> --content-file page.md [--dry-run] | --outline-file outline.md | --keep <memo://fact/..> | --accept|--reject | --skip")
 	}
 	return nil
 }
@@ -1586,6 +1736,9 @@ func printReport(w io.Writer, rep *compact.Report) {
 	for _, s := range rep.Unsupported {
 		fmt.Fprintln(w, "  unsupported: "+s)
 	}
+	for _, s := range rep.Misquoted {
+		fmt.Fprintln(w, "  misquoted: "+strings.ReplaceAll(s, "\n", " ⏎ "))
+	}
 	if rep.Diff != "" {
 		fmt.Fprint(w, rep.Diff)
 	}
@@ -1595,8 +1748,9 @@ func printReport(w io.Writer, rep *compact.Report) {
 func runSubmit(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("submit", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	contentFile := fs.String("content-file", "", "page items: markdown file with the page (- for stdin)")
-	title := fs.String("title", "", "page items: title")
+	contentFile := fs.String("content-file", "", "page, chapter and overview items: markdown file with the page (- for stdin)")
+	title := fs.String("title", "", "page, chapter and overview items: title")
+	outlineFile := fs.String("outline-file", "", "outline items: the outline, in the form `outline show` prints")
 	keep := fs.String("keep", "", "conflict items: memo://fact/<id> to keep")
 	accept := fs.Bool("accept", false, "merge items: merge the names")
 	reject := fs.Bool("reject", false, "merge items: keep the names apart")
@@ -1608,7 +1762,7 @@ func runSubmit(ctx context.Context, args []string, stdout, stderr io.Writer) err
 		return err
 	}
 	if len(positional) != 1 {
-		return errors.New("usage: memors-mcp submit <item-id> [--content-file f.md --title t | --keep <memo://fact/..> | --accept | --reject | --skip] [--reason ..] [--dry-run]")
+		return errors.New("usage: memors-mcp submit <item-id> [--content-file f.md --title t | --outline-file o.md | --keep <memo://fact/..> | --accept | --reject | --skip] [--reason ..] [--dry-run]")
 	}
 	res := compact.Result{Title: *title, Keep: *keep, Reason: *reason, Skip: *skip}
 	if *contentFile != "" {
@@ -1622,6 +1776,23 @@ func runSubmit(ctx context.Context, args []string, stdout, stderr io.Writer) err
 			return err
 		}
 		res.Content = string(b)
+	}
+	if *outlineFile != "" {
+		b, err := os.ReadFile(*outlineFile)
+		if err != nil {
+			return err
+		}
+		_, chapters, err := kb.ParseOutline(string(b))
+		if err != nil {
+			return err
+		}
+		for _, c := range chapters {
+			in := compact.OutlineChapterIn{ID: c.ID, Title: c.Title, Scope: c.Scope, Members: []string{}}
+			for _, m := range c.Members {
+				in.Members = append(in.Members, m.URI())
+			}
+			res.Outline = append(res.Outline, in)
+		}
 	}
 	if *accept || *reject {
 		v := *accept

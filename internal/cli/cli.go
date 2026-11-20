@@ -120,6 +120,8 @@ func Main(ctx context.Context, version string, args []string, stdout, stderr io.
 		err = runVerify(ctx, rest, stdout, stderr)
 	case "export":
 		err = runExport(ctx, rest, stdout, stderr)
+	case "outline":
+		err = runOutline(ctx, rest, stdout, stderr)
 	case "backfill":
 		err = runBackfill(ctx, stdout, stderr)
 	case "search":
@@ -199,11 +201,13 @@ Usage:
   memors-mcp trust ls | promote <uri> --to user|curated | demote <uri> --to agent|user
   memors-mcp explore <name> [--ns --hops 1|2 --as-of --json]   walk the graph index from one entity
   memors-mcp graph merges [--state] | merge <id> | reject <id> | rebuild [--ns]   review near-duplicate names; re-extract mentions
-  memors-mcp compact [--ns --kinds page,stale,conflict,merge,duplicate --lint --json] [--executor ollama --apply]
-                                   propose compaction work (pages to write, conflicts, merges, duplicates)
-  memors-mcp submit <item-id> [--content-file f.md --title t | --keep <memo://fact/..> | --accept|--reject | --skip] [--reason ..] [--dry-run]
-  memors-mcp lint [--ns --json]      contradictions, orphan entities, missing or stale pages, expired facts
+  memors-mcp compact [--ns --kinds page,stale,conflict,merge,duplicate,outline,topic,overview --lint --json] [--executor ollama --apply]
+                                   propose compaction work (pages, the book's outline, chapters and overview, conflicts, merges, duplicates)
+  memors-mcp submit <item-id> [--content-file f.md --title t | --outline-file o.md | --keep <memo://fact/..> | --accept|--reject | --skip] [--reason ..] [--dry-run]
+  memors-mcp lint [--ns --json]      contradictions, orphan entities, missing or stale pages, expired facts, holes in the book
   memors-mcp pages ls [--ns --stale --json]   list curated pages
+  memors-mcp outline show [--ns] | apply <file|-> [--ns --dry-run]
+                                   print or replace the book's outline: chapters and what each covers
   memors-mcp ui [--addr 127.0.0.1:0 --no-model]   read-only web face on loopback (prints the URL)
   memors-mcp read <memo://...> [--history]   print a record with its provenance, or its revision chain
   memors-mcp ls [--ns --kind --since 2026-01-01 --json]   list live documents, newest first

@@ -522,6 +522,10 @@ func (s *Store) DecideMerge(ctx context.Context, id int64, accept bool, actor, c
 			{`UPDATE OR IGNORE edges SET src = ? WHERE src = ?`, []any{a, b}},
 			{`UPDATE OR IGNORE edges SET dst = ? WHERE dst = ?`, []any{a, b}},
 			{`UPDATE facts SET subject_entity_id = ? WHERE subject_entity_id = ?`, []any{a, b}},
+			// The outline keeps one chapter per member: B's place passes to A
+			// unless A already has one.
+			{`UPDATE OR IGNORE outline_members SET ref_id = ? WHERE kind = 'entity' AND ref_id = ?`, []any{a, b}},
+			{`DELETE FROM outline_members WHERE kind = 'entity' AND ref_id = ?`, []any{b}},
 			{`DELETE FROM entities WHERE id = ?`, []any{b}},
 		}
 		for _, st := range stmts {

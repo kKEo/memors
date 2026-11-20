@@ -5,6 +5,38 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **The book**: a namespace can now be read from the top down, as an overview, chapters, and
+  the summary pages and documents under each chapter. Schema version 6.
+  - **Outline**: a namespace gets an ordered list of chapters, each with a scope and the
+    entities and sources it covers (new tables `outline_chapters`, `outline_members`). A person
+    edits it with the new `memors-mcp outline show | apply <file> [--dry-run]`; an agent
+    writes it through a new `outline` work item and the new `outline` field of `submit`. A
+    tool call may add to a chapter a person wrote and may not remove, retitle or re-scope it.
+    Nothing groups topics automatically.
+  - **Chapter and overview pages**: `compact` proposes two more kinds of work, `topic` (a
+    chapter page) and `overview`, in order: entity pages first, then the outline, then
+    chapters, then the overview. `submit` checks that a chapter names every member and that
+    every quoted block is word for word from a stored passage (`misquoted` in the report).
+    The Ollama executor writes chapters and the overview too.
+  - **Staleness that does not cascade**: pages record the pages they were written from
+    (`page_deps`). A chapter goes stale when two of its member pages were rewritten, not one,
+    and the overview follows the chapters the same way. Changing the outline stales the
+    chapters it touches.
+  - **Export**: `export --md` lays an outlined namespace out as its book in `SUMMARY.md`
+    (overview, chapters with member pages, pages in no chapter, documents as an appendix),
+    ends each chapter with links to its members, and turns `memo://` addresses in pages into
+    links to the exported files. Namespaces without an outline keep their layout; documents
+    are still exported byte for byte.
+  - **Web UI**: a **Book** section with the contents and a reading view with previous and
+    next links.
+  - **Lint**: four more findings, `chapter-without-page`, `empty-chapter`, `missing-member`
+    and `unassigned-page`.
+  - The tool list is unchanged; the descriptions and schemas of `compact` and `submit` grew.
+- **Fix**: `memors-mcp ingest <dir>` on an `export --md` directory that contains agent-written
+  pages no longer stops with `kind: page` being refused. Pages are derived text, so ingest skips
+  them and reports `skipped (derived page)`; before, the run failed part-way, after the
+  documents that sort before `pages/` were already processed. A `memo_uri` that is not a
+  `memo://doc/` address is no longer taken as a document id.
 - **MemoRS Tray**: the Claude Code page of **Configure Your Agent…** gains an optional second
   part for the memors-hooks plugin: the install commands, the command that writes the project's
   `.memors-kb` marker for this knowledge base, and a note that the plugin's own server steps

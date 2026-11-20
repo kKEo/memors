@@ -1,0 +1,5 @@
+{{template "head" .}}{{with .Data}}<div class="book"><nav><p><a href="/book/{{.Book.Namespace}}">{{.Book.Namespace}}</a></p>{{template "booktoc" .}}</nav>
+<article>{{with .Page}}<h1>{{.Title}} <span class="badge">derived</span>{{if .Stale}} <span class="badge stale">stale</span>{{end}}</h1>
+<p class="muted">{{.Kind}} page · trust <span class="badge">{{.Trust}}</span> · written by {{.Actor}} · built {{dt .BuiltAt}} rev {{.BuiltFromRev}} · <a href="/page/{{.ID}}"><code>{{.URI}}</code></a></p>
+{{template "pagebody" .}}{{end}}
+<p class="pager">{{if .Prev}}<a href="/book/{{.Book.Namespace}}/{{.Prev.PageID}}">‹ {{.Prev.Title}}</a>{{else}}<span></span>{{end}}{{if .Next}}<a href="/book/{{.Book.Namespace}}/{{.Next.PageID}}">{{.Next.Title}} ›</a>{{end}}</p></article></div>{{end}}{{template "foot" .}}

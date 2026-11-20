@@ -22,6 +22,8 @@ Claude asks memors-mcp for a to-do list. Each item comes with the material neede
   changes.
 - **Resolve a contradiction** between two facts by keeping the right one.
 - **Merge two names** that mean the same thing.
+- **Build the book.** Once a few summary pages exist, Claude is asked to group them into
+  chapters, then to write each chapter, then an overview. See [The book](#the-book) below.
 
 ## Checks on every summary
 
@@ -37,11 +39,52 @@ never pass for original material.
 
 In the web face (`memors-mcp ui`) a summary page shows as formatted text, and every `memo://`
 citation in it is a link to the passage it came from. For a browsable site of the whole memory,
-summaries included, export it and build it as a book:
+summaries included, export it and build it as a book. If the memory has a [book](#the-book),
+the site follows its chapters:
 
 ```bash
 memors-mcp export --md ~/kb-export && mdbook build ~/kb-export
 ```
+
+## The book
+
+Summary pages answer "what is this thing?". The book answers "where do I start?". It has three
+levels, and you can stop reading at any of them:
+
+1. **The overview**: one page on what this memory covers and how its parts fit together.
+2. **Chapters**: one page per part, which introduces the topics in it and quotes examples from
+   your documents.
+3. **Summary pages and documents**: the detail, linked from each chapter.
+
+Ask for it like this:
+
+> Build the book for the memors knowledge base.
+
+Claude works from the bottom up, and memors-mcp only offers the next step when the one below is
+done:
+
+1. It writes the summary pages that are still missing.
+2. It proposes an **outline**: the chapters, a sentence on what each is about, and which topics
+   and documents belong to it. You can ask to see it first, or edit it yourself with
+   `memors-mcp outline show` and `memors-mcp outline apply`.
+3. It writes a page for each **chapter**.
+4. It writes the **overview**.
+
+Chapters get two extra checks:
+
+- **Is every topic of the chapter mentioned?** A topic the chapter does not name is reported.
+- **Are the examples real?** Every quoted block must appear word for word in one of your
+  documents. memors-mcp can show an example was copied faithfully; it cannot run it.
+
+The book stays current without being rewritten all the time. When one summary page changes, its
+chapter is left alone. When two have changed, the chapter is marked stale and Claude is asked to
+refresh it; the overview follows the chapters in the same way. Changing the outline marks the
+chapters you touched.
+
+A chapter you wrote or edited yourself is yours: Claude may add topics to it, and cannot rename
+it, remove it or take topics out of it.
+
+Read the book in the web face under **Book**, or export it (below).
 
 ## Decisions that stay with you
 

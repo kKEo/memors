@@ -166,6 +166,12 @@ func Generate(ctx context.Context, store *kb.Store, ns string, kinds []string) (
 			}
 		}
 	}
+	wanted := func(kind string) bool { return all || want[kind] }
+	if wanted(KindOutline) || wanted(KindTopic) || wanted(KindOverview) {
+		if err := generateBook(ctx, store, ns, wanted, add); err != nil {
+			return nil, err
+		}
+	}
 	return out, nil
 }
 

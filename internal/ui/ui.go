@@ -16,6 +16,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -83,6 +84,21 @@ func New(store *kb.Store, search *retrieve.Service, version string, opts ...Opti
 			return strconv.FormatFloat(v, 'f', 1, 64)
 		},
 		"bytes": fmtBytes,
+		// entry pairs a book entry with what a contents line needs around
+		// it: the namespace for the link and the page being read.
+		"entry": func(ns, current string, e any) any {
+			var entry kb.BookEntry
+			switch v := e.(type) {
+			case kb.BookEntry:
+				entry = v
+			case *kb.BookEntry:
+				entry = *v
+			}
+			return struct {
+				NS, Current string
+				Entry       kb.BookEntry
+			}{ns, current, entry}
+		},
 		"short": func(s string) string {
 			if len(s) > 12 {
 				return s[:8]
@@ -161,6 +177,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /entity/{id}", s.entityPage)
 	mux.HandleFunc("GET /page/{id}", s.pagePage)
 	mux.HandleFunc("GET /pages", s.pagesPage)
+	mux.HandleFunc("GET /book", s.bookIndex)
+	mux.HandleFunc("GET /book/{ns}", s.bookContents)
+	mux.HandleFunc("GET /book/{ns}/{id}", s.bookRead)
 	mux.HandleFunc("GET /status", s.statusPage)
 	mux.HandleFunc("GET /log", s.logPage)
 	mux.HandleFunc("GET /ingest", s.ingestPage)
@@ -502,6 +521,82 @@ func (s *Server) pagePage(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "page.html", p.Title, p)
 }
 
+// bookData is what the book templates read: the book and the page being
+// read, or the namespaces to choose from.
+type bookData struct {
+	Namespaces []string
+	Book       *kb.Book
+	Current    string // id of the page being read
+	Page       *kb.Page
+	Prev, Next *kb.BookEntry
+}
+
+// bookIndex lists the namespaces that have an outline, and goes straight to
+// the book when there is one.
+func (s *Server) bookIndex(w http.ResponseWriter, r *http.Request) {
+	namespaces, err := s.store.OutlinedNamespaces(r.Context())
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	if len(namespaces) == 1 {
+		http.Redirect(w, r, "/book/"+url.PathEscape(namespaces[0]), http.StatusFound)
+		return
+	}
+	s.render(w, "book.html", "Book", bookData{Namespaces: namespaces})
+}
+
+func (s *Server) book(w http.ResponseWriter, r *http.Request) *kb.Book {
+	ns := r.PathValue("ns")
+	b, err := s.store.Book(r.Context(), ns)
+	if err == nil && len(b.Chapters) == 0 {
+		err = fmt.Errorf("namespace %q has no outline, so no book: %w", ns, kb.ErrNotFound)
+	}
+	if err != nil {
+		s.fail(w, err)
+		return nil
+	}
+	return b
+}
+
+// bookContents is a namespace's table of contents.
+func (s *Server) bookContents(w http.ResponseWriter, r *http.Request) {
+	if b := s.book(w, r); b != nil {
+		s.render(w, "book.html", b.Namespace+" · Book", bookData{Book: b})
+	}
+}
+
+// bookRead shows one page of the book with the contents beside it and the
+// pages before and after it in reading order.
+func (s *Server) bookRead(w http.ResponseWriter, r *http.Request) {
+	b := s.book(w, r)
+	if b == nil {
+		return
+	}
+	p, err := s.store.ReadPage(r.Context(), r.PathValue("id"))
+	if err == nil && p.Namespace != b.Namespace {
+		err = fmt.Errorf("%s is not a page of %q: %w", p.URI, b.Namespace, kb.ErrNotFound)
+	}
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	d := bookData{Book: b, Current: p.ID, Page: p}
+	order := b.Order()
+	for i := range order {
+		if order[i].PageID != p.ID {
+			continue
+		}
+		if i > 0 {
+			d.Prev = &order[i-1]
+		}
+		if i+1 < len(order) {
+			d.Next = &order[i+1]
+		}
+	}
+	s.render(w, "book_page.html", p.Title, d)
+}
+
 func (s *Server) pagesPage(w http.ResponseWriter, r *http.Request) {
 	pages, err := s.store.ListPages(r.Context(), kb.PageFilter{Namespace: r.URL.Query().Get("ns"), StaleOnly: r.URL.Query().Get("stale") == "1"})
 	if err != nil {
@@ -728,6 +823,10 @@ details { margin:.4rem 0; } summary { cursor:pointer; color:var(--accent); }
 blockquote { border-left:3px solid var(--line); margin:.4rem 0; padding:.2rem .8rem; color:var(--muted); }
 .md { max-width:52rem; } .md h1 { font-size:1.25rem; margin-top:1.2rem; } .md h2 { font-size:1.1rem; } .md h3 { font-size:1rem; margin:1rem 0 .4rem; }
 .md table { width:auto; margin:.6rem 0; } .md img { max-width:100%; } .md pre code { background:none; padding:0; } .md hr { border:0; border-top:1px solid var(--line); }
+.book { display:grid; grid-template-columns:17rem minmax(0,1fr); gap:1.5rem; align-items:start; } .book nav { font-size:.92em; position:sticky; top:.5rem; }
+.toc, .toc ul { list-style:none; padding-left:0; margin:0; } .toc ul { padding-left:1rem; } .toc li { margin:.25rem 0; } .toc .here { font-weight:600; }
+.pager { display:flex; justify-content:space-between; gap:1rem; margin-top:2rem; border-top:1px solid var(--line); padding-top:.6rem; }
+@media (max-width:800px) { .book { grid-template-columns:1fr; } .book nav { position:static; } }
 .timeline li { margin:.3rem 0; } .timeline .dead { color:var(--muted); text-decoration:line-through; }
 .badge.running { border-color:var(--accent); color:var(--accent); } .badge.done { border-color:#1a7a3a; color:#1a7a3a; }
 .badge.failed, .badge.stalled, .badge.error { border-color:var(--warn); color:var(--warn); }

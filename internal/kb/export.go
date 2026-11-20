@@ -28,6 +28,7 @@ type exportEntry struct {
 	Title, Rel, Kind, Trust string // Rel is slash-separated, relative to the export root
 	Stale                   bool
 	Page                    bool
+	ID                      string // page id or document id
 }
 
 // Export writes every live document as a markdown file with YAML front
@@ -67,41 +68,77 @@ func (s *Store) Export(ctx context.Context, dir string, opts ExportOptions) (*Ex
 	}
 	sort.Strings(res.Namespaces)
 	today := s.now().UTC().Format("2006-01-02")
-	written := map[string][]exportEntry{}
+
+	// First pass: decide every file's path, so a page can link to any other
+	// exported file whatever order they are written in.
+	type nsFiles struct {
+		docs  []*Document
+		pages []Page
+		book  *Book
+	}
+	files := map[string]*nsFiles{}
+	links := &exportLinks{store: s, ctx: ctx, doc: map[string]string{}, source: map[string]string{}, page: map[string]string{}, entity: map[string]string{}}
 	for _, ns := range res.Namespaces {
+		f := &nsFiles{}
+		files[ns] = f
 		list := byNS[ns]
-		var index strings.Builder
-		fmt.Fprintf(&index, "# %s\n\nExported from memors-mcp on %s. One line per document; open the file for the text and its provenance.\n\n", ns, today)
 		sort.Slice(list, func(i, j int) bool { return list[i].Title < list[j].Title })
 		for _, e := range list {
 			d, err := s.ReadDocument(ctx, e.DocumentID)
 			if err != nil {
 				return nil, err
 			}
-			rel := path.Join(ns, d.Prov.Kind, slug(d.Prov.Title)+"-"+shortID(d.ID)+".md")
+			f.docs = append(f.docs, d)
+			rel := docRel(ns, d)
+			links.doc[d.ID], links.source[d.SourceID] = rel, rel
+		}
+		if f.pages, err = s.ListPages(ctx, PageFilter{Namespace: ns}); err != nil {
+			return nil, err
+		}
+		sort.Slice(f.pages, func(i, j int) bool {
+			if f.pages[i].Title != f.pages[j].Title {
+				return f.pages[i].Title < f.pages[j].Title
+			}
+			return f.pages[i].ID < f.pages[j].ID
+		})
+		for _, pg := range f.pages {
+			links.page[pg.ID] = pageRel(ns, &pg)
+			if pg.Kind == PageKindEntity && pg.SubjectID != "" {
+				links.entity[pg.SubjectID] = links.page[pg.ID]
+			}
+		}
+		if f.book, err = s.Book(ctx, ns); err != nil {
+			return nil, err
+		}
+	}
+
+	written := map[string][]exportEntry{}
+	books := map[string]*Book{}
+	for _, ns := range res.Namespaces {
+		f := files[ns]
+		var index strings.Builder
+		fmt.Fprintf(&index, "# %s\n\nExported from memors-mcp on %s. One line per document; open the file for the text and its provenance.\n\n", ns, today)
+		if len(f.book.Chapters) > 0 {
+			books[ns] = f.book
+			index.WriteString(renderBookContents(f.book, links, path.Join(ns, "_index.md")))
+		}
+		for _, d := range f.docs {
+			rel := docRel(ns, d)
 			if err := writeFile(filepath.Join(dir, filepath.FromSlash(rel)), renderMarkdown(d)); err != nil {
 				return nil, err
 			}
 			fmt.Fprintf(&index, "- [%s](%s) — %s, %s%s\n", orTitle(d.Prov.Title), path.Join(d.Prov.Kind, path.Base(rel)), d.Prov.Kind, d.Prov.Trust, versionSuffix(d.Prov.Version))
-			written[ns] = append(written[ns], exportEntry{Title: orTitle(d.Prov.Title), Rel: rel, Kind: d.Prov.Kind, Trust: d.Prov.Trust})
+			written[ns] = append(written[ns], exportEntry{Title: orTitle(d.Prov.Title), Rel: rel, Kind: d.Prov.Kind, Trust: d.Prov.Trust, ID: d.ID})
 			res.Files++
 		}
-		pages, err := s.ListPages(ctx, PageFilter{Namespace: ns})
-		if err != nil {
-			return nil, err
-		}
-		sort.Slice(pages, func(i, j int) bool {
-			if pages[i].Title != pages[j].Title {
-				return pages[i].Title < pages[j].Title
-			}
-			return pages[i].ID < pages[j].ID
-		})
-		if len(pages) > 0 {
+		if len(f.pages) > 0 {
 			index.WriteString("\n## Pages (derived by agents; see built_from)\n\n")
 		}
-		for _, pg := range pages {
-			rel := path.Join(ns, "pages", slug(pg.Title)+"-"+shortID(pg.ID)+".md")
-			if err := writeFile(filepath.Join(dir, filepath.FromSlash(rel)), renderPageMarkdown(&pg)); err != nil {
+		chapterOf, footers := bookPageExtras(f.book, links)
+		for _, pg := range f.pages {
+			rel := pageRel(ns, &pg)
+			pg.Content = strings.TrimRight(links.rewrite(pg.Content, rel), "\n") + footers.get(pg.ID)(rel)
+			if err := writeFile(filepath.Join(dir, filepath.FromSlash(rel)), renderPageMarkdown(&pg, chapterOf[pg.ID])); err != nil {
 				return nil, err
 			}
 			stale := ""
@@ -109,7 +146,7 @@ func (s *Store) Export(ctx context.Context, dir string, opts ExportOptions) (*Ex
 				stale = " (stale)"
 			}
 			fmt.Fprintf(&index, "- [%s](%s) — %s page, %s%s\n", pg.Title, path.Join("pages", path.Base(rel)), pg.Kind, pg.Trust, stale)
-			written[ns] = append(written[ns], exportEntry{Title: orTitle(pg.Title), Rel: rel, Kind: pg.Kind + " page", Trust: pg.Trust, Stale: pg.Stale, Page: true})
+			written[ns] = append(written[ns], exportEntry{Title: orTitle(pg.Title), Rel: rel, Kind: pg.Kind + " page", Trust: pg.Trust, Stale: pg.Stale, Page: true, ID: pg.ID})
 			res.Files++
 		}
 		if err := writeFile(filepath.Join(dir, ns, "_index.md"), index.String()); err != nil {
@@ -118,7 +155,7 @@ func (s *Store) Export(ctx context.Context, dir string, opts ExportOptions) (*Ex
 	}
 	for name, text := range map[string]string{
 		"README.md":     renderExportReadme(res.Namespaces, written, today),
-		"SUMMARY.md":    renderExportSummary(res.Namespaces, written),
+		"SUMMARY.md":    renderExportSummary(res.Namespaces, written, books),
 		"book.toml":     exportBookTOML,
 		".gitbook.yaml": exportGitbookYAML,
 	} {
@@ -185,11 +222,19 @@ func renderExportReadme(namespaces []string, written map[string][]exportEntry, t
 
 // renderExportSummary is the mdBook/GitBook table of contents: namespace,
 // then document kind, then the files; pages last under their own heading.
-func renderExportSummary(namespaces []string, written map[string][]exportEntry) string {
+//
+// A namespace with an outline is laid out as its book instead: the overview,
+// the chapters with their member pages, the pages in no chapter, and the
+// documents as an appendix. Every file still appears exactly once.
+func renderExportSummary(namespaces []string, written map[string][]exportEntry, books map[string]*Book) string {
 	var b strings.Builder
 	b.WriteString("# Summary\n\n[Overview](README.md)\n\n")
 	for _, ns := range namespaces {
 		fmt.Fprintf(&b, "- [%s](%s/_index.md)\n", ns, ns)
+		if book := books[ns]; book != nil {
+			renderBookSummary(&b, book, written[ns])
+			continue
+		}
 		byKind := map[string][]exportEntry{}
 		var kinds []string
 		var pages []exportEntry
@@ -218,6 +263,258 @@ func renderExportSummary(namespaces []string, written map[string][]exportEntry) 
 		}
 	}
 	return b.String()
+}
+
+// renderBookSummary writes an outlined namespace's part of SUMMARY.md.
+func renderBookSummary(b *strings.Builder, book *Book, written []exportEntry) {
+	byID := map[string]exportEntry{}
+	for _, e := range written {
+		byID[e.ID] = e
+	}
+	line := func(indent string, e exportEntry) {
+		fmt.Fprintf(b, "%s- [%s](%s)\n", indent, summaryTitle(e), e.Rel)
+	}
+	if book.Overview != nil {
+		line("  ", byID[book.Overview.PageID])
+	}
+	for _, c := range book.Chapters {
+		if c.Page != nil {
+			line("  ", byID[c.Page.PageID])
+		} else {
+			fmt.Fprintf(b, "  - [%s]()\n", summaryTitle(exportEntry{Title: c.Title})) // a draft: the chapter is not written yet
+		}
+		for _, m := range c.Members {
+			if m.PageID != "" {
+				line("    ", byID[m.PageID])
+			}
+		}
+	}
+	if len(book.Loose) > 0 {
+		b.WriteString("  - [Not in a chapter]()\n")
+		for _, e := range book.Loose {
+			line("    ", byID[e.PageID])
+		}
+	}
+	byKind := map[string][]exportEntry{}
+	var kinds []string
+	for _, e := range written {
+		if e.Page {
+			continue
+		}
+		if _, ok := byKind[e.Kind]; !ok {
+			kinds = append(kinds, e.Kind)
+		}
+		byKind[e.Kind] = append(byKind[e.Kind], e)
+	}
+	if len(kinds) == 0 {
+		return
+	}
+	sort.Strings(kinds)
+	b.WriteString("  - [Sources]()\n")
+	for _, k := range kinds {
+		fmt.Fprintf(b, "    - [%s]()\n", k)
+		for _, e := range byKind[k] {
+			line("      ", e)
+		}
+	}
+}
+
+// renderBookContents is the "Contents" list at the top of an outlined
+// namespace's _index.md: the book's reading order, with what is unwritten
+// or behind marked.
+func renderBookContents(book *Book, links *exportLinks, from string) string {
+	var b strings.Builder
+	b.WriteString("## Contents\n\n")
+	entry := func(indent string, e BookEntry) {
+		note := ""
+		if e.Stale {
+			note = " (stale)"
+		}
+		if e.Kind == MemberSource {
+			note = " (source)"
+		}
+		if rel := links.entry(e); rel != "" {
+			fmt.Fprintf(&b, "%s- [%s](%s)%s\n", indent, mdText(e.Title), relLink(from, rel), note)
+		} else {
+			fmt.Fprintf(&b, "%s- %s%s\n", indent, mdText(e.Title), note)
+		}
+	}
+	if book.Overview != nil {
+		entry("", *book.Overview)
+	}
+	for _, c := range book.Chapters {
+		switch {
+		case c.Page == nil:
+			fmt.Fprintf(&b, "- %s (not written yet)\n", mdText(c.Title))
+		default:
+			entry("", *c.Page)
+		}
+		for _, m := range c.Members {
+			entry("  ", m)
+		}
+	}
+	for i, e := range book.Loose {
+		if i == 0 {
+			b.WriteString("- Not in a chapter\n")
+		}
+		entry("  ", e)
+	}
+	b.WriteString("\n## Documents\n\n")
+	return b.String()
+}
+
+// bookPageExtras says, for the pages of an outlined namespace, which chapter
+// an entity page belongs to (for its front matter) and what footer a
+// chapter or overview page gets: the way down to the next level of detail.
+// The footer is written at export time and never stored.
+func bookPageExtras(book *Book, links *exportLinks) (chapterOf map[string]string, footers footerMap) {
+	chapterOf, footers = map[string]string{}, footerMap{}
+	list := func(heading string, entries []BookEntry) func(from string) string {
+		return func(from string) string {
+			var b strings.Builder
+			for _, e := range entries {
+				rel := links.entry(e)
+				if rel == "" {
+					continue
+				}
+				note := ""
+				switch {
+				case e.Kind == MemberSource:
+					note = " (source)"
+				case e.Stale:
+					note = " (stale)"
+				}
+				fmt.Fprintf(&b, "- [%s](%s)%s\n", mdText(e.Title), relLink(from, rel), note)
+			}
+			if b.Len() == 0 {
+				return ""
+			}
+			return "\n\n---\n\n**" + heading + "**\n\n" + b.String()
+		}
+	}
+	var chapters []BookEntry
+	for _, c := range book.Chapters {
+		for _, m := range c.Members {
+			if m.PageID != "" {
+				chapterOf[m.PageID] = c.Title
+			}
+		}
+		if c.Page != nil {
+			chapters = append(chapters, *c.Page)
+			footers[c.Page.PageID] = list("In this chapter", c.Members)
+		}
+	}
+	if book.Overview != nil {
+		footers[book.Overview.PageID] = list("Chapters", chapters)
+	}
+	return chapterOf, footers
+}
+
+// footerMap gives a page's footer; a page without one gets nothing.
+type footerMap map[string]func(from string) string
+
+func (m footerMap) get(id string) func(string) string {
+	if f := m[id]; f != nil {
+		return f
+	}
+	return func(string) string { return "" }
+}
+
+func docRel(ns string, d *Document) string {
+	return path.Join(ns, d.Prov.Kind, slug(d.Prov.Title)+"-"+shortID(d.ID)+".md")
+}
+
+func pageRel(ns string, p *Page) string {
+	return path.Join(ns, "pages", slug(p.Title)+"-"+shortID(p.ID)+".md")
+}
+
+// relLink is the link from one exported file to another.
+func relLink(from, to string) string {
+	rel, err := filepath.Rel(filepath.FromSlash(path.Dir(from)), filepath.FromSlash(to))
+	if err != nil {
+		return to
+	}
+	return filepath.ToSlash(rel)
+}
+
+// mdText keeps a title from breaking the link it is the text of.
+func mdText(t string) string {
+	return strings.NewReplacer("[", "(", "]", ")").Replace(orTitle(t))
+}
+
+// exportLinks knows where each exported record's file is.
+type exportLinks struct {
+	store                     *Store
+	ctx                       context.Context
+	doc, source, page, entity map[string]string
+}
+
+func (l *exportLinks) entry(e BookEntry) string {
+	if e.PageID != "" {
+		return l.page[e.PageID]
+	}
+	return l.doc[e.DocID]
+}
+
+// resolve returns the exported file of a memo:// address, or "".
+func (l *exportLinks) resolve(kind, id string) string {
+	switch kind {
+	case "doc":
+		if rel := l.doc[id]; rel != "" {
+			return rel
+		}
+		// An older revision: the file of the live one.
+		var live string
+		_ = l.store.db.QueryRowContext(l.ctx, `SELECT d2.id FROM documents d JOIN documents d2 ON d2.source_id = d.source_id AND d2.deleted_at IS NULL AND d2.superseded_by IS NULL WHERE d.id = ?`, id).Scan(&live)
+		return l.doc[live]
+	case "source":
+		return l.source[id]
+	case "page":
+		return l.page[id]
+	case "entity":
+		return l.entity[id]
+	case "chunk":
+		// A passage is read in its document; one from a superseded revision
+		// leads to the live revision.
+		var live string
+		_ = l.store.db.QueryRowContext(l.ctx, `SELECT d2.id FROM chunks c JOIN documents d ON d.id = c.document_id JOIN documents d2 ON d2.source_id = d.source_id AND d2.deleted_at IS NULL AND d2.superseded_by IS NULL WHERE c.id = ?`, id).Scan(&live)
+		return l.doc[live]
+	}
+	return ""
+}
+
+var exportMemoRef = regexp.MustCompile(`(\]\()?memo://(chunk|doc|source|page|entity)/([0-9A-Za-z-]+)`)
+
+// rewrite turns the memo:// addresses in a page into links to the exported
+// files, so a reader of the book can follow a citation. An address that is
+// already a link target keeps its text; a bare one becomes its own text.
+// Addresses of records that are not in the export, and anything inside a
+// fenced block, are left as they are. Only pages are rewritten: a document
+// is exported byte for byte.
+func (l *exportLinks) rewrite(content, from string) string {
+	lines := strings.Split(content, "\n")
+	inFence := false
+	for i, line := range lines {
+		if t := strings.TrimSpace(line); strings.HasPrefix(t, "```") || strings.HasPrefix(t, "~~~") {
+			inFence = !inFence
+			continue
+		}
+		if inFence || !strings.Contains(line, "memo://") {
+			continue
+		}
+		lines[i] = exportMemoRef.ReplaceAllStringFunc(line, func(m string) string {
+			sub := exportMemoRef.FindStringSubmatch(m)
+			rel := l.resolve(sub[2], sub[3])
+			if rel == "" {
+				return m
+			}
+			if sub[1] != "" {
+				return "](" + relLink(from, rel)
+			}
+			return "[" + strings.TrimPrefix(m, "memo://") + "](" + relLink(from, rel) + ")"
+		})
+	}
+	return strings.Join(lines, "\n")
 }
 
 func summaryTitle(e exportEntry) string {
@@ -464,16 +761,26 @@ func oneLineIndex(s string, max int) string {
 }
 
 // renderPageMarkdown writes a derived page with front matter that says so.
-func renderPageMarkdown(p *Page) string {
+// chapter is the title of the chapter an entity page belongs to, if any.
+func renderPageMarkdown(p *Page, chapter string) string {
 	var sb strings.Builder
 	sb.WriteString("---\n")
 	fmt.Fprintf(&sb, "memo_uri: %s\ntitle: %s\nkind: page\npage_kind: %s\nnamespace: %s\nis_inference: true\ntrust: %s\nbuilt_at: %s\nbuilt_from_rev: %d\nstale: %t\n", p.URI, yamlStr(p.Title), p.Kind, p.Namespace, p.Trust, p.BuiltAt.UTC().Format(time.RFC3339), p.BuiltFromRev, p.Stale)
 	if p.StaleReason != "" {
 		fmt.Fprintf(&sb, "stale_reason: %s\n", yamlStr(p.StaleReason))
 	}
+	if chapter != "" {
+		fmt.Fprintf(&sb, "chapter: %s\n", yamlStr(chapter))
+	}
 	sb.WriteString("built_from:\n")
 	for _, c := range p.Sources {
 		sb.WriteString("  - " + c + "\n")
+	}
+	if len(p.Deps) > 0 {
+		sb.WriteString("built_from_pages:\n")
+		for _, d := range p.Deps {
+			sb.WriteString("  - " + d + "\n")
+		}
 	}
 	sb.WriteString("\n---\n\n" + strings.TrimRight(p.Content, "\n") + "\n")
 	return sb.String()

@@ -1039,8 +1039,10 @@ less and shipped two phases in a month, so treat these as ranges, not promises.
 > ls`, export writes `<ns>/pages/`. Eval (`docs/eval/v1.2.0.md`): lint recall 5/5 planted
 > kinds, omission and corruption checks flag exactly the planted gaps, conflict rule enforced
 > against the tool channel, raw source/document/chunk rows byte-identical across the whole
-> loop. Not built: Louvain topic pages (the eval has no global questions, so the rule says no),
-> topic and overview page kinds beyond the schema. Not verified: the Ollama executor against a
+> loop. Not built: Louvain topic pages (the eval has no global questions, so the rule says no).
+> Topic and overview pages were built later as the book (2026-11-20, schema v6): chapters come
+> from an outline a person or the agent writes, not from community detection, so the rule
+> above still stands. The reason is the human reader, which the eval does not measure. Not verified: the Ollama executor against a
 > live model (none on this machine). Remaining: commit, `git tag -a v1.2.0` (milestone M3).
 
 
@@ -1420,7 +1422,8 @@ One reason each.
 - Server-side URL fetching (decision 2: the client fetches; the no-network promise stands).
 - Any required server-side LLM, or MCP sampling (D-C, D-L).
 - GraphRAG-style community summaries at index time (ten to a thousand times the cost, and they
-  update poorly).
+  update poorly). The book's chapters are not this: its outline is written by a person or the
+  calling agent, chapter pages are written on request, and nothing is grouped at index time.
 - Semantic chunking, late chunking, ColBERT/MUVERA, server-side HyDE or Self-RAG loops (the
   evidence does not justify them at this scale).
 - Embedded graph databases (Kuzu was archived; the others need CGo).

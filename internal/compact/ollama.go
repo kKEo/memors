@@ -69,13 +69,78 @@ func (o *Ollama) WritePage(ctx context.Context, p PagePayload) (Result, error) {
 	if p.Previous != "" {
 		sb.WriteString("\nPREVIOUS PAGE (update it)\n" + p.Previous + "\n")
 	}
+	return o.chat(ctx, sb.String())
+}
+
+// WriteTopic asks the model for a chapter page from its payload: the member
+// pages and passages, and the examples to quote.
+func (o *Ollama) WriteTopic(ctx context.Context, p TopicPayload) (Result, error) {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Write the markdown chapter titled %q of a book about a knowledge base, from ONLY the material below. %s\n", p.Chapter.Title, topicGuide)
+	if p.Chapter.Scope != "" {
+		fmt.Fprintf(&sb, "\nSCOPE\n%s\n", p.Chapter.Scope)
+	}
+	sb.WriteString("\nMEMBERS\n")
+	for _, m := range p.Members {
+		fmt.Fprintf(&sb, "\n## %s [%s]\n", m.Title, firstOf(m.PageURI, m.URI))
+		if m.Page != "" {
+			sb.WriteString(m.Page + "\n")
+		}
+		for _, c := range m.Passages {
+			fmt.Fprintf(&sb, "\n[%s] %s\n%s\n", c.URI, c.Title, c.Text)
+		}
+	}
+	if len(p.Examples) > 0 {
+		sb.WriteString("\nEXAMPLES (quote word for word)\n")
+		for _, c := range p.Examples {
+			fmt.Fprintf(&sb, "\n[%s] %s\n%s\n", c.URI, c.Title, c.Text)
+		}
+	}
+	sb.WriteString("\nNAME EVERY ONE OF\n")
+	for _, n := range p.MustCover {
+		sb.WriteString("- " + n + "\n")
+	}
+	if p.Previous != "" {
+		sb.WriteString("\nPREVIOUS CHAPTER (update it)\n" + p.Previous + "\n")
+	}
+	return o.chat(ctx, sb.String())
+}
+
+// WriteOverview asks the model for the overview page from the chapter pages.
+func (o *Ollama) WriteOverview(ctx context.Context, p OverviewPayload) (Result, error) {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Write the markdown overview page of a book about the knowledge base %q, from ONLY the chapters below. %s\n\nCHAPTERS\n", p.Namespace, overGuide)
+	for _, c := range p.Chapters {
+		fmt.Fprintf(&sb, "\n## %s [%s]\n", c.Title, c.PageURI)
+		if c.Scope != "" {
+			sb.WriteString(c.Scope + "\n")
+		}
+		if c.Page != "" {
+			sb.WriteString(c.Page + "\n")
+		}
+	}
+	if p.Previous != "" {
+		sb.WriteString("\nPREVIOUS OVERVIEW (update it)\n" + p.Previous + "\n")
+	}
+	return o.chat(ctx, sb.String())
+}
+
+func firstOf(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
+}
+
+// chat sends one prompt and reads back the title and content.
+func (o *Ollama) chat(ctx context.Context, prompt string) (Result, error) {
 	body, _ := json.Marshal(map[string]any{
 		"model":    o.Model,
 		"stream":   false,
 		"think":    false,
 		"format":   pageSchema,
 		"options":  map[string]any{"temperature": 0},
-		"messages": []map[string]string{{"role": "user", "content": sb.String()}},
+		"messages": []map[string]string{{"role": "user", "content": prompt}},
 	})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.URL+"/api/chat", bytes.NewReader(body))
 	if err != nil {

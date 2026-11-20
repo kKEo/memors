@@ -144,6 +144,52 @@ func TestKnowledgeBaseCommandsEndToEnd(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "1 unchanged") {
 		t.Fatalf("re-import of export should be unchanged: %s", out)
 	}
+	// An export also holds the pages agents wrote. They are derived text, so
+	// re-ingesting skips them instead of failing on `kind: page`.
+	pagesDir := filepath.Join(exportDir, "grpc", "pages")
+	if err := os.MkdirAll(pagesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	page := "---\nmemo_uri: memo://page/0192f3aa-0000-7000-8000-000000000001\ntitle: Interceptors\nkind: page\npage_kind: entity\nnamespace: grpc\nis_inference: true\n\n---\n\n# Interceptors\n\nThey run in registration order.\n"
+	if err := os.WriteFile(filepath.Join(pagesDir, "interceptors-0192f3aa.md"), []byte(page), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, errOut, code = run("ingest", exportDir, "--embed=false")
+	if code != 0 || !strings.Contains(out, "1 unchanged, 1 derived pages skipped") || !strings.Contains(out, "skipped (derived page)") {
+		t.Fatalf("re-import of an export with a page: %d %s %s", code, out, errOut)
+	}
+	// The outline: print it as a file, edit it, check it, apply it.
+	out, _, code = run("outline", "show", "--ns", "grpc")
+	if code != 0 || !strings.HasPrefix(out, "# Outline: grpc\n") || !strings.Contains(out, "<!-- Not in a chapter.") || !strings.Contains(out, "memo://source/") {
+		t.Fatalf("outline show: %d %s", code, out)
+	}
+	member := ""
+	for _, l := range strings.Split(out, "\n") {
+		if strings.HasPrefix(l, "- memo://source/") {
+			member = l
+		}
+	}
+	outlineFile := filepath.Join(t.TempDir(), "outline.md")
+	if err := os.WriteFile(outlineFile, []byte("# Outline: grpc\n\n## Interceptors\n\n> Order and errors.\n\n"+member+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, errOut, code = run("outline", "apply", outlineFile, "--dry-run")
+	if code != 0 || !strings.Contains(out, "+ ## Interceptors") || !strings.Contains(out, "dry run, nothing stored: 1 chapters, 1 members in \"grpc\"") {
+		t.Fatalf("outline apply --dry-run: %d %s %s", code, out, errOut)
+	}
+	if out, _, _ = run("outline", "show", "--ns", "grpc"); strings.Contains(out, "## Interceptors") {
+		t.Fatalf("a dry run stored the outline: %s", out)
+	}
+	if out, errOut, code = run("outline", "apply", outlineFile); code != 0 || !strings.Contains(out, "stored: 1 chapters, 1 members") {
+		t.Fatalf("outline apply: %d %s %s", code, out, errOut)
+	}
+	out, _, code = run("outline", "show", "--ns", "grpc")
+	if code != 0 || !strings.Contains(out, "## Interceptors <!-- chapter: ") || !strings.Contains(out, "> Order and errors.") || strings.Contains(out, "Not in a chapter") {
+		t.Fatalf("outline show after apply: %d %s", code, out)
+	}
+	if out, _, code = run("outline", "apply", outlineFile, "--ns", "other"); code == 0 {
+		t.Fatalf("a file for another namespace was applied: %s", out)
+	}
 	out, _, code = run("verify")
 	if code != 0 || !strings.Contains(out, "ok: no problems found") {
 		// No model was ever configured, so no vectors are expected to exist.

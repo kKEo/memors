@@ -34,7 +34,8 @@ type Page struct {
 	IsInference  bool       `json:"is_inference"`
 	Trust        string     `json:"trust"`
 	Actor        string     `json:"actor,omitempty"`
-	Sources      []string   `json:"sources"` // chunk addresses
+	Sources      []string   `json:"sources"`        // chunk addresses
+	Deps         []string   `json:"deps,omitempty"` // addresses of the pages a chapter or overview page was written from
 	DeletedAt    *time.Time `json:"deleted_at,omitempty"`
 }
 
@@ -46,20 +47,34 @@ type PageInput struct {
 	Title     string
 	Content   string
 	Sources   []int64 // chunk ids the page was built from
-	Actor     string
-	Channel   string
+	// Deps are the ids of the pages a topic or overview page was written
+	// from: a chapter's member pages, the overview's chapter pages.
+	Deps    []string
+	Actor   string
+	Channel string
 }
 
 const (
 	PageKindEntity   = "entity"
-	PageKindTopic    = "topic"
-	PageKindOverview = "overview"
+	PageKindTopic    = "topic"    // a chapter of the outline; the subject is the chapter id
+	PageKindOverview = "overview" // one per namespace; the subject is OverviewSubject
 )
+
+// ParentDriftMin is how many of the pages a chapter or overview page was
+// written from must have been rewritten (or added, or retired) before the
+// parent itself is marked stale. One rewritten member does not send the
+// chapter, and then the overview, back to the agent.
+const ParentDriftMin = 2
 
 // WritePage creates or rebuilds a page. A page with the same namespace,
 // kind and subject is replaced in place (built_from_rev + 1), so an entity
-// has one page. Trust follows the channel cap (tool writes are agent). The
-// page is embedded for granularity=page search when an embedder is present.
+// or a chapter has one page. Trust follows the channel cap (tool writes are
+// agent). The page is embedded for granularity=page search when an embedder
+// is present.
+//
+// An entity page must cite a source chunk. A topic or overview page may be
+// built from other pages alone (Deps); writing a page re-checks the pages
+// built from it, see ParentDriftMin.
 func (s *Store) WritePage(ctx context.Context, in PageInput) (*Page, error) {
 	if in.Namespace == "" || strings.TrimSpace(in.Title) == "" || strings.TrimSpace(in.Content) == "" {
 		return nil, errors.New("page needs namespace, title and content")
@@ -67,8 +82,15 @@ func (s *Store) WritePage(ctx context.Context, in PageInput) (*Page, error) {
 	if err := validateEnum("kind", in.Kind, PageKindEntity, PageKindTopic, PageKindOverview); err != nil {
 		return nil, err
 	}
-	if len(in.Sources) == 0 {
+	switch {
+	case in.Kind == PageKindEntity && len(in.Deps) > 0:
+		return nil, errors.New("an entity page is built from chunks, not from other pages")
+	case in.Kind == PageKindEntity && len(in.Sources) == 0:
 		return nil, errors.New("a page must cite at least one source chunk")
+	case in.Kind != PageKindEntity && in.SubjectID == "":
+		return nil, fmt.Errorf("a %s page needs its subject (the chapter id, or %q for the overview)", in.Kind, OverviewSubject)
+	case in.Kind != PageKindEntity && len(in.Sources)+len(in.Deps) == 0:
+		return nil, fmt.Errorf("a %s page must cite a source chunk or be built from other pages", in.Kind)
 	}
 	if in.Channel == "" {
 		in.Channel = ChannelTool
@@ -89,6 +111,12 @@ func (s *Store) WritePage(ctx context.Context, in PageInput) (*Page, error) {
 		var n int
 		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM chunks WHERE id = ?`, id).Scan(&n); err != nil || n == 0 {
 			return nil, fmt.Errorf("source memo://chunk/%d: %w", id, ErrNotFound)
+		}
+	}
+	depRevs := make([]int, len(in.Deps))
+	for i, dep := range in.Deps {
+		if err := tx.QueryRowContext(ctx, `SELECT built_from_rev FROM pages WHERE id = ? AND namespace = ? AND deleted_at IS NULL`, dep, in.Namespace).Scan(&depRevs[i]); err != nil {
+			return nil, fmt.Errorf("memo://page/%s in namespace %q: %w", dep, in.Namespace, ErrNotFound)
 		}
 	}
 	var id string
@@ -124,7 +152,29 @@ func (s *Store) WritePage(ctx context.Context, in PageInput) (*Page, error) {
 			return nil, err
 		}
 	}
-	if err := writeAudit(ctx, tx, s.metrics, nowMs, in.Actor, in.Channel, op, "memo://page/"+id, map[string]any{"kind": in.Kind, "subject": in.SubjectID, "sources": len(in.Sources), "rev": rev, "trust": trust}); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM page_deps WHERE page_id = ?`, id); err != nil {
+		return nil, err
+	}
+	for i, dep := range in.Deps {
+		if dep == id {
+			return nil, errors.New("a page cannot be built from itself")
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO page_deps(page_id, dep_page_id, dep_rev) VALUES (?,?,?)`, id, dep, depRevs[i]); err != nil {
+			return nil, err
+		}
+	}
+	staled, err := staleParents(ctx, tx, id, in)
+	if err != nil {
+		return nil, err
+	}
+	detail := map[string]any{"kind": in.Kind, "subject": in.SubjectID, "sources": len(in.Sources), "rev": rev, "trust": trust}
+	if len(in.Deps) > 0 {
+		detail["deps"] = len(in.Deps)
+	}
+	if staled > 0 {
+		detail["parents_stale"] = staled
+	}
+	if err := writeAudit(ctx, tx, s.metrics, nowMs, in.Actor, in.Channel, op, "memo://page/"+id, detail); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -137,6 +187,113 @@ func (s *Store) WritePage(ctx context.Context, in PageInput) (*Page, error) {
 				_, _ = s.db.ExecContext(ctx, `INSERT OR REPLACE INTO page_vecs(page_id, model_id, embedding) VALUES (?,?,?)`, id, modelID, EncodeVector(v))
 			}
 		}
+	}
+	return s.ReadPage(ctx, id)
+}
+
+// staleParents re-checks the pages that stand above the page just written:
+// the pages built from it, the chapter page of an entity's chapter, and the
+// overview above a chapter page. A parent goes stale when enough of what it
+// was written from has moved on (ParentDriftMin, or all of it when it was
+// written from fewer pages). It returns how many parents it marked.
+func staleParents(ctx context.Context, tx *sql.Tx, id string, in PageInput) (int, error) {
+	q := `SELECT page_id FROM page_deps WHERE dep_page_id = ?1`
+	args := []any{id}
+	switch in.Kind {
+	case PageKindEntity:
+		q += ` UNION SELECT p.id FROM pages p JOIN outline_members m ON m.chapter_id = p.subject_id
+			WHERE p.namespace = ?2 AND p.kind = 'topic' AND p.deleted_at IS NULL AND m.kind = 'entity' AND m.ref_id = ?3`
+		args = append(args, in.Namespace, in.SubjectID)
+	case PageKindTopic:
+		q += ` UNION SELECT p.id FROM pages p WHERE p.namespace = ?2 AND p.kind = 'overview' AND p.deleted_at IS NULL`
+		args = append(args, in.Namespace)
+	}
+	rows, err := tx.QueryContext(ctx, q, args...)
+	if err != nil {
+		return 0, err
+	}
+	var parents []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		parents = append(parents, p)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	staled := 0
+	for _, parent := range parents {
+		drift, deps, err := pageDrift(ctx, tx, parent)
+		if err != nil {
+			return 0, err
+		}
+		need := ParentDriftMin
+		if deps < need {
+			need = max(deps, 1)
+		}
+		if drift < need {
+			continue
+		}
+		res, err := tx.ExecContext(ctx, `UPDATE pages SET stale = 1, stale_reason = ? WHERE id = ? AND deleted_at IS NULL AND stale = 0`,
+			fmt.Sprintf("%d of the pages it was written from were rewritten, added or retired since", drift), parent)
+		if err != nil {
+			return 0, err
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			staled++
+		}
+	}
+	return staled, nil
+}
+
+// pageDrift counts how far a topic or overview page has fallen behind the
+// pages below it: dependencies rewritten or retired since it was built, and
+// pages that now belong under it and were not there then. It also returns
+// how many pages it was built from.
+func pageDrift(ctx context.Context, q queryer, pageID string) (drift, deps int, err error) {
+	var kind, ns string
+	var subject sql.NullString
+	if err := q.QueryRowContext(ctx, `SELECT kind, namespace, subject_id FROM pages WHERE id = ?`, pageID).Scan(&kind, &ns, &subject); err != nil {
+		return 0, 0, err
+	}
+	if err := q.QueryRowContext(ctx, `SELECT COUNT(*), COALESCE(SUM(p.deleted_at IS NOT NULL OR p.built_from_rev != d.dep_rev), 0)
+		FROM page_deps d JOIN pages p ON p.id = d.dep_page_id WHERE d.page_id = ?`, pageID).Scan(&deps, &drift); err != nil {
+		return 0, 0, err
+	}
+	var added int
+	switch kind {
+	case PageKindTopic:
+		err = q.QueryRowContext(ctx, `SELECT COUNT(*) FROM outline_members m JOIN pages p ON p.kind = 'entity' AND p.subject_id = m.ref_id AND p.namespace = ?1 AND p.deleted_at IS NULL
+			WHERE m.chapter_id = ?2 AND m.kind = 'entity' AND p.id NOT IN (SELECT dep_page_id FROM page_deps WHERE page_id = ?3)`, ns, subject.String, pageID).Scan(&added)
+	case PageKindOverview:
+		err = q.QueryRowContext(ctx, `SELECT COUNT(*) FROM pages p WHERE p.namespace = ?1 AND p.kind = 'topic' AND p.deleted_at IS NULL
+			AND p.id NOT IN (SELECT dep_page_id FROM page_deps WHERE page_id = ?2)`, ns, pageID).Scan(&added)
+	}
+	return drift + added, deps, err
+}
+
+// PageDrift reports how many of the pages below a chapter or overview page
+// changed since it was written. The web UI and the export show it next to a
+// page that is not stale yet.
+func (s *Store) PageDrift(ctx context.Context, pageID string) (int, error) {
+	drift, _, err := pageDrift(ctx, s.db, pageID)
+	return drift, err
+}
+
+// PageBySubject returns the live page of a kind and subject in a namespace,
+// or nil when there is none.
+func (s *Store) PageBySubject(ctx context.Context, ns, kind, subject string) (*Page, error) {
+	var id string
+	err := s.db.QueryRowContext(ctx, `SELECT id FROM pages WHERE namespace = ? AND kind = ? AND subject_id = ? AND deleted_at IS NULL`, ns, kind, subject).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
 	}
 	return s.ReadPage(ctx, id)
 }
@@ -175,7 +332,17 @@ func (s *Store) ReadPage(ctx context.Context, id string) (*Page, error) {
 		}
 		p.Sources = append(p.Sources, fmt.Sprintf("memo://chunk/%d", c))
 	}
-	return &p, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	deps, err := s.idList(ctx, `SELECT dep_page_id FROM page_deps WHERE page_id = ? ORDER BY dep_page_id`, id)
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range deps {
+		p.Deps = append(p.Deps, "memo://page/"+d)
+	}
+	return &p, nil
 }
 
 // PageFilter narrows ListPages.

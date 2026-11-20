@@ -81,7 +81,7 @@ func TestIngestRunStalled(t *testing.T) {
 func TestMigrateV4ToV5(t *testing.T) {
 	ctx := context.Background()
 	_, db := openTestStore(t, nil)
-	for _, q := range []string{`DROP TABLE ingest_run_items`, `DROP TABLE ingest_runs`, `PRAGMA user_version = 4`} {
+	for _, q := range []string{`DROP TABLE page_deps`, `DROP TABLE outline_members`, `DROP TABLE outline_chapters`, `DROP TABLE ingest_run_items`, `DROP TABLE ingest_runs`, `PRAGMA user_version = 4`} {
 		if _, err := db.Exec(q); err != nil {
 			t.Fatal(err)
 		}
@@ -89,7 +89,7 @@ func TestMigrateV4ToV5(t *testing.T) {
 	if err := Migrate(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	if v, err := SchemaVersion(ctx, db); err != nil || v != 5 {
+	if v, err := SchemaVersion(ctx, db); err != nil || v != len(migrations) {
 		t.Fatalf("version = %d (%v)", v, err)
 	}
 	var n int

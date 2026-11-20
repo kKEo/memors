@@ -8,7 +8,7 @@ After an experiment, check that the store is still consistent: the same properti
 | `memors-mcp status` | Sources, live documents and revisions, chunks, facts, queued and failed jobs, namespaces, the model in use |
 | `memors-mcp verify` | Integrity: chunks, vectors, indexes. `ok: no problems found` or a list |
 | `memors-mcp verify --repair` | Queues missing vectors and rebuilds broken indexes. Run `verify` again afterwards |
-| `memors-mcp lint [--ns]` | Contradictions, orphan entities, missing or stale pages, expired facts |
+| `memors-mcp lint [--ns]` | Contradictions, orphan entities, missing or stale pages, expired facts, holes in the book |
 | `memors-mcp backfill` | Embeds passages whose vectors are pending |
 | `memors-mcp read <memo://…> [--history]` | One record with its provenance, or its revision chain. A forgotten record shows its tombstone and the reason |
 | `memors-mcp facts ls [--as-of 2026-01-01] [--history]` | Facts as they were believed on a date, with supersession |

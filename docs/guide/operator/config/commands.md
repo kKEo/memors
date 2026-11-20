@@ -48,10 +48,12 @@ the summary. Flags may come before or after positional arguments.
 | `memors-mcp graph merges` | ro | Merge-candidate review queue. `--state open\|merged\|rejected\|all` (default `open`) |
 | `memors-mcp graph merge <id>` / `memors-mcp graph reject <id>` | rw | Decide a merge candidate |
 | `memors-mcp graph rebuild` | rw | Re-extract entity mentions. `--ns` |
-| `memors-mcp compact` | rw | Create or list work items. `--ns`, `--kinds page,stale,conflict,merge,duplicate`, `--lint`, `--json`, `--executor ollama`, `--apply` (with an executor; dry run otherwise), `--allow-remote` |
-| `memors-mcp submit <item-id>` | rw | Complete a work item. Pages: `--content-file f.md\|-`, `--title`. Conflicts: `--keep memo://fact/..`. Merges: `--accept` or `--reject`. Any item: `--skip`, `--reason`, `--dry-run` |
-| `memors-mcp lint` | ro | Contradictions, orphan entities, missing and stale pages, expired facts. `--ns`, `--json` |
+| `memors-mcp compact` | rw | Create or list work items. `--ns`, `--kinds page,stale,conflict,merge,duplicate,outline,topic,overview`, `--lint`, `--json`, `--executor ollama` (writes page, chapter and overview items; outline items are left to you or the agent), `--apply` (with an executor; dry run otherwise; goes on to the chapters and the overview that the written pages unlock), `--allow-remote` |
+| `memors-mcp submit <item-id>` | rw | Complete a work item. Pages, chapters and the overview: `--content-file f.md\|-`, `--title`. Outlines: `--outline-file o.md` (the form `outline show` prints). Conflicts: `--keep memo://fact/..`. Merges: `--accept` or `--reject`. Any item: `--skip`, `--reason`, `--dry-run` |
+| `memors-mcp lint` | ro | Contradictions, orphan entities, missing and stale pages, expired facts, and holes in the book: a chapter with no page or no members, a member that is gone, a page in no chapter. `--ns`, `--json` |
 | `memors-mcp pages ls` | ro | Curated pages. `--ns`, `--stale`, `--json` |
+| `memors-mcp outline show` | ro | The book's outline as an editable file: chapters, the scope of each, its members, and what is in no chapter yet. `--ns` |
+| `memors-mcp outline apply <file\|->` | rw | Replace the outline with an edited file and print what changed. `--ns` (default: the namespace named in the file), `--dry-run` |
 
 ## Maintenance
 

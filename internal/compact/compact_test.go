@@ -2,6 +2,8 @@ package compact
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -186,5 +188,276 @@ func TestDuplicatesAndOmissions(t *testing.T) {
 	}
 	if d := Diff("a\nb\nc", "a\nx\nc"); d != "  a\n- b\n+ x\n  c\n" {
 		t.Fatalf("diff:\n%s", d)
+	}
+}
+
+// bookFixture ingests a small platform and writes every entity page the
+// first scan proposes. It returns the page id of each entity by name.
+func bookFixture(t *testing.T, s *kb.Store) map[string]string {
+	t.Helper()
+	ctx := context.Background()
+	ingest(t, s, "plat", "https://p/billing", "Billing Service", "The Billing Service issues invoices daily and writes to the Ledger Store.")
+	ingest(t, s, "plat", "https://p/oncall", "Billing on-call", "The Billing Service pages finance when the invoice run is late. The Ledger Store is read-only during the run.")
+	ingest(t, s, "plat", "https://p/relay", "Mail Relay", "The Mail Relay sends invoice emails for the Billing Service. The Mail Relay reads the Ledger Store.")
+	ingest(t, s, "plat", "https://p/queue", "Mail Relay queue", "The Mail Relay drains the Outbox Queue every minute.")
+	ingest(t, s, "plat", "https://p/retries", "Mail Relay retries", "The Mail Relay retries a failed send three times.\n\n```\nrelay retry --max 3\n```")
+	items, err := Generate(ctx, s, "plat", []string{KindPage})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pages := map[string]string{}
+	for _, it := range items {
+		var p PagePayload
+		if err := json.Unmarshal(it.Payload, &p); err != nil || len(p.Chunks) == 0 {
+			t.Fatalf("page payload: %v %+v", err, p)
+		}
+		rep, err := Submit(ctx, s, it.ID, Result{Content: "# " + p.Entity.Canonical + "\n\n" + p.Chunks[0].Text + " (" + p.Chunks[0].URI + ")\n"}, false, "agent", kb.ChannelTool)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pages[p.Entity.Canonical] = strings.TrimPrefix(rep.PageURI, "memo://page/")
+	}
+	for _, name := range []string{"Billing Service", "Ledger Store", "Mail Relay"} {
+		if pages[name] == "" {
+			t.Fatalf("no page for %s: %v", name, pages)
+		}
+	}
+	return pages
+}
+
+func itemOf(t *testing.T, items []kb.WorkItem, kind, contains string) *kb.WorkItem {
+	t.Helper()
+	for i := range items {
+		if items[i].Kind == kind && strings.Contains(string(items[i].Payload), contains) {
+			return &items[i]
+		}
+	}
+	return nil
+}
+
+// The book, children first: entity pages → an outline item → chapter items →
+// the overview item. A chapter records the pages it was written from and
+// only the passages it quotes; a made-up example and an unnamed member are
+// reported; one rewritten member leaves a chapter alone and a second sends
+// it back; a chapter waits while a member's page is being rebuilt.
+func TestBookLifecycle(t *testing.T) {
+	s := openStore(t)
+	ctx := context.Background()
+	pages := bookFixture(t, s)
+	scan := func(kinds ...string) []kb.WorkItem {
+		t.Helper()
+		items, err := Generate(ctx, s, "plat", kinds)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return items
+	}
+	chapterPage := func(title string) *kb.Page {
+		t.Helper()
+		o, err := s.ReadOutline(ctx, "plat")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range o.Chapters {
+			if c.Title == title && c.PageID != "" {
+				p, err := s.ReadPage(ctx, c.PageID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return p
+			}
+		}
+		t.Fatalf("chapter %q has no page", title)
+		return nil
+	}
+
+	// The outline item lists what to place; nothing else of the book exists yet.
+	items := scan()
+	outline := itemOf(t, items, KindOutline, "no outline")
+	if outline == nil || itemOf(t, items, KindTopic, "") != nil || itemOf(t, items, KindOverview, "") != nil {
+		t.Fatalf("expected an outline item and no chapter or overview item: %+v", items)
+	}
+	var op OutlinePayload
+	if err := json.Unmarshal(outline.Payload, &op); err != nil {
+		t.Fatal(err)
+	}
+	uri := map[string]string{}
+	for _, c := range op.Candidates {
+		if uri[c.Title] == "" { // entities come first; a source may share the name
+			uri[c.Title] = c.URI
+		}
+		if strings.HasPrefix(c.URI, "memo://entity/") && c.Gist == "" {
+			t.Errorf("candidate %s has no gist", c.Title)
+		}
+	}
+	for _, name := range []string{"Billing Service", "Ledger Store", "Mail Relay", "Mail Relay retries"} {
+		if uri[name] == "" {
+			t.Fatalf("%s is not a candidate: %+v", name, op.Candidates)
+		}
+	}
+	chapters := []OutlineChapterIn{
+		{Title: "Money", Members: []string{uri["Billing Service"], uri["Ledger Store"]}},
+		{Title: "Mail", Scope: "How invoices leave the building.", Members: []string{uri["Mail Relay"], uri["Mail Relay retries"]}},
+	}
+	rep, err := Submit(ctx, s, outline.ID, Result{Outline: chapters}, true, "agent", kb.ChannelTool)
+	if err != nil || rep.Applied || !strings.Contains(rep.Diff, "+ ## Money") {
+		t.Fatalf("outline dry run: %+v %v", rep, err)
+	}
+	if o, _ := s.ReadOutline(ctx, "plat"); len(o.Chapters) != 0 {
+		t.Fatal("the dry run stored the outline")
+	}
+	if rep, err = Submit(ctx, s, outline.ID, Result{Outline: chapters}, false, "agent", kb.ChannelTool); err != nil || !rep.Applied {
+		t.Fatalf("outline submit: %+v %v", rep, err)
+	}
+	findings, err := Lint(ctx, s, "plat", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	noPage := 0
+	for _, f := range findings {
+		if f.Kind == "chapter-without-page" {
+			noPage++
+		}
+	}
+	if noPage != 2 {
+		t.Fatalf("lint should flag two chapters without a page: %+v", findings)
+	}
+
+	// Chapter items: the material, and an example to quote.
+	items = scan()
+	mail, money := itemOf(t, items, KindTopic, `"title":"Mail"`), itemOf(t, items, KindTopic, `"title":"Money"`)
+	if mail == nil || money == nil || itemOf(t, items, KindOverview, "") != nil || itemOf(t, items, KindOutline, "") != nil {
+		t.Fatalf("expected two chapter items, no overview yet and the outline item gone: %+v", items)
+	}
+	var tp TopicPayload
+	if err := json.Unmarshal(mail.Payload, &tp); err != nil {
+		t.Fatal(err)
+	}
+	if len(tp.Members) != 2 || tp.Members[0].Page == "" || len(tp.Members[1].Passages) == 0 || len(tp.Examples) == 0 ||
+		!strings.Contains(tp.Examples[0].Text, "relay retry --max 3") || strings.Join(tp.MustCover, ",") != "Mail Relay,Mail Relay retries" {
+		t.Fatalf("chapter payload: %+v", tp)
+	}
+	example := tp.Examples[0]
+
+	// A made-up example and an unnamed member are reported.
+	bad := "# Mail\n\nThe Mail Relay sends invoices out of the building.\n\n```\nrelay retry --max 5\n```\n"
+	rep, err = Submit(ctx, s, mail.ID, Result{Content: bad}, true, "agent", kb.ChannelTool)
+	if err != nil || len(rep.Misquoted) != 1 || len(rep.Omitted) != 1 || rep.Omitted[0] != "Mail Relay retries" {
+		t.Fatalf("chapter dry run: %+v %v", rep, err)
+	}
+	good := "# Mail\n\nThe Mail Relay sends invoice emails (memo://page/" + pages["Mail Relay"] + "). Mail Relay retries are bounded (" + example.URI + "):\n\n```\nrelay   retry --max 3\n```\n"
+	rep, err = Submit(ctx, s, mail.ID, Result{Content: good}, false, "agent", kb.ChannelTool)
+	if err != nil || !rep.Applied || len(rep.Misquoted) != 0 || len(rep.Omitted) != 0 {
+		t.Fatalf("chapter submit: %+v %v", rep, err)
+	}
+	mailPage := chapterPage("Mail")
+	if mailPage.Kind != kb.PageKindTopic || len(mailPage.Deps) != 1 || mailPage.Deps[0] != "memo://page/"+pages["Mail Relay"] ||
+		len(mailPage.Sources) != 1 || mailPage.Sources[0] != example.URI {
+		t.Fatalf("chapter page should depend on the Mail Relay page and cite only what it quotes: %+v", mailPage)
+	}
+
+	// The overview waits for the last chapter.
+	if items = scan(); itemOf(t, items, KindOverview, "") != nil {
+		t.Fatal("the overview was proposed while a chapter has no page")
+	}
+	moneyText := "# Money\n\nThe Billing Service issues invoices and writes to the Ledger Store.\n"
+	if rep, err = Submit(ctx, s, money.ID, Result{Content: moneyText}, false, "agent", kb.ChannelTool); err != nil || !rep.Applied {
+		t.Fatalf("second chapter: %+v %v", rep, err)
+	}
+	items = scan()
+	over := itemOf(t, items, KindOverview, "no overview")
+	if over == nil || itemOf(t, items, KindTopic, "") != nil {
+		t.Fatalf("expected the overview item and no chapter item: %+v", items)
+	}
+	rep, err = Submit(ctx, s, over.ID, Result{Content: "# Overview\n\nThe platform in two parts: Money.\n"}, true, "agent", kb.ChannelTool)
+	if err != nil || len(rep.Omitted) != 1 || rep.Omitted[0] != "Mail" {
+		t.Fatalf("overview dry run should miss the Mail chapter: %+v %v", rep, err)
+	}
+	overText := "# Overview\n\nThe platform in two parts: Money, then Mail (memo://page/" + mailPage.ID + ").\n"
+	if rep, err = Submit(ctx, s, over.ID, Result{Content: overText}, false, "agent", kb.ChannelTool); err != nil || !rep.Applied {
+		t.Fatalf("overview submit: %+v %v", rep, err)
+	}
+	overview, err := s.PageBySubject(ctx, "plat", kb.PageKindOverview, kb.OverviewSubject)
+	if err != nil || overview == nil || len(overview.Deps) != 2 || len(overview.Sources) != 0 {
+		t.Fatalf("overview page: %+v %v", overview, err)
+	}
+	if items = scan(KindOutline, KindTopic, KindOverview); len(items) != 0 {
+		t.Fatalf("the book is complete, nothing should be proposed: %+v", items)
+	}
+
+	// One rewritten member leaves the chapter alone; the second sends it
+	// back. The overview is untouched until chapters are rewritten.
+	rewrite := func(name string) {
+		t.Helper()
+		p, err := s.ReadPage(ctx, pages[name])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var id int64
+		if _, err := fmt.Sscanf(p.Sources[0], "memo://chunk/%d", &id); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.WritePage(ctx, kb.PageInput{Namespace: "plat", Kind: kb.PageKindEntity, SubjectID: p.SubjectID, Title: p.Title, Content: p.Content + "\nRevised.\n", Sources: []int64{id}, Actor: "agent"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rewrite("Billing Service")
+	if p := chapterPage("Money"); p.Stale {
+		t.Fatalf("one rewritten member staled the chapter: %s", p.StaleReason)
+	}
+	if n, _ := s.PageDrift(ctx, chapterPage("Money").ID); n != 1 {
+		t.Fatalf("drift = %d, want 1", n)
+	}
+	rewrite("Ledger Store")
+	if p := chapterPage("Money"); !p.Stale || !strings.Contains(p.StaleReason, "2 of the pages") {
+		t.Fatalf("two rewritten members should stale the chapter: %+v", p)
+	}
+	if o, _ := s.PageBySubject(ctx, "plat", kb.PageKindOverview, kb.OverviewSubject); o.Stale {
+		t.Fatal("the overview went stale before any chapter was rewritten")
+	}
+	if p := chapterPage("Mail"); p.Stale {
+		t.Fatal("the other chapter went stale")
+	}
+
+	// An outline edit stales the chapter it touches, and the overview.
+	o, _ := s.ReadOutline(ctx, "plat")
+	o.Chapters[1].Scope = "How invoices and reminders leave the building."
+	if _, err := s.SetOutline(ctx, "plat", o.Chapters, "me", kb.ChannelCLI); err != nil {
+		t.Fatal(err)
+	}
+	if p := chapterPage("Mail"); !p.Stale {
+		t.Fatal("re-scoping a chapter should stale its page")
+	}
+	if o, _ := s.PageBySubject(ctx, "plat", kb.PageKindOverview, kb.OverviewSubject); !o.Stale {
+		t.Fatal("re-scoping a chapter should stale the overview")
+	}
+
+	// Revising a document the Mail Relay page was built from stales that page;
+	// its chapter then waits for it, while the other chapter is offered.
+	ingest(t, s, "plat", "https://p/relay", "Mail Relay", "The Mail Relay sends invoice and reminder emails for the Billing Service. The Mail Relay reads the Ledger Store.")
+	if p, _ := s.ReadPage(ctx, pages["Mail Relay"]); !p.Stale {
+		t.Skip("the Mail Relay page was not built from the revised document")
+	}
+	items = scan(KindTopic, KindOverview)
+	if itemOf(t, items, KindTopic, `"title":"Mail"`) != nil || itemOf(t, items, KindTopic, `"title":"Money"`) == nil || itemOf(t, items, KindOverview, "") != nil {
+		t.Fatalf("Mail should wait for the Mail Relay page, Money be offered, the overview wait: %+v", items)
+	}
+	if n, err := BookWaiting(ctx, s, "plat"); err != nil || n != 1 {
+		t.Fatalf("waiting chapters = %d (%v), want 1", n, err)
+	}
+}
+
+func TestQuotesAndMisquoted(t *testing.T) {
+	page := "Intro.\n\n```go\nfunc A() {}\n```\n\n> first line\n> second line\n\nText.\n\n~~~\nraw\n~~~\n"
+	q := Quotes(page)
+	if len(q) != 3 || q[0] != "func A() {}" || q[1] != "first line\nsecond line" || q[2] != "raw" {
+		t.Fatalf("quotes: %q", q)
+	}
+	bad, from := Misquoted(page, []source{{chunk: 7, text: "x\nfunc A()   {}\ny"}, {text: "first line second line"}})
+	if len(bad) != 1 || bad[0] != "raw" || len(from) != 1 || from[0] != 7 {
+		t.Fatalf("misquoted: %q from %v", bad, from)
+	}
+	if got := stripQuotes(page); strings.Contains(got, "func A") || strings.Contains(got, "first line") || !strings.Contains(got, "Intro.") {
+		t.Fatalf("stripQuotes: %q", got)
 	}
 }

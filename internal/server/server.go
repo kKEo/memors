@@ -446,9 +446,9 @@ type StatusOut struct {
 
 type compactArgs struct {
 	Namespace string   `json:"namespace,omitempty" jsonschema:"Scan this namespace (default: every namespace)."`
-	Kinds     []string `json:"kinds,omitempty" jsonschema:"Which work to propose: page, stale, conflict, merge, duplicate. Default: all."`
+	Kinds     []string `json:"kinds,omitempty" jsonschema:"Which work to propose: page, stale, conflict, merge, duplicate, and for the book outline, topic (a chapter page), overview. Default: all."`
 	Limit     int      `json:"limit,omitempty" jsonschema:"At most this many items (default 10, max 50)."`
-	Lint      bool     `json:"lint,omitempty" jsonschema:"Also return the lint findings (contradictions, orphans, missing or stale pages, expired facts)."`
+	Lint      bool     `json:"lint,omitempty" jsonschema:"Also return the lint findings (contradictions, orphans, missing or stale pages, expired facts, holes in the book's outline)."`
 }
 
 // WorkItemOut is a work item with its payload as an object (the kb type
@@ -456,9 +456,9 @@ type compactArgs struct {
 type WorkItemOut struct {
 	ID        string    `json:"id"`
 	Namespace string    `json:"namespace"`
-	Kind      string    `json:"kind" jsonschema:"page | stale | conflict | merge | duplicate"`
+	Kind      string    `json:"kind" jsonschema:"page | stale | conflict | merge | duplicate | outline | topic | overview"`
 	Subject   string    `json:"subject"`
-	Payload   any       `json:"payload" jsonschema:"Everything needed to do the work: for page/stale items the entity, its passages, the facts to cover (must_cover) and the previous page; for conflict items the two facts and the rule; for merge items the two names"`
+	Payload   any       `json:"payload" jsonschema:"Everything needed to do the work: for page/stale items the entity, its passages, the facts to cover (must_cover) and the previous page; for conflict items the two facts and the rule; for merge items the two names; for outline items the current chapters and the candidates to place; for topic items the chapter, its members with their pages or passages, the examples to quote and the member names to mention (must_cover); for overview items the chapters with their pages. Book payloads carry a guide line, and a more list of addresses left out for size"`
 	State     string    `json:"state"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -478,14 +478,15 @@ type CompactOut struct {
 }
 
 type submitArgs struct {
-	ItemID  string `json:"item_id" jsonschema:"The work item id from compact."`
-	Title   string `json:"title,omitempty" jsonschema:"page/stale items: the page title (default: the entity name)."`
-	Content string `json:"content,omitempty" jsonschema:"page/stale items: the page in markdown. Cite sources as memo://chunk/<n>; cover every statement in the item's must_cover."`
-	Keep    string `json:"keep,omitempty" jsonschema:"conflict items: the memo://fact address to keep; the other is invalidated (kept as history)."`
-	Accept  *bool  `json:"accept,omitempty" jsonschema:"merge items: true merges the names, false keeps them apart."`
-	Reason  string `json:"reason,omitempty" jsonschema:"Why, in one sentence; stored in the audit log."`
-	Skip    bool   `json:"skip,omitempty" jsonschema:"Close the item without doing anything."`
-	DryRun  bool   `json:"dry_run,omitempty" jsonschema:"Show the diff and the omission check without writing."`
+	ItemID  string                     `json:"item_id" jsonschema:"The work item id from compact."`
+	Title   string                     `json:"title,omitempty" jsonschema:"page/stale/topic/overview items: the page title (default: the entity name, the chapter title, or Overview)."`
+	Content string                     `json:"content,omitempty" jsonschema:"page/stale/topic/overview items: the page in markdown. Cite sources as memo://chunk/<n>; cover every statement or name in the item's must_cover. In a chapter, quote examples word for word in fenced blocks."`
+	Outline []compact.OutlineChapterIn `json:"outline,omitempty" jsonschema:"outline items: the whole outline, chapters in reading order, each with title, a one or two sentence scope, and members as memo://entity/<id> or memo://source/<id> addresses. Keep the id of a chapter that stays."`
+	Keep    string                     `json:"keep,omitempty" jsonschema:"conflict items: the memo://fact address to keep; the other is invalidated (kept as history)."`
+	Accept  *bool                      `json:"accept,omitempty" jsonschema:"merge items: true merges the names, false keeps them apart."`
+	Reason  string                     `json:"reason,omitempty" jsonschema:"Why, in one sentence; stored in the audit log."`
+	Skip    bool                       `json:"skip,omitempty" jsonschema:"Close the item without doing anything."`
+	DryRun  bool                       `json:"dry_run,omitempty" jsonschema:"Show the diff and the checks (omissions, unsupported sentences, misquoted examples) without writing."`
 }
 
 // SubmitOut is the report for one submission.
@@ -572,14 +573,14 @@ func (s *Server) registerTools() {
 	addTool(s, &mcp.Tool{
 		Name:        "compact",
 		Title:       "Propose compaction work",
-		Description: "Scan the knowledge base for tidying work you can do: entities with several passages and no page (write one), stale pages (rebuild), two live facts that disagree (pick one), near-duplicate names (merge or keep apart), near-duplicate passages. Each item carries the passages and facts you need. The server never writes a page itself. Example: compact(namespace: \"platform\", kinds: [\"page\", \"conflict\"], lint: true).",
+		Description: "Scan the knowledge base for tidying work you can do: entities with several passages and no page (write one), stale pages (rebuild), two live facts that disagree (pick one), near-duplicate names (merge or keep apart), near-duplicate passages. It also proposes the book people read: an outline that groups the pages into chapters, then a page per chapter (topic), then the overview; each appears once what it is built from is written. Each item carries the material you need. The server never writes a page itself. Example: compact(namespace: \"platform\", kinds: [\"page\", \"conflict\"], lint: true).",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: false, IdempotentHint: true, OpenWorldHint: closed},
 	}, observeTool(s, s.handleCompact))
 
 	addTool(s, &mcp.Tool{
 		Name:        "submit",
 		Title:       "Submit the result of a work item",
-		Description: "Hand back a page you wrote, a conflict decision or a merge decision. Pages are stored as derived (is_inference) with the passages they cite; the omission check reports facts the page left out. dry_run shows the diff first. Example: submit(item_id: \"01a1…\", content: \"# Ledger Store\\n\\nAppend-only … (memo://chunk/812)\", dry_run: true).",
+		Description: "Hand back a page you wrote, an outline, a conflict decision or a merge decision. Pages are stored as derived (is_inference) with the passages they cite; the checks report facts or members the page left out, sentences nothing backs, and quoted examples that are not word for word from a source. dry_run shows the diff first. Example: submit(item_id: \"01a1…\", content: \"# Ledger Store\\n\\nAppend-only … (memo://chunk/812)\", dry_run: true).",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: false, IdempotentHint: false, OpenWorldHint: closed},
 	}, observeTool(s, s.handleSubmit))
 
@@ -995,9 +996,9 @@ func (s *Server) handleCompact(ctx context.Context, req *mcp.CallToolRequest, ar
 	}
 	for _, k := range args.Kinds {
 		switch k {
-		case compact.KindPage, compact.KindStale, compact.KindConflict, compact.KindMerge, compact.KindDuplicate:
+		case compact.KindPage, compact.KindStale, compact.KindConflict, compact.KindMerge, compact.KindDuplicate, compact.KindOutline, compact.KindTopic, compact.KindOverview:
 		default:
-			return nil, CompactOut{}, fmt.Errorf("kinds must be among page, stale, conflict, merge, duplicate; got %q", k)
+			return nil, CompactOut{}, fmt.Errorf("kinds must be among page, stale, conflict, merge, duplicate, outline, topic, overview; got %q", k)
 		}
 	}
 	namespaces := []string{args.Namespace}
@@ -1009,7 +1010,13 @@ func (s *Server) handleCompact(ctx context.Context, req *mcp.CallToolRequest, ar
 		namespaces = ns
 	}
 	out := CompactOut{Items: []WorkItemOut{}}
+	waiting, bookItems := 0, 0
 	for _, ns := range namespaces {
+		n, err := compact.BookWaiting(ctx, s.store, ns)
+		if err != nil {
+			return nil, CompactOut{}, err
+		}
+		waiting += n
 		if _, err := compact.Generate(ctx, s.store, ns, args.Kinds); err != nil {
 			return nil, CompactOut{}, err
 		}
@@ -1031,12 +1038,20 @@ func (s *Server) handleCompact(ctx context.Context, req *mcp.CallToolRequest, ar
 				continue
 			}
 			out.Open++
-			if len(out.Items) < limit {
+			// Chapter and overview payloads are large: a few per call.
+			book := w.Kind == compact.KindTopic || w.Kind == compact.KindOverview
+			if len(out.Items) < limit && (!book || bookItems < compact.BookItemsPerCall) {
 				out.Items = append(out.Items, toWorkItemOut(w))
+				if book {
+					bookItems++
+				}
 			}
 		}
 	}
-	out.Hint = "do an item, then submit(item_id, …); dry_run first to see the diff and the omission check"
+	out.Hint = "do an item, then submit(item_id, …); dry_run first to see the diff and the checks. For the book the order is: entity pages, the outline, chapter pages (topic), the overview; compact again after each step"
+	if waiting > 0 {
+		out.Hint += fmt.Sprintf(". %d chapter(s) wait for a member's entity page to be written or rebuilt first", waiting)
+	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d open work item(s)", out.Open)
 	if len(out.Items) < out.Open {
@@ -1101,7 +1116,7 @@ func (s *Server) handleSubmit(ctx context.Context, req *mcp.CallToolRequest, arg
 	if args.ItemID == "" {
 		return nil, SubmitOut{}, fmt.Errorf("item_id is required")
 	}
-	rep, err := compact.Submit(ctx, s.store, args.ItemID, compact.Result{Title: args.Title, Content: args.Content, Keep: args.Keep, Accept: args.Accept, Reason: args.Reason, Skip: args.Skip}, args.DryRun, clientName(req, s.actor), kb.ChannelTool)
+	rep, err := compact.Submit(ctx, s.store, args.ItemID, compact.Result{Title: args.Title, Content: args.Content, Outline: args.Outline, Keep: args.Keep, Accept: args.Accept, Reason: args.Reason, Skip: args.Skip}, args.DryRun, clientName(req, s.actor), kb.ChannelTool)
 	if err != nil {
 		return nil, SubmitOut{}, err
 	}
@@ -1123,6 +1138,9 @@ func (s *Server) handleSubmit(ctx context.Context, req *mcp.CallToolRequest, arg
 	}
 	for _, o := range rep.Omitted {
 		sb.WriteString("\nomitted: " + o)
+	}
+	for _, q := range rep.Misquoted {
+		sb.WriteString("\nmisquoted: " + strings.ReplaceAll(q, "\n", " ⏎ "))
 	}
 	if rep.Diff != "" {
 		sb.WriteString("\n" + rep.Diff)
@@ -1246,7 +1264,7 @@ func renderPage(p *kb.Page) string {
 	if p.Stale {
 		fmt.Fprintf(&sb, "; STALE: %s", p.StaleReason)
 	}
-	sb.WriteString(")\nbuilt from: " + strings.Join(p.Sources, ", ") + "\n---\n" + p.Content)
+	sb.WriteString(")\nbuilt from: " + strings.Join(append(append([]string{}, p.Deps...), p.Sources...), ", ") + "\n---\n" + p.Content)
 	return sb.String()
 }
 

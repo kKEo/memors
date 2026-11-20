@@ -290,13 +290,14 @@ text itself.
 
 | Table | Columns | In plain words |
 |---|---|---|
-| `pages` | `id` (UUIDv7), `namespace`, `kind` (`entity`, `topic`, `overview`), `subject_id`, `title`, `content`, `built_at`, `built_from_rev`, `stale`, `stale_reason`, `is_inference` (always 1), `trust`, `actor`, `deleted_at`, `deleted_reason` | One derived page. An entity has at most one live page per namespace (unique index); a rebuild bumps `built_from_rev`. `trust` follows the submitting channel (tool → `agent`). Forgetting a page tombstones it like a document. |
+| `pages` | `id` (UUIDv7), `namespace`, `kind` (`entity`, `topic`, `overview`), `subject_id`, `title`, `content`, `built_at`, `built_from_rev`, `stale`, `stale_reason`, `is_inference` (always 1), `trust`, `actor`, `deleted_at`, `deleted_reason` | One derived page. An entity has at most one live page per namespace (unique index); a rebuild bumps `built_from_rev`. A `topic` page is a chapter of the outline (`subject_id` is the chapter id) and the `overview` page is the opening of the book (`subject_id` is `namespace`); see 5.10. `trust` follows the submitting channel (tool → `agent`). Forgetting a page tombstones it like a document. |
 | `page_sources` | `page_id`, `chunk_id` | The chunks the page was built from: the item's passages plus every `memo://chunk/<n>` the page cites. When one of those chunks' documents gets a new revision or is forgotten, the page becomes `stale` with the reason. |
 | `page_vecs` | `page_id`, `model_id`, `embedding` | One vector per model for `granularity=page` search. Best effort: a failed embedding never fails the write. |
 | `pages_fts` | `title`, `content` (porter) | Keyword index for page search, kept by triggers. |
-| `work_items` | `id`, `namespace`, `kind` (`page`, `stale`, `conflict`, `merge`, `duplicate`), `subject`, `payload_json`, `state` (`open`, `done`, `skipped`), `created_at`, `decided_at`, `result_json`, `actor` | The compaction queue. One open item per kind and subject (unique index); `compact` refreshes the payload rather than duplicating. The payload holds everything the agent needs: passages with addresses, facts to cover, the previous page, or the two facts and the rule. The result records what was decided and by whom. |
+| `work_items` | `id`, `namespace`, `kind` (`page`, `stale`, `conflict`, `merge`, `duplicate`, and for the book `outline`, `topic`, `overview`), `subject`, `payload_json`, `state` (`open`, `done`, `skipped`), `created_at`, `decided_at`, `result_json`, `actor` | The compaction queue. One open item per kind and subject (unique index); `compact` refreshes the payload rather than duplicating. The payload holds everything the agent needs: passages with addresses, facts to cover, the previous page, or the two facts and the rule; for the book, the candidates to place, or a chapter's member pages, passages and examples. The result records what was decided and by whom. |
 
-Rules the layer enforces: a page must cite at least one existing chunk; `is_inference` is
+Rules the layer enforces: an entity page must cite at least one existing chunk, and a chapter
+or overview page must cite a chunk or be built from other pages; `is_inference` is
 always 1; a conflict resolution invalidates the losing fact (`invalidated_at`, `superseded_by`),
 never deletes it, and a channel may not invalidate a fact more trusted than its cap or more
 trusted than the winner; near-duplicate passages are recorded, never deleted (D-A).
@@ -313,6 +314,32 @@ trusted than the winner; near-duplicate passages are recorded, never deleted (D-
 |---|---|---|
 | `ingest_runs` | `id`, `channel` (`cli` \| `tool`), `actor`, `namespace`, `state` (`running` \| `done` \| `failed`), `started_at`, `updated_at`, `finished_at`, `total`, `done`, `written`, `unchanged`, `failed`, `chunks`, `embedded`, `pending`, `bytes`, `error` | One row per `memo-mcp ingest` batch or MCP `ingest` call, with counters updated after every document. The web UI's `/ingest` console polls it. A run still `running` that has not moved for 10 minutes is shown as `stalled` (derived, never stored). |
 | `ingest_run_items` | `id`, `run_id`, `seq`, `name`, `uri`, `outcome` (`new` \| `revision` \| `unchanged` \| `error`), `revision`, `chunks`, `embedded`, `pending`, `bytes`, `ms`, `error` | One row per document a run handled. Names, addresses and counts only, never the content. |
+
+### 5.10 The outline of the book (migration 6)
+
+The outline is what turns a namespace's pages into a book: an ordered list of chapters, each
+with the entities and sources it covers. A person writes it with `memors-mcp outline apply`, or
+the calling agent writes it through `submit`. The server never groups anything on its own.
+
+| Table | Columns | In plain words |
+|---|---|---|
+| `outline_chapters` | `id` (UUIDv7), `namespace`, `position`, `title`, `scope`, `trust`, `actor`, `created_at`, `updated_at` | One chapter. The id survives a new title and a new position, so the chapter's page stays the same page. `scope` is a sentence or two saying what the chapter is about. `trust` follows the channel that last changed the chapter (tool → `agent`, CLI → `curated`). |
+| `outline_members` | `chapter_id`, `position`, `kind` (`entity`, `source`), `ref_id` | What a chapter covers: an entity or a source. The primary key is `(kind, ref_id)`, so a member belongs to one chapter and the book is a tree. A source is referenced, not a document, because a document gets a new id with every revision. `ref_id` has no foreign key; a member whose entity is gone or whose source has no live document is reported as missing. |
+| `page_deps` | `page_id`, `dep_page_id`, `dep_rev` | The pages a chapter page or the overview page was written from, with the `built_from_rev` each had at that time. A chapter page's `page_sources` hold only the chunks it cites or quotes, so a revised document stales the entity pages built from it and only the chapters that quote it. |
+
+Rules the layer enforces: a tool call may add members to a chapter a person wrote, and may not
+delete, retitle or re-scope it or take members from it (it gets the CLI command instead); a
+chapter page goes stale when its chapter's members, title or scope change; the overview goes
+stale when chapters are added, removed, retitled or re-scoped; reordering stales nothing; the
+page of a removed chapter is tombstoned; when two entities are merged, the outline follows the
+surviving one. Every change writes one `outline_set` audit row.
+
+Staleness moves up the book slowly on purpose. A stale page never stales the page above it.
+When a page is rewritten, the pages above it are re-checked, and one goes stale once two of the
+pages it was written from have been rewritten, added or retired since (or all of them, when it
+was written from fewer than two). `compact` offers work in the same order: no chapter item
+while a member's entity page is missing or stale, and no overview item while a chapter needs a
+page.
 
 ## 6. What is indexed where (P1 and P2)
 
@@ -366,6 +393,7 @@ by default (recall first); it labels every result and offers `scope.min_trust`.
 | 3 | `pages`, `page_sources`, `page_vecs`, `work_items` | P8 |
 | 4 | `call_log` | P10 |
 | 5 | `ingest_runs`, `ingest_run_items` | — |
+| 6 | `outline_chapters`, `outline_members`, `page_deps` | — |
 
 Migrations run inside `BEGIN IMMEDIATE`, read `user_version` inside the transaction, and refuse
 negative or future versions.

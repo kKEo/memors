@@ -28,9 +28,10 @@ the Live page in a window.
 | **Search** | The same search Claude uses, with the "why did this rank here" table for every result |
 | **Documents and passages** | The full text, where it came from, who saved it, and every earlier version |
 | **Facts** | Every fact with its timeline: when it became true, when it was replaced, and by what |
+| **Book** | The memory as a book, once it has an [outline](keeping-tidy.md#the-book): the overview, the chapters and the pages under each, in reading order. Open a page to read it with the contents beside it and links to the previous and next page. Chapters that are not written yet, and pages that are stale, are marked |
 | **Pages** | Summary pages Claude has written, with the passages each one is based on |
 | **Names** (follow a link from a page) | One person, system or term the memory mentions, with the passages about it and related names |
-| **Lint** | Loose ends: contradicting facts, out-of-date summaries, expired facts |
+| **Lint** | Loose ends: contradicting facts, out-of-date summaries, expired facts, and holes in the book (a chapter with no page, a page in no chapter) |
 | **Live** (only with `memors-mcp serve --http`) | What the running server is doing right now: which clients are connected (name, version, and whether each one is *connected*, has its session *open* but is quiet, or has *left*), calls in flight and for how long, background work, and per-tool calls, errors and response times since it started. Reloads itself every 2 seconds |
 | **Ingest** | Every time something was added, from `memors-mcp ingest` or from Claude: whether it is still running, how far it got, and how it went (documents written, unchanged or failed, passages, vectors still pending, size, time, documents per second). Click a run for one row per document. While a run is in progress the page reloads itself every 2 seconds; add `?refresh=off` to stop that |
 | **Status** | Size, settings, background work in progress and the last few ingests |

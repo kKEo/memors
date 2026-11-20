@@ -106,7 +106,7 @@ func TestSearchNumbersEqualTheService(t *testing.T) {
 func TestRoutesRenderAndAreReadOnly(t *testing.T) {
 	s, store, _ := newUI(t)
 	h := s.Handler()
-	for _, path := range []string{"/", "/search", "/doc/" + firstDoc(t, store), "/chunk/1", "/facts", "/facts?as_of=2020-01-01", "/entity/Client.Connect", "/pages", "/status", "/log", "/lint", "/eval"} {
+	for _, path := range []string{"/", "/search", "/doc/" + firstDoc(t, store), "/chunk/1", "/facts", "/facts?as_of=2020-01-01", "/entity/Client.Connect", "/pages", "/book", "/status", "/log", "/lint", "/eval"} {
 		code, body := get(t, h, path, "")
 		if code != http.StatusOK {
 			t.Errorf("%s: %d\n%s", path, code, body)
@@ -134,6 +134,98 @@ func TestRoutesRenderAndAreReadOnly(t *testing.T) {
 	st, _ := store.Status(context.Background())
 	if st.LiveDocuments != 3 || st.Facts != 1 {
 		t.Fatalf("the UI changed the store: %+v", st)
+	}
+}
+
+// The book: contents in outline order, a reading view with the pages before
+// and after, badges for what is unwritten or stale, and nothing for a
+// namespace without an outline.
+func TestBookView(t *testing.T) {
+	s, store, _ := newUI(t)
+	h := s.Handler()
+	ctx := context.Background()
+	if code, body := get(t, h, "/book", ""); code != 200 || !strings.Contains(body, "No namespace has an outline yet") {
+		t.Fatalf("book index without an outline: %d %s", code, body)
+	}
+	if code, _ := get(t, h, "/book/widgets", ""); code != http.StatusNotFound {
+		t.Fatalf("a namespace without an outline has no book: %d", code)
+	}
+	connect, _ := store.ReadEntity(ctx, "Client.Connect", "widgets")
+	retry, _ := store.ReadEntity(ctx, "Retry Policy", "widgets")
+	pages, _ := store.ListPages(ctx, kb.PageFilter{})
+	entityPage := pages[0]
+	cands, _ := store.OutlineCandidates(ctx, "widgets")
+	var source string
+	for _, c := range cands {
+		if c.Kind == kb.MemberSource && c.Title == "Widgets Server" {
+			source = c.ID
+		}
+	}
+	o, err := store.SetOutline(ctx, "widgets", []kb.OutlineChapter{
+		{Title: "Connecting", Members: []kb.OutlineMember{{Kind: kb.MemberEntity, ID: connect.ID}, {Kind: kb.MemberSource, ID: source}}},
+		{Title: "Retrying", Members: []kb.OutlineMember{{Kind: kb.MemberEntity, ID: retry.ID}}},
+	}, "t", kb.ChannelCLI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chapter, err := store.WritePage(ctx, kb.PageInput{Namespace: "widgets", Kind: kb.PageKindTopic, SubjectID: o.Chapters[0].ID, Title: "Connecting",
+		Content: "# Connecting\n\nStart with Client.Connect.<script>alert(1)</script>\n", Deps: []string{entityPage.ID}, Actor: "t"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	overview, err := store.WritePage(ctx, kb.PageInput{Namespace: "widgets", Kind: kb.PageKindOverview, SubjectID: kb.OverviewSubject, Title: "Overview", Content: "# Overview\n\nOne chapter: Connecting.\n", Deps: []string{chapter.ID}, Actor: "t"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// One outlined namespace: the index goes straight to it.
+	req := httptest.NewRequest(http.MethodGet, "/book", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/book/widgets" {
+		t.Fatalf("book index: %d %s", rec.Code, rec.Header().Get("Location"))
+	}
+	code, body := get(t, h, "/book/widgets", "")
+	if code != 200 {
+		t.Fatalf("contents: %d %s", code, body)
+	}
+	at := 0
+	for _, want := range []string{`/book/widgets/` + overview.ID + `">Overview`, `/book/widgets/` + chapter.ID + `">Connecting`, `/book/widgets/` + entityPage.ID + `">Client.Connect`,
+		`">Widgets Server</a> <span class="badge">source</span>`, `Retrying <span class="badge">not written yet</span>`} {
+		i := strings.Index(body[at:], want)
+		if i < 0 {
+			t.Fatalf("contents lack %q after %d:\n%s", want, at, body)
+		}
+		at += i
+	}
+
+	// Reading: the first page has no previous, the last no next.
+	code, body = get(t, h, "/book/widgets/"+overview.ID, "")
+	if code != 200 || strings.Contains(body, "‹") || !strings.Contains(body, "Connecting ›") || !strings.Contains(body, `class="here">Overview`) {
+		t.Fatalf("first page: %d %s", code, body)
+	}
+	code, body = get(t, h, "/book/widgets/"+chapter.ID, "")
+	if code != 200 || !strings.Contains(body, "‹ Overview") || !strings.Contains(body, "Client.Connect ›") || strings.Contains(body, "<script>alert") ||
+		!strings.Contains(body, `<a href="/page/`+entityPage.ID+`">memo://page/`+entityPage.ID+`</a> <span class="muted">page</span>`) {
+		t.Fatalf("chapter page: %d %s", code, body)
+	}
+	code, body = get(t, h, "/book/widgets/"+entityPage.ID, "")
+	if code != 200 || !strings.Contains(body, "‹ Connecting") || strings.Contains(body, "›") {
+		t.Fatalf("last page: %d %s", code, body)
+	}
+	if code, _ := get(t, h, "/book/widgets/nope", ""); code != http.StatusNotFound {
+		t.Fatalf("unknown page: %d", code)
+	}
+	// The plain page view links a chapter to the book, not to an entity.
+	if _, body = get(t, h, "/page/"+chapter.ID, ""); !strings.Contains(body, `/book/widgets/`+chapter.ID+`">in the book`) || strings.Contains(body, `href="/entity/`) {
+		t.Fatalf("chapter in the page view: %s", body)
+	}
+	// Rewriting the chapter's only member page sends the chapter back.
+	if _, err := store.WritePage(ctx, kb.PageInput{Namespace: "widgets", Kind: kb.PageKindEntity, SubjectID: connect.ID, Title: "Client.Connect", Content: "# Client.Connect\n\nDials (memo://chunk/1). Revised.\n", Sources: []int64{1}, Actor: "t"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, body = get(t, h, "/book/widgets", ""); !strings.Contains(body, `">Connecting</a> <span class="badge stale">stale</span>`) {
+		t.Fatalf("stale chapter badge:\n%s", body)
 	}
 }
 
