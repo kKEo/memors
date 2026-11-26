@@ -12,16 +12,17 @@
 // cookie never reaches disk), content JavaScript off (the pages have none),
 // and a navigation delegate that asks Go (webpolicy) about every navigation:
 // the server's own pages load in the window, links elsewhere open in the
-// default browser, the tray's own close link closes the window, everything
-// else is refused.
+// default browser, everything else is refused.
 //
 // ⌘↩ sends the question on the Ask page, whose question box is a form like
 // any other; this too is a script the tray evaluates itself.
 //
-// Closing a window (its Dismiss button, ⌘W or the close box) first asks
+// Closing a window (its tab's close button, ⌘W or the close box) first asks
 // whether the page has unsaved form changes. The check is a script the tray
 // evaluates itself, which WebKit allows even with content JavaScript off,
 // and a sheet names the changed fields and asks before they are thrown away.
+// The same check, asked twice a second, puts an asterisk in front of the
+// tab label of a page with unsaved changes.
 
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
@@ -31,7 +32,7 @@
 extern int macwinDecide(char *key, char *url, int clicked);
 extern void macwinClosed(char *key);
 
-enum { decideAllow = 0, decideExternal = 1, decideDeny = 2, decideClose = 3 };
+enum { decideAllow = 0, decideExternal = 1, decideDeny = 2 };
 
 // dirtyProbe lists the controls of the page's POST forms that differ from
 // the value they loaded with, each by the name the page gives it: its
@@ -109,6 +110,10 @@ static NSString *const sendForm =
 @property (strong) NSWindow *window;
 @property (strong) WKWebView *web;
 @property BOOL closeConfirmed; // the unsaved-changes check has passed; let the next close through
+@property (copy) NSString *title; // the page's name, without the unsaved-changes mark
+@property BOOL edited;            // the page has unsaved changes, as last checked
+- (void)showTitle;
+- (void)markEdited;
 @end
 
 static NSMutableDictionary<NSString *, MWWindow *> *windows;
@@ -137,8 +142,6 @@ static int decide(NSString *key, NSURL *url, BOOL clicked) {
 	decisionHandler(WKNavigationActionPolicyCancel);
 	if (d == decideExternal) {
 		[[NSWorkspace sharedWorkspace] openURL:url];
-	} else if (d == decideClose) {
-		[self.window performClose:nil];
 	}
 }
 
@@ -153,33 +156,18 @@ static int decide(NSString *key, NSURL *url, BOOL clicked) {
 		[webView loadRequest:action.request];
 	} else if (d == decideExternal) {
 		[[NSWorkspace sharedWorkspace] openURL:action.request.URL];
-	} else if (d == decideClose) {
-		[self.window performClose:nil];
 	}
 	return nil;
 }
 
-// windowShouldClose runs for the Dismiss button, ⌘W and the close box. The
+// windowShouldClose runs for the tab's close button, ⌘W and the close box. The
 // answer needs the page, which only arrives asynchronously, so the close is
 // refused here and finished from the completion handler.
 - (BOOL)windowShouldClose:(NSWindow *)sender {
 	if (self.closeConfirmed) {
 		return YES;
 	}
-	__weak MWWindow *weakSelf = self;
-	[self.web evaluateJavaScript:dirtyProbe completionHandler:^(id result, NSError *error) {
-		MWWindow *mw = weakSelf;
-		if (mw == nil) {
-			return;
-		}
-		NSMutableArray<NSString *> *changed = [NSMutableArray array];
-		if (error == nil && [result isKindOfClass:[NSArray class]]) {
-			for (id name in (NSArray *)result) {
-				if ([name isKindOfClass:[NSString class]]) {
-					[changed addObject:name];
-				}
-			}
-		}
+	[self changes:^(MWWindow *mw, NSArray<NSString *> *changed) {
 		if (changed.count == 0) {
 			[mw finishClose];
 			return;
@@ -200,6 +188,53 @@ static int decide(NSString *key, NSURL *url, BOOL clicked) {
 		}];
 	}];
 	return NO;
+}
+
+// changes runs dirtyProbe and hands over the names of the changed fields;
+// none when the page cannot be asked.
+- (void)changes:(void (^)(MWWindow *mw, NSArray<NSString *> *changed))done {
+	__weak MWWindow *weakSelf = self;
+	[self.web evaluateJavaScript:dirtyProbe completionHandler:^(id result, NSError *error) {
+		MWWindow *mw = weakSelf;
+		if (mw == nil) {
+			return;
+		}
+		NSMutableArray<NSString *> *changed = [NSMutableArray array];
+		if (error == nil && [result isKindOfClass:[NSArray class]]) {
+			for (id name in (NSArray *)result) {
+				if ([name isKindOfClass:[NSString class]]) {
+					[changed addObject:name];
+				}
+			}
+		}
+		done(mw, changed);
+	}];
+}
+
+// showTitle names the window, and so its tab: the page's name, with an
+// asterisk in front while the page has unsaved changes. In front, because
+// a narrow tab cuts its label at the end.
+- (void)showTitle {
+	NSString *title = self.edited ? [@"* " stringByAppendingString:self.title] : self.title;
+	if (![self.window.title isEqualToString:title]) {
+		self.window.title = title;
+	}
+	self.window.documentEdited = self.edited; // the dot in the close box
+}
+
+// markEdited asks the page whether it has unsaved changes and marks the
+// tab to match. The pages run no script of their own, so nothing tells the
+// tray when a field changes; it asks, on a timer (macwin_init) and when a
+// page has loaded.
+- (void)markEdited {
+	[self changes:^(MWWindow *mw, NSArray<NSString *> *changed) {
+		mw.edited = changed.count > 0;
+		[mw showTitle];
+	}];
+}
+
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
+	[self markEdited]; // a saved form reloads clean
 }
 
 - (void)finishClose {
@@ -306,6 +341,13 @@ void macwin_init(int debug) {
 		// No Dock icon when run outside the app bundle either.
 		[NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
 		installMenu();
+		// Keep the unsaved-changes mark of every tab current.
+		NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.5 repeats:YES block:^(NSTimer *t) {
+			for (MWWindow *mw in windows.allValues) {
+				[mw markEdited];
+			}
+		}];
+		timer.tolerance = 0.2;
 	});
 }
 
@@ -350,6 +392,7 @@ static MWWindow *newWindow(NSString *key, NSString *title) {
 	                                          backing:NSBackingStoreBuffered
 	                                            defer:NO];
 	mw.window.releasedWhenClosed = NO;
+	mw.title = title;
 	mw.window.title = title;
 	mw.window.contentView = mw.web;
 	mw.window.delegate = mw;
@@ -374,7 +417,8 @@ void macwin_open(const char *ckey, const char *ctitle, const char *curl) {
 	NSURL *url = [NSURL URLWithString:[NSString stringWithUTF8String:curl]];
 	dispatch_async(dispatch_get_main_queue(), ^{
 		MWWindow *mw = windows[key] ?: newWindow(key, title);
-		mw.window.title = title;
+		mw.title = title;
+		[mw showTitle];
 		if (url != nil) {
 			[mw.web loadRequest:[NSURLRequest requestWithURL:url]];
 		}

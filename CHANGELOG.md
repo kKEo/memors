@@ -14,7 +14,9 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 - **MemoRS Tray**: one window. Settings, the setup assistant, Updates, Configure Your Agent
   and each server's Ask and Stats pages now open as tabs of a single window instead of a
   window each. A page that is already open comes forward; ⌃⇥ and ⌃⇧⇥ switch tabs; a tab
-  dragged out becomes a window again.
+  dragged out becomes a window again. The **Dismiss** button in the pages' header is gone:
+  ⌘W, the tab's close button and the window's close box close a page. A tab whose form has
+  unsaved changes shows an asterisk before its name.
 - **MemoRS Tray**: closing Settings no longer asks "Discard unsaved changes?" when nothing was
   changed (the **Effort** drop-down counted as changed as soon as the page loaded). When there
   are changes, the sheet lists the changed fields by name; values are never shown.

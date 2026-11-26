@@ -13,12 +13,12 @@ make tray-test        # cd tray && go vet ./... && go test ./... -race -count=1
 |---|---|
 | `app` | Agents appearing and leaving, unreachable servers, start/stop/restart, autostart, shutdown, a bad config shown to the user, first-run behaviour, the update check and its menu, relaunch after an update |
 | `supervisor` | Starting and stopping the server, crashes, killing a stubborn process, the child's environment, log rotation, stopping a server the tray did not start |
-| `setup` | The setup wizard (install, knowledge base, failure paths), settings (tabs, save, refuse bad input, conflicts), access control, connect pages for each client, the updates page, the Dismiss button on every page |
+| `setup` | The setup wizard (install, knowledge base, failure paths), settings (tabs, save, refuse bad input, conflicts), access control, connect pages for each client, the updates page |
 | `installer` | Install, refusing bad downloads, release lookup errors, the tray's own install and app bundle |
 | `menu` | How each menu item renders |
 | `discover` | Finding servers, refusing untrusted directories |
 | `client` | Reading `/live.json` and the login link, errors, loopback only |
-| small packages | `config`, `home`, `locate`, `loginitem`, `update`, `webpolicy` (including the Dismiss link), `icon` |
+| small packages | `config`, `home`, `locate`, `loginitem`, `update`, `webpolicy`, `icon` |
 
 Most supervisor tests do not start a real server. The test binary re-executes itself as a fake
 `memors-mcp serve --http` (`TRAY_FAKE_MEMORS`, `TRAY_FAKE_MODE` in `supervisor_test.go`), so
@@ -49,20 +49,22 @@ contains both `x86_64` and `arm64`, and runs it with `-version`.
 The Objective-C window layer (`internal/macwin`) has no tests. After a change to it, build the
 app (`make tray && ./tray/memors-tray`) and check by hand:
 
-1. **Settings…** → **Dismiss** with no edits: the window closes at once. The same after
+1. **Settings…** → ⌘W with no edits: the window closes at once. The same after
    opening each tab, and after changing a field and changing it back.
-2. Tick **Open MemoRS Tray when you log in** and change a server's address, then **Dismiss**:
+2. Tick **Open MemoRS Tray when you log in** and change a server's address, then ⌘W:
    a sheet asks "Discard unsaved changes?" and lists both fields by name under "Not saved
-   yet:". **Keep Editing** leaves the window and the edits in place; **Dismiss** again →
+   yet:". **Keep Editing** leaves the window and the edits in place; ⌘W again →
    **Discard** closes it.
-3. Make the same edit, then ⌘W, then the red close box: the same sheet appears each time.
+3. Make the same edit, then use the close button on the tab (or the red close box when it is
+   the only tab): the same sheet appears.
 4. Tick **Advanced options**, type in **Environment for servers** on the **Servers** tab and
-   **Save**: the page reloads and **Dismiss** now closes
+   **Save**: the page reloads and ⌘W now closes
    without asking (the saved values are the new defaults).
-5. The setup assistant, **Updates** and **Configure Your Agent…** pages show the button and close.
-6. **Settings…** → click the **Servers** and **Ask** tabs, then **Dismiss**: closes without asking
-   (choosing a tab is not an edit). Tick **Advanced options**, then **Dismiss**: the sheet asks
-   and names it. Type in **API key or token** on the **Ask** tab, then **Dismiss**: the sheet
+5. The setup assistant, **Updates** and **Configure Your Agent…** pages have no Dismiss button
+   and close with ⌘W.
+6. **Settings…** → click the **Servers** and **Ask** tabs, then ⌘W: closes without asking
+   (choosing a tab is not an edit). Tick **Advanced options**, then ⌘W: the sheet asks
+   and names it. Type in **API key or token** on the **Ask** tab, then ⌘W: the sheet
    names the field and does not show what was typed.
 7. **Open Stats Window**, type in the search box, ⌘W: closes without asking (only POST forms count).
 
@@ -78,5 +80,8 @@ Window tabs, with two servers running:
    reloads.
 6. Close every tab, move and resize nothing, open **Settings…**: the window is where it was
    and as large as it was.
-7. In System Settings › Desktop & Dock, set **Prefer tabs** to *Never* and repeat step 1: still
+7. Tick a checkbox in Settings: within a second the tab's label starts with an asterisk (and
+   the window title, when Settings is the only tab). Untick it: the asterisk goes. Tick it
+   and **Save**: the asterisk goes. Switching between General, Servers and Ask adds none.
+8. In System Settings › Desktop & Dock, set **Prefer tabs** to *Never* and repeat step 1: still
    one window with tabs.

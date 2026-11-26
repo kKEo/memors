@@ -207,9 +207,12 @@ under the title. The tab bar appears once two pages are open.
   twice, and the other tabs keep what they showed.
 - Click a tab to switch, or press ⌃⇥ and ⌃⇧⇥ (also ⌘⇧] and ⌘⇧[).
 - To see two pages side by side, drag a tab out of the tab bar: it becomes a window of its own.
+- A tab whose form has changes you have not saved shows an asterisk before its name, for
+  example **\* MemoRS Tray Settings**. The asterisk goes away when you save, or when you
+  put the fields back as they were.
 
-Every page has a **Dismiss** button in its header, which closes that tab; ⌘W does the same,
-and the close box closes the whole window. If a form has changes you have not saved, the window asks first and lists the fields
+⌘W closes the tab in front, as does the close button that appears on a tab under the
+pointer; the window's close box closes the whole window. If a form has changes you have not saved, the window asks first and lists the fields
 you changed (their names, never what you typed): **Keep Editing** returns to the form,
 **Discard** closes it and drops the changes. A window with nothing changed closes at once.
 

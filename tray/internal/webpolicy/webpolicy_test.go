@@ -25,10 +25,7 @@ func TestDecide(t *testing.T) {
 		{"mailto:a@b.c", true, Deny},
 		{"about:config", false, Deny},
 		{"::not a url", true, Deny},
-		{CloseURL, true, Close}, // the Dismiss button
-		{CloseURL, false, Deny}, // a redirect may not close the window
-		{"memors-tray://other", true, Deny},
-		{"memors-tray://close/x", true, Deny},
+		{"memors-tray://close", true, Deny}, // once the Dismiss button; no page can close a window now
 	} {
 		if got := Decide(origin, c.target, c.clicked); got != c.want {
 			t.Errorf("Decide(%q, clicked=%v) = %v, want %v", c.target, c.clicked, got, c.want)
