@@ -59,7 +59,10 @@ until they restart; the last step offers to restart the ones MemoRS Tray started
 The settings window, the setup assistant and the Configure Your Agent window are pages that
 MemoRS Tray serves itself:
 
-- They are served on `127.0.0.1:<random port>` and shown in its own WKWebView window.
+- They are served on `127.0.0.1:<random port>` and shown in a WKWebView of their own. Each
+  page, like each server's stats page, is a window that joins one tab group (AppKit window
+  tabbing), so one MemoRS Tray window shows on screen. Every tab keeps its own
+  non-persistent cookie store.
 - A window enters through a link carrying a per-process secret, passed in process. It then
   holds an HttpOnly, SameSite=Strict cookie.
 - Requests with any other `Host` header, or without the cookie, are refused.

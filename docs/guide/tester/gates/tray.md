@@ -44,7 +44,7 @@ CI also checks that the tray binary does not link the server's dependencies (SQL
 runtime, the MCP SDK). It builds the app bundle, verifies its code signature and that it
 contains both `x86_64` and `arm64`, and runs it with `-version`.
 
-## Manual checks: closing windows
+## Manual checks: windows, tabs and closing
 
 The Objective-C window layer (`internal/macwin`) has no tests. After a change to it, build the
 app (`make tray && ./tray/memors-tray`) and check by hand:
@@ -65,3 +65,18 @@ app (`make tray && ./tray/memors-tray`) and check by hand:
    and names it. Type in **API key or token** on the **Ask** tab, then **Dismiss**: the sheet
    names the field and does not show what was typed.
 7. **Open Stats Window**, type in the search box, ⌘W: closes without asking (only POST forms count).
+
+Window tabs, with two servers running:
+
+1. Open **Settings…**, **Check for Updates…**, then **Ask the Knowledge Base…** and **Open
+   Stats Window** for both servers: one window with six tabs.
+2. Choose **Settings…** again: its tab comes forward, and no tab is added.
+3. Edit a Settings field, switch to another tab, then click the red close box: the Settings
+   tab comes forward with the "Discard unsaved changes?" sheet, and **Keep Editing** keeps it.
+4. ⌃⇥ and ⌃⇧⇥ (and ⌘⇧], ⌘⇧[) switch tabs. ⌘↩ sends the question only on the Ask tab in front.
+5. Stop a server: its Stats tab shows that the server has stopped. Start it again: the tab
+   reloads.
+6. Close every tab, move and resize nothing, open **Settings…**: the window is where it was
+   and as large as it was.
+7. In System Settings › Desktop & Dock, set **Prefer tabs** to *Never* and repeat step 1: still
+   one window with tabs.

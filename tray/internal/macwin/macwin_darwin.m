@@ -1,5 +1,12 @@
-// Stats windows for memors-tray: one NSWindow with a WKWebView per memors-mcp
-// server, living on the run loop fyne.io/systray already owns.
+// Windows for memors-tray: one NSWindow with a WKWebView per page (a
+// memors-mcp server's pages, or one of the tray's own), living on the run
+// loop fyne.io/systray already owns.
+//
+// The windows are shown as the tabs of one window: each new one joins the
+// tab group of those already open (AppKit's window tabbing), so there is a
+// single MemoRS Tray window on screen while every page keeps a web view,
+// and with it a state, of its own. A tab the user drags out becomes a
+// window again, as in any macOS app.
 //
 // Each window has a private, non-persistent website data store (the login
 // cookie never reaches disk), content JavaScript off (the pages have none),
@@ -107,6 +114,11 @@ static NSString *const sendForm =
 static NSMutableDictionary<NSString *, MWWindow *> *windows;
 static BOOL debugWindows;
 
+// tabGroup is the tabbing identifier every window carries, and frameName
+// the name the one frame they share is saved under.
+static NSString *const tabGroup = @"memors-tray";
+static NSString *const frameName = @"memors-tray window";
+
 static int decide(NSString *key, NSURL *url, BOOL clicked) {
 	return macwinDecide((char *)key.UTF8String, (char *)(url.absoluteString ?: @"").UTF8String, clicked ? 1 : 0);
 }
@@ -172,6 +184,9 @@ static int decide(NSString *key, NSURL *url, BOOL clicked) {
 			[mw finishClose];
 			return;
 		}
+		// The close may have come for the whole window while another tab
+		// showed: bring this one forward, so the sheet is seen.
+		[mw.window makeKeyAndOrderFront:nil];
 		NSAlert *alert = [[NSAlert alloc] init];
 		alert.alertStyle = NSAlertStyleWarning;
 		alert.messageText = @"Discard unsaved changes?";
@@ -193,6 +208,7 @@ static int decide(NSString *key, NSURL *url, BOOL clicked) {
 }
 
 - (void)windowWillClose:(NSNotification *)notification {
+	[self.window saveFrameUsingName:frameName];
 	macwinClosed((char *)self.key.UTF8String);
 	self.web.navigationDelegate = nil;
 	self.web.UIDelegate = nil;
@@ -237,8 +253,9 @@ static NSMenuItem *item(NSString *title, SEL action, NSString *key, NSEventModif
 }
 
 // installMenu gives windows the usual key equivalents (copy, select all,
-// close, reload), and ⌘↩ to send the question on the Ask page. An accessory app shows no menu bar, but the main menu
-// still handles shortcuts. There is no Quit: ⌘Q in a window must not stop
+// close, reload, next and previous tab), and ⌘↩ to send the question on the
+// Ask page. An accessory app shows no menu bar, but the main menu still
+// handles shortcuts. There is no Quit: ⌘Q in a window must not stop
 // the servers memors-tray runs.
 static void installMenu(void) {
 	NSMenu *main = [[NSMenu alloc] init];
@@ -267,6 +284,13 @@ static void installMenu(void) {
 	[win addItem:item(@"Reload", @selector(reload:), @"r", NSEventModifierFlagCommand)];
 	[win addItem:item(@"Minimize", @selector(performMiniaturize:), @"m", NSEventModifierFlagCommand)];
 	[win addItem:item(@"Close", @selector(performClose:), @"w", NSEventModifierFlagCommand)];
+	[win addItem:[NSMenuItem separatorItem]];
+	// The pages are tabs of one window; both usual pairs of shortcuts switch.
+	NSEventModifierFlags ctrl = NSEventModifierFlagControl, shift = NSEventModifierFlagShift;
+	[win addItem:item(@"Show Next Tab", @selector(selectNextTab:), @"\t", ctrl)];
+	[win addItem:item(@"Show Previous Tab", @selector(selectPreviousTab:), @"\t", ctrl | shift)];
+	[win addItem:item(@"Show Next Tab", @selector(selectNextTab:), @"}", NSEventModifierFlagCommand)];
+	[win addItem:item(@"Show Previous Tab", @selector(selectPreviousTab:), @"{", NSEventModifierFlagCommand)];
 	NSMenuItem *winItem = [[NSMenuItem alloc] init];
 	winItem.submenu = win;
 	[main addItem:winItem];
@@ -283,6 +307,22 @@ void macwin_init(int debug) {
 		[NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
 		installMenu();
 	});
+}
+
+// tabHost is the open window a new one joins as a tab: the one in front,
+// else any; nil when there is none.
+static MWWindow *tabHost(void) {
+	NSWindow *front = NSApp.keyWindow;
+	MWWindow *any = nil;
+	for (MWWindow *mw in windows.allValues) {
+		if (mw.window == front) {
+			return mw;
+		}
+		if (any == nil || mw.window.isVisible) {
+			any = mw;
+		}
+	}
+	return any;
 }
 
 static MWWindow *newWindow(NSString *key, NSString *title) {
@@ -314,8 +354,16 @@ static MWWindow *newWindow(NSString *key, NSString *title) {
 	mw.window.contentView = mw.web;
 	mw.window.delegate = mw;
 	mw.window.contentMinSize = NSMakeSize(560, 360);
-	[mw.window center];
-	[mw.window setFrameAutosaveName:[@"memors-tray " stringByAppendingString:key]];
+	// Always a tab, whatever "Prefer tabs" says in System Settings.
+	mw.window.tabbingMode = NSWindowTabbingModePreferred;
+	mw.window.tabbingIdentifier = tabGroup;
+	MWWindow *host = tabHost();
+	if (host != nil) {
+		[host.window addTabbedWindow:mw.window ordered:NSWindowAbove];
+	} else {
+		[mw.window center];
+		[mw.window setFrameUsingName:frameName]; // where the window last was
+	}
 	windows[key] = mw;
 	return mw;
 }

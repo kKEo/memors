@@ -11,6 +11,10 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
   hidden until **Advanced options** is ticked; the choice is kept as `expert` in `tray.json`.
   Hidden options keep their values. **Ask settings…** opens the Ask tab, and choosing a tab
   does not count as an unsaved change.
+- **MemoRS Tray**: one window. Settings, the setup assistant, Updates, Configure Your Agent
+  and each server's Ask and Stats pages now open as tabs of a single window instead of a
+  window each. A page that is already open comes forward; ⌃⇥ and ⌃⇧⇥ switch tabs; a tab
+  dragged out becomes a window again.
 - **MemoRS Tray**: closing Settings no longer asks "Discard unsaved changes?" when nothing was
   changed (the **Effort** drop-down counted as changed as soon as the page loaded). When there
   are changes, the sheet lists the changed fields by name; values are never shown.

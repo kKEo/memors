@@ -197,8 +197,19 @@ the choice is remembered when you save:
 An option that is hidden keeps its value and still applies. Under the tabs, links open
 `tray.json` and the logs folder.
 
-Every MemoRS Tray window has a **Dismiss** button in its header; ⌘W and the close box do the
-same. If a form has changes you have not saved, the window asks first and lists the fields
+## One window, one tab per page
+
+Everything MemoRS Tray opens (Settings, the setup assistant, Updates, Configure Your Agent,
+and each server's Ask and Stats pages) shows in one window, each page as a tab in the tab bar
+under the title. The tab bar appears once two pages are open.
+
+- Choosing a page in the menu that is already open brings its tab forward; nothing is opened
+  twice, and the other tabs keep what they showed.
+- Click a tab to switch, or press ⌃⇥ and ⌃⇧⇥ (also ⌘⇧] and ⌘⇧[).
+- To see two pages side by side, drag a tab out of the tab bar: it becomes a window of its own.
+
+Every page has a **Dismiss** button in its header, which closes that tab; ⌘W does the same,
+and the close box closes the whole window. If a form has changes you have not saved, the window asks first and lists the fields
 you changed (their names, never what you typed): **Keep Editing** returns to the form,
 **Discard** closes it and drops the changes. A window with nothing changed closes at once.
 
