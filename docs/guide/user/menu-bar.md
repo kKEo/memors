@@ -76,10 +76,20 @@ minutes is dropped by the server and shows up again with its next request.
 
 ## Ask the knowledge base
 
-**Ask the Knowledge Base…** opens a small conversation window for one running server. Type a
-question and press **Ask**; the answer appears in a few seconds to a minute, and follow-up
-questions see the earlier answers. **Copy answer** puts one answer on the clipboard and
-**Clear conversation** starts over.
+**Ask the Knowledge Base…** opens a conversation window for one running server. Type a
+question and press **Ask** (or ⌘↩); on an empty conversation you can also pick one of the
+suggested questions. Follow-up questions see the earlier answers.
+
+While the answer is on its way the window shows what is happening: each search and each
+memory that is read, then the text as it is written. **Stop** ends it; what there was of the
+answer stays, and **Try again** asks the same question once more.
+
+An answer is formatted text, and it cites the memories it relies on. The `memo://` addresses
+in it, and the **Sources** under it, are links: a click opens that memory in the server's own
+window. Under each answer, the line of lookups unfolds to show what was searched and read,
+**Copy answer** puts the answer on the clipboard, and **Ask again** (on the newest answer)
+replaces it with a new one. If a question fails, the reason takes the answer's place, with
+**Try again**. **Clear conversation** starts over.
 
 Under the hood MemoRS Tray runs Claude Code in headless mode with nothing but that server's
 MCP attached: no other MCP servers, skills, plugins, hooks or built-in tools. Claude can only

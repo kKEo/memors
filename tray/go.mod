@@ -9,6 +9,9 @@ require (
 	golang.org/x/sys v0.48.0
 )
 
-require github.com/godbus/dbus/v5 v5.1.0 // indirect
+require (
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/yuin/goldmark v1.8.7 // indirect
+)
 
 replace github.com/kKEo/memors => ../

@@ -8,6 +8,9 @@
 // default browser, the tray's own close link closes the window, everything
 // else is refused.
 //
+// ⌘↩ sends the question on the Ask page, whose question box is a form like
+// any other; this too is a script the tray evaluates itself.
+//
 // Closing a window (its Dismiss button, ⌘W or the close box) first asks
 // whether the page has unsaved form changes. The check is a script the tray
 // evaluates itself, which WebKit allows even with content JavaScript off,
@@ -39,6 +42,14 @@ static NSString *const dirtyProbe =
      "  }"
      "}"
      "return false;"
+     "})()";
+
+// sendForm submits the page's question box, if it has one and the box is
+// filled in as the form requires.
+static NSString *const sendForm =
+    @"(function(){"
+     "const f = document.querySelector('form.composer');"
+     "if (f && f.reportValidity()) f.submit();"
      "})()";
 
 @interface MWWindow : NSObject <NSWindowDelegate, WKNavigationDelegate, WKUIDelegate>
@@ -138,6 +149,25 @@ static int decide(NSString *key, NSURL *url, BOOL clicked) {
 
 @end
 
+// MWActions is the target of menu items that act on the key window's page.
+@interface MWActions : NSObject
+- (void)send:(id)sender;
+@end
+
+@implementation MWActions
+- (void)send:(id)sender {
+	NSWindow *key = NSApp.keyWindow;
+	for (MWWindow *mw in windows.allValues) {
+		if (mw.window == key) {
+			[mw.web evaluateJavaScript:sendForm completionHandler:nil];
+			return;
+		}
+	}
+}
+@end
+
+static MWActions *actions;
+
 static void activate(NSWindow *w) {
 	if (@available(macOS 14.0, *)) {
 		[NSApp activate];
@@ -155,7 +185,7 @@ static NSMenuItem *item(NSString *title, SEL action, NSString *key, NSEventModif
 }
 
 // installMenu gives windows the usual key equivalents (copy, select all,
-// close, reload). An accessory app shows no menu bar, but the main menu
+// close, reload), and ⌘↩ to send the question on the Ask page. An accessory app shows no menu bar, but the main menu
 // still handles shortcuts. There is no Quit: ⌘Q in a window must not stop
 // the servers memors-tray runs.
 static void installMenu(void) {
@@ -172,6 +202,11 @@ static void installMenu(void) {
 	[edit addItem:item(@"Copy", @selector(copy:), @"c", NSEventModifierFlagCommand)];
 	[edit addItem:item(@"Paste", @selector(paste:), @"v", NSEventModifierFlagCommand)];
 	[edit addItem:item(@"Select All", @selector(selectAll:), @"a", NSEventModifierFlagCommand)];
+	[edit addItem:[NSMenuItem separatorItem]];
+	actions = [[MWActions alloc] init];
+	NSMenuItem *send = item(@"Send Question", @selector(send:), @"\r", NSEventModifierFlagCommand);
+	send.target = actions;
+	[edit addItem:send];
 	NSMenuItem *editItem = [[NSMenuItem alloc] init];
 	editItem.submenu = edit;
 	[main addItem:editItem];

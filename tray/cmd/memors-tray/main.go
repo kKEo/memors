@@ -101,8 +101,13 @@ func run() int {
 	}
 	asker := &ask.Runner{Env: os.Environ(), Logf: logf, Options: func() (ask.Options, error) { return ask.Load(homeDir) }}
 	pages, err := setup.Start(setup.Deps{
-		Ask:           asker.Ask,
-		FindClaude:    ask.Binary,
+		Ask:        asker.Ask,
+		FindClaude: ask.Binary,
+		OpenMemo: func(server, path string) {
+			if a != nil {
+				a.OpenMemo(server, path)
+			}
+		},
 		Home:          homeDir,
 		TrayVersion:   buildVersion(),
 		GOARCH:        runtime.GOARCH,

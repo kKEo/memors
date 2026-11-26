@@ -7,11 +7,13 @@
 package ask
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,6 +28,9 @@ import (
 
 // ErrNotFound means no claude executable was found.
 var ErrNotFound = errors.New("Claude Code (claude) not found: install it from https://claude.com/claude-code, or set claude_binary in tray.json")
+
+// ErrStopped means the question was cancelled before claude answered.
+var ErrStopped = errors.New("stopped")
 
 // ErrMTLS: claude cannot present a client certificate from here.
 var ErrMTLS = errors.New("this server asks for a client certificate (mTLS), which Claude Code cannot present from here")
@@ -242,6 +247,18 @@ type Answer struct {
 	Turns int
 	Cost  float64 // USD, as claude reports it
 	Took  time.Duration
+	// Titles names the memo:// addresses the knowledge base's tools
+	// returned while claude worked, where a result gave a title.
+	Titles map[string]string
+}
+
+// Event is something claude did on the way to an answer, reported while
+// it works: a knowledge-base tool it called, or the next piece of the text
+// it is writing.
+type Event struct {
+	Tool   string // the tool called (search, read, explore, status); empty for text
+	Detail string // what the tool was asked: the query or the address
+	Text   string // more of the text claude is writing
 }
 
 // Binary returns the claude to run: the configured path, else one on PATH
@@ -278,7 +295,8 @@ func Binary(configured string) (string, error) {
 const SystemPrompt = `You answer questions about one knowledge base, served by the "memors" MCP server. ` +
 	`Always look in the knowledge base first with its tools (search, explore, read, status) and answer from what you find; ` +
 	`never answer from general knowledge alone. When the knowledge base has nothing on the topic, say so plainly. ` +
-	`Be concise and concrete, in plain text with at most light Markdown; mention memo:// identifiers when they help the reader find the source.`
+	`Be concise and concrete. Write Markdown: short paragraphs, and a list, a table or a code block where it makes the answer easier to read. ` +
+	`Cite your sources: after a statement, give the memo:// address it comes from, exactly as the tools returned it, so the reader can open it.`
 
 // Args is the command line (after the executable) that asks prompt with
 // the MCP configuration file at mcpConfig and nothing else attached, as o
@@ -289,8 +307,9 @@ func Args(mcpConfig, prompt string, o Options) []string {
 		turns = config.DefaultAskTurns
 	}
 	args := []string{
-		"-p", "--output-format", "json",
-		"--setting-sources", "", // no user or project settings: no plugins, hooks or MCP servers from them
+		"-p", "--output-format", "stream-json", "--verbose", // one JSON event per line, as claude works
+		"--include-partial-messages", // the answer's text as it is written
+		"--setting-sources", "",      // no user or project settings: no plugins, hooks or MCP servers from them
 		"--strict-mcp-config", "--mcp-config", mcpConfig,
 		"--disable-slash-commands", // no skills or commands
 		"--tools", "",              // no built-in tools
@@ -358,10 +377,12 @@ type Runner struct {
 	Logf    func(format string, args ...any)
 }
 
-// Ask runs one question against srv. The MCP configuration (with the
-// token, if any) goes into a private temporary directory that is also
-// claude's working directory, and is removed afterwards.
-func (r *Runner) Ask(ctx context.Context, srv Server, question string, history []Exchange) (Answer, error) {
+// Ask runs one question against srv, calling progress (when not nil) for
+// each thing claude does meanwhile. Cancelling ctx stops claude; the error
+// is then ErrStopped. The MCP configuration (with the token, if any) goes
+// into a private temporary directory that is also claude's working
+// directory, and is removed afterwards.
+func (r *Runner) Ask(ctx context.Context, srv Server, question string, history []Exchange, progress func(Event)) (Answer, error) {
 	var o Options
 	if r.Options != nil {
 		var err error
@@ -386,6 +407,7 @@ func (r *Runner) Ask(ctx context.Context, srv Server, question string, history [
 	if err := os.WriteFile(cfgPath, cfg, 0o600); err != nil {
 		return Answer{}, err
 	}
+	parent := ctx
 	ctx, cancel := context.WithTimeout(ctx, o.timeout())
 	defer cancel()
 	cmd := exec.CommandContext(ctx, bin, Args(cfgPath, Prompt(question, history), o)...)
@@ -395,28 +417,35 @@ func (r *Runner) Ask(ctx context.Context, srv Server, question string, history [
 		base = os.Environ()
 	}
 	cmd.Env = Env(base, o)
-	cmd.Stdin = nil // /dev/null: claude must not wait for piped input
-	var out, errb bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &out, &errb
+	cmd.Stdin = nil                 // /dev/null: claude must not wait for piped input
+	cmd.WaitDelay = 2 * time.Second // a child that keeps the pipe open does not hold up the answer
+	var errb bytes.Buffer
+	cmd.Stderr = &errb
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return Answer{}, err
+	}
 	started := time.Now()
-	runErr := cmd.Run()
+	var res result
+	runErr := cmd.Start()
+	if runErr == nil {
+		res = readStream(stdout, progress)
+		runErr = cmd.Wait()
+	}
 	took := time.Since(started)
 	if r.Logf != nil {
 		r.Logf("ask %s: claude took %s (exit %v; sign-in %s, model %s)", srv.URL, took.Round(time.Millisecond), runErr, orDefault(o.Auth), orDefault(o.Model))
 	}
-	var res struct {
-		Result  string  `json:"result"`
-		IsError bool    `json:"is_error"`
-		Turns   int     `json:"num_turns"`
-		Cost    float64 `json:"total_cost_usd"`
+	if parent.Err() != nil {
+		return Answer{}, ErrStopped
 	}
-	if jsonErr := json.Unmarshal(bytes.TrimSpace(out.Bytes()), &res); jsonErr != nil || (res.Result == "" && !res.IsError) {
+	if !res.seen || (res.Result == "" && !res.IsError) {
 		if ctx.Err() != nil {
 			return Answer{}, fmt.Errorf("claude gave no answer within %s", o.timeout())
 		}
 		detail := strings.TrimSpace(errb.String())
 		if detail == "" {
-			detail = strings.TrimSpace(out.String())
+			detail = strings.TrimSpace(res.other)
 		}
 		if runErr != nil {
 			return Answer{}, fmt.Errorf("claude failed: %v%s", runErr, tail(detail))
@@ -426,7 +455,187 @@ func (r *Runner) Ask(ctx context.Context, srv Server, question string, history [
 	if res.IsError {
 		return Answer{}, fmt.Errorf("claude: %s", strings.TrimSpace(res.Result))
 	}
-	return Answer{Text: strings.TrimSpace(res.Result), Turns: res.Turns, Cost: res.Cost, Took: took}, nil
+	return Answer{Text: strings.TrimSpace(res.Result), Turns: res.Turns, Cost: res.Cost, Took: took, Titles: res.titles}, nil
+}
+
+// result is the last line of claude's output, and what was gathered on
+// the way to it.
+type result struct {
+	Result  string  `json:"result"`
+	IsError bool    `json:"is_error"`
+	Turns   int     `json:"num_turns"`
+	Cost    float64 `json:"total_cost_usd"`
+
+	seen   bool              // a result line arrived
+	titles map[string]string // memo:// address to title, from tool results
+	other  string            // output that was not an event, for an error message
+}
+
+// streamLine is one event of claude's stream-json output, as far as Ask
+// reads it.
+type streamLine struct {
+	Type  string `json:"type"`
+	Event struct {
+		Type  string `json:"type"`
+		Delta struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"delta"`
+	} `json:"event"`
+	Message struct {
+		Content json.RawMessage `json:"content"`
+	} `json:"message"`
+	ToolUseResult json.RawMessage `json:"tool_use_result"`
+}
+
+// toolPrefix is how claude names the tools of the "memors" MCP server.
+const toolPrefix = "mcp__memors__"
+
+// readStream follows claude's output to its end, reporting tool calls and
+// text to progress, and returns the result line. A plain JSON result (an
+// older claude, or one that failed before it started) is read as well.
+func readStream(out io.Reader, progress func(Event)) result {
+	var res result
+	emit := func(e Event) {
+		if progress != nil {
+			progress(e)
+		}
+	}
+	partial := false // the current message's text arrived in pieces already
+	rd := bufio.NewReaderSize(out, 64<<10)
+	for {
+		raw, err := rd.ReadBytes('\n')
+		if line := bytes.TrimSpace(raw); len(line) > 0 {
+			var l streamLine
+			if json.Unmarshal(line, &l) != nil {
+				if len(res.other) < 4<<10 {
+					res.other += string(line) + "\n"
+				}
+			} else {
+				switch l.Type {
+				case "stream_event":
+					switch {
+					case l.Event.Type == "message_start":
+						partial = false
+					case l.Event.Type == "content_block_delta" && l.Event.Delta.Type == "text_delta" && l.Event.Delta.Text != "":
+						partial = true
+						emit(Event{Text: l.Event.Delta.Text})
+					}
+				case "assistant":
+					for _, b := range blocks(l.Message.Content) {
+						switch b.Type {
+						case "tool_use":
+							emit(Event{Tool: strings.TrimPrefix(b.Name, toolPrefix), Detail: toolDetail(b.Input)})
+						case "text":
+							if !partial && b.Text != "" {
+								emit(Event{Text: b.Text})
+							}
+						}
+					}
+				case "user":
+					for _, b := range blocks(l.Message.Content) {
+						if b.Type == "tool_result" {
+							res.noteTitles(b.Content)
+						}
+					}
+					res.noteTitles(l.ToolUseResult)
+				case "result", "":
+					titles, other := res.titles, res.other
+					if json.Unmarshal(line, &res) == nil {
+						res.seen = true
+					}
+					res.titles, res.other = titles, other
+				}
+			}
+		}
+		if err != nil {
+			return res
+		}
+	}
+}
+
+// block is one part of a message's content.
+type block struct {
+	Type    string          `json:"type"`
+	Text    string          `json:"text"`
+	Name    string          `json:"name"`
+	Input   json.RawMessage `json:"input"`
+	Content json.RawMessage `json:"content"`
+}
+
+func blocks(content json.RawMessage) []block {
+	var bs []block
+	_ = json.Unmarshal(content, &bs) // a plain string has no blocks
+	return bs
+}
+
+// toolDetail is the one thing worth showing about a tool call: what was
+// searched for, or the address that was read.
+func toolDetail(input json.RawMessage) string {
+	var in map[string]any
+	if json.Unmarshal(input, &in) != nil {
+		return ""
+	}
+	for _, key := range []string{"query", "uri", "entity", "topic", "name"} {
+		if s, ok := in[key].(string); ok && strings.TrimSpace(s) != "" {
+			s = strings.Join(strings.Fields(s), " ")
+			if r := []rune(s); len(r) > 120 {
+				s = string(r[:120]) + "…"
+			}
+			return s
+		}
+	}
+	return ""
+}
+
+// maxTitles bounds the titles kept for one answer.
+const maxTitles = 500
+
+// noteTitles remembers the title of every memo:// address in a tool
+// result: any object with a "uri" and a "title", however deep, also when
+// the result is JSON carried in a text block.
+func (r *result) noteTitles(raw json.RawMessage) {
+	if len(raw) == 0 {
+		return
+	}
+	var v any
+	if json.Unmarshal(raw, &v) != nil {
+		return
+	}
+	r.walkTitles(v, 0)
+}
+
+func (r *result) walkTitles(v any, depth int) {
+	if depth > 12 {
+		return
+	}
+	switch v := v.(type) {
+	case string:
+		if t := strings.TrimSpace(v); strings.HasPrefix(t, "{") || strings.HasPrefix(t, "[") {
+			var inner any
+			if json.Unmarshal([]byte(t), &inner) == nil {
+				r.walkTitles(inner, depth+1)
+			}
+		}
+	case []any:
+		for _, e := range v {
+			r.walkTitles(e, depth+1)
+		}
+	case map[string]any:
+		uri, _ := v["uri"].(string)
+		title, _ := v["title"].(string)
+		if title = strings.TrimSpace(title); strings.HasPrefix(uri, "memo://") && title != "" && len(r.titles) < maxTitles {
+			if r.titles == nil {
+				r.titles = map[string]string{}
+			}
+			if _, ok := r.titles[uri]; !ok {
+				r.titles[uri] = title
+			}
+		}
+		for _, e := range v {
+			r.walkTitles(e, depth+1)
+		}
+	}
 }
 
 func orDefault(s string) string {

@@ -1,7 +1,8 @@
 // Package setup serves memors-tray's own pages to its windows: the wizard
 // that downloads and installs memors-mcp and sets up a first knowledge base,
 // and the settings form. Like memors-mcp's UI they are server-rendered forms
-// with no JavaScript, served over HTTP on a loopback port. A window gets
+// with no JavaScript (the Ask page shows an answer in the making by sending
+// its response piece by piece), served over HTTP on a loopback port. A window gets
 // in through a link carrying a per-process secret (handed to it in
 // process, never on a command line) and then holds a SameSite=Strict
 // cookie; requests with another Host header, and cross-site form posts,
@@ -93,8 +94,11 @@ type Deps struct {
 	// Ask answers a question about a running server's knowledge base
 	// (*ask.Runner); FindClaude says whether Claude Code is there to do
 	// it. Nil disables the Ask page.
-	Ask        func(ctx context.Context, srv ask.Server, question string, history []ask.Exchange) (ask.Answer, error)
+	Ask        func(ctx context.Context, srv ask.Server, question string, history []ask.Exchange, progress func(ask.Event)) (ask.Answer, error)
 	FindClaude func(configured string) (string, error)
+	// OpenMemo shows a server's page at path (such as /doc/12) in that
+	// server's window: a memory an answer cites.
+	OpenMemo func(server, path string)
 	// AppBundle is the MemoRS Tray.app to update in place, or why it
 	// cannot be (installer.ErrNotUpdatable).
 	AppBundle func() (string, error)
@@ -209,6 +213,9 @@ func (s *Server) Handler() http.Handler {
 	app.HandleFunc("GET /updates/progress", s.trayProgress)
 	app.HandleFunc("GET /ask", s.askPage)
 	app.HandleFunc("POST /ask", s.askQuestion)
+	app.HandleFunc("POST /ask/retry", s.askRetry)
+	app.HandleFunc("POST /ask/stop", s.askStop)
+	app.HandleFunc("GET /ask/open", s.askOpen)
 	app.HandleFunc("POST /ask/clear", s.askClear)
 	app.HandleFunc("POST /ask/copy", s.askCopy)
 	app.HandleFunc("GET /connect", s.connectChoose)
@@ -300,6 +307,7 @@ var funcs = template.FuncMap{
 	},
 	"tilde": tilde,
 	"inc":   func(i int) int { return i + 1 },
+	"dec":   func(i int) int { return i - 1 },
 	"dict": func(kv ...any) map[string]any { // pairs: "key", value, ...
 		m := map[string]any{}
 		for i := 0; i+1 < len(kv); i += 2 {

@@ -4,39 +4,104 @@
 <div class="actions"><span class="muted">Dismiss this window when you are done.</span></div>
 {{template "foot" .}}{{end}}
 
-{{define "ask.html"}}{{template "head" .}}{{with .Data}}
-<h1>Ask <b>{{.KB}}</b></h1>
-<p class="lede">Your question goes to Claude Code, run headless with only this server's MCP attached: no other tools, skills or plugins. It searches the knowledge base and answers from what it finds.</p>
+{{/* The Ask page comes in three pieces, so that an answer in the making can
+be written between them: ask_top ends inside the live turn, ask_landed
+closes it with the answer, ask_bottom closes the page. The question box
+comes last in the document and sits in the same place as the Stop bar,
+which it covers once it arrives. */}}
+{{define "ask_top"}}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · MemoRS Tray</title><link rel="stylesheet" href="/style.css"></head>
+<body class="chat">
+<header class="top"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+<div class="title"><div class="app">{{.Title}}</div><div class="sub">Answers from this knowledge base only</div></div>
+<a class="button dismiss" href="memors-tray://close" title="Close this window (⌘W)">Dismiss</a></header>
+{{- with .Data}}
+{{- if .Live}}
+<form method="post" action="/ask/stop" class="bottom stopbar"><input type="hidden" name="server" value="{{.Server}}">
+<div class="bar"><span class="thinking"><span class="dot"></span> Answering from the knowledge base…</span><button title="Stop this answer">Stop</button></div></form>
+{{- end}}
+<div class="scroll">{{if or .History .Live}}<div class="fill"></div>{{end}}
+<div class="thread{{if not (or .History .Live)}} empty{{end}}">
 {{- if .MTLS}}<div class="banner err">This server asks for a client certificate (mTLS), which Claude Code cannot present from here.</div>
 {{- else if not .ClaudeOK}}<div class="banner warn">{{.ClaudeWhy}}</div>{{end}}
-{{- if .Err}}<div class="banner err">{{.Err}}</div>{{end}}
+{{- if not (or .History .Live)}}
+<div class="welcome">
+<h1>Ask <b>{{.KB}}</b></h1>
+<p class="lede">Answers come from this knowledge base only, and link to the memories they rely on.</p>
+{{- if .CanAsk}}
+<div class="starters">
+{{- range .Starters}}
+<form method="post" action="/ask"><input type="hidden" name="server" value="{{$.Data.Server}}"><input type="hidden" name="question" value="{{.}}"><button>{{.}}</button></form>
+{{- end}}
+</div>
+{{- end}}
+<details class="how"><summary>How it works</summary>
+<p>Your question goes to Claude Code, run headless with only this server's MCP attached: no other tools, skills or plugins. It searches the knowledge base and answers from what it finds. An answer takes a few seconds to a minute; earlier answers give follow-ups their context.</p></details>
+</div>
+{{- end}}
 {{- range $i, $e := .History}}{{$n := inc $i}}
-<section class="group ask">
-<div class="row stack"><div class="question">{{$e.Question}}</div>
-<pre class="answer">{{$e.Answer}}</pre>
-<div class="row meta"><span class="hint">{{$e.Took}} · {{$e.Turns}} step{{if ne $e.Turns 1}}s{{end}}</span>
-<form method="post" action="/ask/copy"><input type="hidden" name="server" value="{{$.Data.Server}}"><input type="hidden" name="n" value="{{$n}}"><button class="link">{{if eq $.Data.Copied $n}}Copied ✓{{else}}Copy answer{{end}}</button></form></div>
-</div>
-</section>
+<article class="turn" id="t{{$n}}">
+<div class="q">{{$e.Question}}</div>
+{{- if $e.Steps}}
+<details class="work"><summary>{{len $e.Steps}} lookup{{if ne (len $e.Steps) 1}}s{{end}} in the knowledge base</summary>
+{{- range $e.Steps}}
+<div class="step"><span>{{.Verb}}{{if .Detail}} {{if .Quoted}}<q class="what">{{.Detail}}</q>{{else}}<b class="what">{{.Detail}}</b>{{end}}{{end}}</span></div>
 {{- end}}
-{{- if .Pending}}
-<section class="group ask">
-<div class="row stack"><div class="question">{{.Pending}}</div>
-<div class="thinking"><span class="dot"></span> Searching the knowledge base… {{.Since}}</div>
+</details>
+{{- end}}
+{{template "ask_result" dict "E" $e "N" $n "D" $.Data}}
+</article>
+{{- end}}
+{{- if .Live}}
+<article class="turn live" id="live">
+<div class="q">{{.Live}}</div>
+<div class="work">
+<div class="step"><span>Asking Claude Code</span></div>
+{{end}}
+{{- end}}{{end}}
+
+{{define "ask_landed"}}<i class="end"></i></div>
+{{with .Data}}{{if .History}}{{template "ask_result" dict "E" (index .History (dec .Last)) "N" .Last "D" .}}{{end}}{{end}}
+</article>
+{{end}}
+
+{{/* ask_result is what came of a question: E the exchange, N its number, D the page. */}}
+{{define "ask_result"}}
+{{- if .E.HTML}}<div class="answer md">{{.E.HTML}}</div>{{end}}
+{{- if .E.Sources}}
+<div class="sources"><span class="label">Sources</span>
+{{- range .E.Sources}}
+<a href="{{.Href}}" title="{{.URI}} · open in the knowledge base window">{{.Label}}</a>
+{{- end}}
 </div>
-</section>
-{{- else if and .ClaudeOK (not .MTLS)}}
-<form method="post" action="/ask" class="askform">
+{{- end}}
+{{- if .E.Err}}<div class="note err"><b>No answer.</b> {{.E.Err}}</div>
+{{- else if .E.Stopped}}<div class="note">Stopped before the answer was finished.</div>{{end}}
+<div class="meta">
+{{- if .E.Answered}}<span>{{.E.Took}} · {{.E.Turns}} step{{if ne .E.Turns 1}}s{{end}}</span>{{end}}
+{{- if .E.Answer}}
+<form method="post" action="/ask/copy"><input type="hidden" name="server" value="{{.D.Server}}"><input type="hidden" name="n" value="{{.N}}"><button class="link">{{if eq .D.Copied .N}}Copied ✓{{else}}Copy answer{{end}}</button></form>
+{{- end}}
+{{- if and (eq .N .D.Last) .D.CanAsk (not .D.Live)}}
+<form method="post" action="/ask/retry"><input type="hidden" name="server" value="{{.D.Server}}"><button class="link" title="Ask this question again, in place of this answer">{{if .E.Answered}}Ask again{{else}}Try again{{end}}</button></form>
+{{- end}}
+</div>
+{{- end}}
+
+{{define "ask_bottom"}}</div></div>
+{{with .Data}}
+<div class="bottom">
+{{- if .CanAsk}}
+<form method="post" action="/ask" class="composer">
 <input type="hidden" name="server" value="{{.Server}}">
-<section class="group">
-<div class="row stack"><label class="label" for="question">{{if .History}}Follow-up question{{else}}Your question{{end}}</label>
-<textarea id="question" name="question" rows="3" maxlength="4000" placeholder="What does the knowledge base say about…" required autofocus></textarea></div>
-</section>
-<div class="actions"><span class="hint">Each answer takes a few seconds to a minute. Earlier answers give follow-ups their context.</span><button class="primary">Ask</button></div>
+<textarea id="question" name="question" rows="2" maxlength="4000" aria-label="{{if .History}}Follow-up question{{else}}Your question{{end}}" placeholder="{{if .History}}Ask a follow-up…{{else}}Ask about {{.KB}}…{{end}}" required autofocus></textarea>
+<button class="primary" title="Send (⌘↩)">Ask</button>
 </form>
 {{- end}}
-<form method="post" action="/ask/clear" class="links">
-<span>{{.Setup}}</span><span class="sep">·</span><a href="/settings?back={{.Server}}#ask">Ask settings…</a>
-{{- if .History}}<span class="sep">·</span><input type="hidden" name="server" value="{{.Server}}"><button class="link">Clear conversation</button>{{end}}
-</form>
-{{end}}{{template "foot" .}}{{end}}
+<div class="under"><span>{{.Setup}}</span><span class="sep">·</span><a href="/settings?back={{.Server}}#ask">Ask settings…</a>
+{{- if .History}}<span class="sep">·</span><button class="link" form="clear">Clear conversation</button>{{end}}
+{{- if .CanAsk}}<span class="keys">⌘↩ to send</span>{{end}}</div>
+</div>
+<form id="clear" method="post" action="/ask/clear"><input type="hidden" name="server" value="{{.Server}}"></form>
+{{end}}</body></html>{{end}}

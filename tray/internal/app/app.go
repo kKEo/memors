@@ -173,6 +173,12 @@ func (a *App) StartIfStopped(kb string) { a.Do(menu.Action{Kind: startIfStopped,
 // memors-mcp).
 func (a *App) RestartManaged() { a.Do(menu.Action{Kind: restartManaged}) }
 
+// OpenMemo shows a server's page at path (such as /doc/12) in that
+// server's window: the Ask page opens the memories an answer cites.
+func (a *App) OpenMemo(server, path string) {
+	a.Do(menu.Action{Kind: openMemo, Server: server, KB: path})
+}
+
 // TrayUpdated relaunches memors-tray: a new one is in place.
 func (a *App) TrayUpdated() { a.Do(menu.Action{Kind: trayUpdated}) }
 
@@ -595,6 +601,10 @@ func (a *App) handle(ctx context.Context, act menu.Action) {
 			}
 			a.Do(menu.Action{Kind: menu.Quit})
 		})
+	case openMemo:
+		if hasView && strings.HasPrefix(act.KB, "/") {
+			a.openServerPage(ctx, v, act.KB)
+		}
 	case reloadAction:
 		a.cfgMod, a.memorsAt = time.Time{}, time.Time{}
 	case startIfStopped:
@@ -620,13 +630,16 @@ func (a *App) handle(ctx context.Context, act menu.Action) {
 }
 
 // openStats shows the server's Live page in a window, logged in.
-func (a *App) openStats(ctx context.Context, v view) {
+func (a *App) openStats(ctx context.Context, v view) { a.openServerPage(ctx, v, "/live") }
+
+// openServerPage shows one of a server's pages in its window.
+func (a *App) openServerPage(ctx context.Context, v view, path string) {
 	if v.entry == nil {
 		return
 	}
-	u, err := a.d.StatsURL(ctx, client.TargetOf(v.entry.Info), "/live")
+	u, err := a.d.StatsURL(ctx, client.TargetOf(v.entry.Info), path)
 	if errors.Is(err, client.ErrNotSupported) {
-		u, err = v.URL+"/login?next=/live", nil // an older server: log in with the token
+		u, err = v.URL+"/login?next="+path, nil // an older server: log in with the token
 	}
 	if err != nil {
 		a.report("open stats window", err)
@@ -763,6 +776,7 @@ const (
 	startIfStopped
 	restartManaged
 	trayUpdated
+	openMemo // KB carries the page's path
 )
 
 // relaunchAfter gives the Updates window time to show that the update

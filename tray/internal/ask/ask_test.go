@@ -184,7 +184,7 @@ echo '{"result":"The answer.","is_error":false,"num_turns":3,"total_cost_usd":0.
 	r := &Runner{Env: []string{"PATH=" + os.Getenv("PATH"), "ANTHROPIC_API_KEY=inherited"}, Options: func() (Options, error) {
 		return Options{Binary: bin, Auth: "api_key", Secret: "sk-chosen", Model: "sonnet", Env: map[string]string{"ASK_EXTRA": "yes"}}, nil
 	}}
-	a, err := r.Ask(context.Background(), Server{URL: "http://127.0.0.1:8765", Auth: "none"}, "why?", nil)
+	a, err := r.Ask(context.Background(), Server{URL: "http://127.0.0.1:8765", Auth: "none"}, "why?", nil, nil)
 	if err != nil || a.Text != "The answer." || a.Turns != 3 || a.Cost != 0.01 {
 		t.Fatalf("answer = %+v, %v", a, err)
 	}
@@ -208,27 +208,72 @@ func TestAskErrors(t *testing.T) {
 		return &Runner{Options: func() (Options, error) { return Options{Binary: bin}, nil }}
 	}
 	r := run(fakeClaude(t, `echo '{"result":"Not logged in","is_error":true}'`))
-	if _, err := r.Ask(context.Background(), srv, "q", nil); err == nil || !strings.Contains(err.Error(), "Not logged in") {
+	if _, err := r.Ask(context.Background(), srv, "q", nil, nil); err == nil || !strings.Contains(err.Error(), "Not logged in") {
 		t.Errorf("is_error: %v", err)
 	}
 	r = run(fakeClaude(t, `echo "boom" >&2; exit 2`))
-	if _, err := r.Ask(context.Background(), srv, "q", nil); err == nil || !strings.Contains(err.Error(), "boom") {
+	if _, err := r.Ask(context.Background(), srv, "q", nil, nil); err == nil || !strings.Contains(err.Error(), "boom") {
 		t.Errorf("exit 2: %v", err)
 	}
 	r = run(filepath.Join(t.TempDir(), "missing"))
-	if _, err := r.Ask(context.Background(), srv, "q", nil); err == nil || !strings.Contains(err.Error(), "claude_binary") {
+	if _, err := r.Ask(context.Background(), srv, "q", nil, nil); err == nil || !strings.Contains(err.Error(), "claude_binary") {
 		t.Errorf("missing binary: %v", err)
 	}
 	// The time limit is the configured one.
 	r = &Runner{Options: func() (Options, error) {
 		return Options{Binary: fakeClaude(t, `exec sleep 30`), Timeout: 200 * time.Millisecond}, nil
 	}}
-	if _, err := r.Ask(context.Background(), srv, "q", nil); err == nil || !strings.Contains(err.Error(), "no answer within 200ms") {
+	if _, err := r.Ask(context.Background(), srv, "q", nil, nil); err == nil || !strings.Contains(err.Error(), "no answer within 200ms") {
 		t.Errorf("timeout: %v", err)
 	}
 	// Options that cannot be read stop the question.
 	r = &Runner{Options: func() (Options, error) { return Options{}, os.ErrPermission }}
-	if _, err := r.Ask(context.Background(), srv, "q", nil); err != os.ErrPermission {
+	if _, err := r.Ask(context.Background(), srv, "q", nil, nil); err != os.ErrPermission {
 		t.Errorf("unreadable options: %v", err)
+	}
+}
+
+// claude's stream is followed as it arrives: tool calls and text are
+// reported, titles are gathered from tool results, and the result line is
+// the answer.
+func TestAskStream(t *testing.T) {
+	bin := fakeClaude(t, `cat <<'END'
+{"type":"system","subtype":"init"}
+{"type":"stream_event","event":{"type":"message_start"}}
+{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"Let me look."}}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"Let me look."}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__memors__search","input":{"query":"cache  ttl","limit":5}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":[{"type":"text","text":"{\"hits\":[{\"uri\":\"memo://chunk/7\",\"title\":\"Cache TTL\"}]}"}]}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__memors__read","input":{"uri":"memo://doc/3"}}]}}
+{"type":"user","message":{"content":"plain"},"tool_use_result":{"uri":"memo://doc/3","title":"Caching guide"}}
+{"type":"stream_event","event":{"type":"message_start"}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"Whole, with no pieces."}]}}
+{"type":"result","result":"Set it to 60s (memo://chunk/7).","is_error":false,"num_turns":3,"total_cost_usd":0.02}
+END`)
+	r := &Runner{Options: func() (Options, error) { return Options{Binary: bin}, nil }}
+	var events []Event
+	a, err := r.Ask(context.Background(), Server{URL: "http://127.0.0.1:8765"}, "ttl?", nil, func(e Event) { events = append(events, e) })
+	if err != nil || a.Text != "Set it to 60s (memo://chunk/7)." || a.Turns != 3 {
+		t.Fatalf("answer = %+v, %v", a, err)
+	}
+	want := []Event{{Text: "Let me look."}, {Tool: "search", Detail: "cache ttl"}, {Tool: "read", Detail: "memo://doc/3"}, {Text: "Whole, with no pieces."}}
+	if !slices.Equal(events, want) {
+		t.Errorf("events = %+v", events)
+	}
+	if a.Titles["memo://chunk/7"] != "Cache TTL" || a.Titles["memo://doc/3"] != "Caching guide" {
+		t.Errorf("titles = %v", a.Titles)
+	}
+}
+
+// Cancelling stops claude, and says so.
+func TestAskStopped(t *testing.T) {
+	bin := fakeClaude(t, `echo '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__memors__status","input":{}}]}}'
+exec sleep 30`)
+	r := &Runner{Options: func() (Options, error) { return Options{Binary: bin}, nil }}
+	ctx, cancel := context.WithCancel(context.Background())
+	started := time.Now()
+	_, err := r.Ask(ctx, Server{URL: "http://127.0.0.1:8765"}, "q", nil, func(Event) { cancel() })
+	if err != ErrStopped || time.Since(started) > 10*time.Second {
+		t.Errorf("stopped: %v after %s", err, time.Since(started))
 	}
 }

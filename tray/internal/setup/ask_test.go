@@ -3,6 +3,7 @@ package setup
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,54 +19,114 @@ import (
 	"github.com/kKEo/memors/tray/internal/menu"
 )
 
-// fakeAsker answers when released, recording what it was asked.
+// fakeAsker reports its events, then answers when released (or says it was
+// stopped), recording what it was asked.
 type fakeAsker struct {
 	mu      sync.Mutex
 	gate    chan struct{}
 	asked   []string
 	servers []ask.Server
 	history [][]ask.Exchange
+	events  []ask.Event
 	answer  string
 	err     error
 }
 
-func (f *fakeAsker) Ask(_ context.Context, srv ask.Server, q string, h []ask.Exchange) (ask.Answer, error) {
+func (f *fakeAsker) Ask(ctx context.Context, srv ask.Server, q string, h []ask.Exchange, progress func(ask.Event)) (ask.Answer, error) {
 	f.mu.Lock()
 	f.asked, f.servers, f.history = append(f.asked, q), append(f.servers, srv), append(f.history, h)
+	gate, err := f.gate, f.err
 	f.mu.Unlock()
-	if f.gate != nil {
-		<-f.gate
+	for _, e := range f.events {
+		progress(e)
 	}
-	if f.err != nil {
-		return ask.Answer{}, f.err
+	if gate != nil {
+		select {
+		case <-gate:
+		case <-ctx.Done():
+			return ask.Answer{}, ask.ErrStopped
+		}
 	}
-	return ask.Answer{Text: f.answer, Turns: 3, Took: 4 * time.Second}, nil
+	if err != nil {
+		return ask.Answer{}, err
+	}
+	return ask.Answer{Text: f.answer, Turns: 3, Took: 4 * time.Second, Titles: map[string]string{"memo://doc/1": "The <big> answer"}}, nil
 }
 
 func askHarness(t *testing.T) (*harness, *fakeAsker) {
 	t.Helper()
 	h := newHarness(t)
 	h.servers = map[string]menu.ServerView{connectServer: {Key: connectServer, KB: "work", URL: connectServer, Auth: "token", TokenFile: "/tok", State: menu.Running}}
-	f := &fakeAsker{answer: "Forty-two.\n\nSee memo://doc/1."}
+	f := &fakeAsker{answer: "**Forty-two.**\n\nSee memo://doc/1 and memo://nowhere/9.", events: []ask.Event{{Text: "Let me <look>."}, {Tool: "search", Detail: "the <answer>"}, {Text: "Forty"}}}
 	h.s.d.Ask = f.Ask
 	h.s.d.FindClaude = func(string) (string, error) { return "/opt/fake/claude", nil }
+	h.s.d.OpenMemo = func(server, path string) {
+		h.mu.Lock()
+		h.opened = append(h.opened, "memo:"+server+path)
+		h.mu.Unlock()
+	}
 	return h, f
 }
 
 func askPage() string { return "/ask?" + url.Values{"server": {connectServer}}.Encode() }
 
-func waitFor(t *testing.T, h *harness, want string) string {
-	t.Helper()
-	deadline := time.Now().Add(3 * time.Second)
-	for {
-		_, body := h.get(h.s.Origin() + askPage())
-		if strings.Contains(body, want) || time.Now().After(deadline) {
-			if !strings.Contains(body, want) {
-				t.Fatalf("page never showed %q:\n%s", want, body)
+func askForm(more ...string) url.Values {
+	v := url.Values{"server": {connectServer}}
+	for i := 0; i+1 < len(more); i += 2 {
+		v.Set(more[i], more[i+1])
+	}
+	return v
+}
+
+// following is an Ask page that is still arriving.
+type following struct {
+	t    *testing.T
+	body io.ReadCloser
+	got  string
+}
+
+// follow posts form to path and returns the page it lands on, unread.
+func (h *harness) follow(path string, form url.Values) *following {
+	h.t.Helper()
+	resp, err := h.c.PostForm(h.s.Origin()+path, form)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	h.t.Cleanup(func() { resp.Body.Close() })
+	return &following{t: h.t, body: resp.Body}
+}
+
+// until reads on to want, and returns the page so far.
+func (f *following) until(want string) string {
+	f.t.Helper()
+	buf := make([]byte, 4096)
+	for !strings.Contains(f.got, want) {
+		n, err := f.body.Read(buf)
+		f.got += string(buf[:n])
+		if err != nil {
+			if !strings.Contains(f.got, want) {
+				f.t.Fatalf("the page never showed %q (%v):\n%s", want, err, f.got)
 			}
-			return body
+			break
 		}
-		time.Sleep(20 * time.Millisecond)
+	}
+	return f.got
+}
+
+// rest reads the page to its end.
+func (f *following) rest() string {
+	f.t.Helper()
+	b, _ := io.ReadAll(f.body)
+	f.got += string(b)
+	return f.got
+}
+
+func lacks(t *testing.T, what, body string, wants ...string) {
+	t.Helper()
+	for _, want := range wants {
+		if !strings.Contains(body, want) {
+			t.Errorf("%s lacks %q:\n%s", what, want, body)
+		}
 	}
 }
 
@@ -73,67 +134,129 @@ func TestAskConversation(t *testing.T) {
 	h, f := askHarness(t)
 	f.gate = make(chan struct{})
 	body := h.enter(askPage())
-	for _, want := range []string{"Ask <b>work</b>", `name="question"`, "only this server's MCP attached"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("empty page lacks %q", want)
-		}
+	lacks(t, "empty page", body, "Ask <b>work</b>", `name="question"`, "only this server's MCP attached", `value="What is this knowledge base about?"`, "Ask about work…")
+	if strings.Contains(body, `http-equiv="refresh"`) || strings.Contains(body, "/ask/stop") || strings.Contains(body, "<script") {
+		t.Errorf("empty page:\n%s", body)
 	}
-	if strings.Contains(body, `http-equiv="refresh"`) {
-		t.Error("an idle page reloads itself")
-	}
-	// Asking shows the pending question and reloads until the answer is in.
-	_, body = h.post("/ask", url.Values{"server": {connectServer}, "question": {"  What is the answer?  "}})
-	for _, want := range []string{"What is the answer?", "Searching the knowledge base", `http-equiv="refresh" content="2"`} {
-		if !strings.Contains(body, want) {
-			t.Errorf("pending page lacks %q:\n%s", want, body)
-		}
-	}
+	// Asking shows the question at once, then what claude does as it does
+	// it: the page keeps arriving until the answer is in.
+	page := h.follow("/ask", askForm("question", "  What is the <answer>?  "))
+	body = page.until("Forty")
+	lacks(t, "page in the making", body, `<div class="q">What is the &lt;answer&gt;?</div>`, `action="/ask/stop"`, "Asking Claude Code",
+		`<div class="step"><span>Searching for <q class="what">the &lt;answer&gt;</q></span></div>`, `<div class="draft">Let me &lt;look&gt;.</div>`, `<div class="draft">Forty`)
 	if strings.Contains(body, `name="question"`) {
-		t.Error("the form shows while a question runs")
+		t.Error("the question box shows while a question runs")
 	}
-	// A second question meanwhile is ignored.
-	h.post("/ask", url.Values{"server": {connectServer}, "question": {"and this?"}})
+	// A second question meanwhile is ignored; a window opened meanwhile
+	// sees the same turn from its start.
+	h.follow("/ask", askForm("question", "and this?")).until("Searching for")
 	close(f.gate)
-	body = waitFor(t, h, "Forty-two.")
+	body = page.rest()
 	f.mu.Lock()
-	if len(f.asked) != 1 || f.asked[0] != "What is the answer?" || f.servers[0] != (ask.Server{URL: connectServer, Auth: "token", TokenFile: "/tok", DefaultTokenFile: h.home + "/http-token"}) {
+	if len(f.asked) != 1 || f.asked[0] != "What is the <answer>?" || f.servers[0] != (ask.Server{URL: connectServer, Auth: "token", TokenFile: "/tok", DefaultTokenFile: h.home + "/http-token"}) {
 		t.Errorf("asked %q of %+v", f.asked, f.servers)
 	}
+	f.gate = nil
 	f.mu.Unlock()
-	for _, want := range []string{"4s · 3 steps", "Follow-up question", "Copy answer", "Clear conversation"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("answered page lacks %q:\n%s", want, body)
-		}
+	open := `href="/ask/open?server=` + url.QueryEscape(connectServer) + `&amp;uri=memo%3A%2F%2Fdoc%2F1"`
+	lacks(t, "answered page", body, `Forty</div>`+"\n"+`<i class="end"></i></div>`, "<p><strong>Forty-two.</strong></p>", `<a `+open+`>memo://doc/1</a>`, "memo://nowhere/9.",
+		open+` title="memo://doc/1 · open in the knowledge base window">The &lt;big&gt; answer</a>`, "4s · 3 steps", "Ask a follow-up…", "Copy answer", "Ask again", "Clear conversation", `name="question"`, "</body></html>")
+	if strings.Count(body, "</article>") != 1 || strings.Contains(body, "nowhere%2F9") {
+		t.Errorf("answered page:\n%s", body)
+	}
+	// The page read afresh shows the same exchange, its steps folded away.
+	_, body = h.get(h.s.Origin() + askPage())
+	lacks(t, "page read afresh", body, `<article class="turn" id="t1">`, "<summary>1 lookup in the knowledge base</summary>", `Searching for <q class="what">the &lt;answer&gt;</q>`, "<p><strong>Forty-two.</strong></p>", "Ask again")
+	if strings.Contains(body, "/ask/stop") || strings.Contains(body, `class="draft"`) {
+		t.Errorf("page read afresh:\n%s", body)
 	}
 	// A follow-up gets the earlier exchange as context.
-	f.gate = nil
-	h.post("/ask", url.Values{"server": {connectServer}, "question": {"Why?"}})
-	waitFor(t, h, "Why?</div>\n<pre")
+	body = h.follow("/ask", askForm("question", "Why?")).rest()
+	lacks(t, "follow-up", body, `id="t1"`, `<div class="q">Why?</div>`)
 	f.mu.Lock()
-	if len(f.history) != 2 || len(f.history[1]) != 1 || f.history[1][0].Question != "What is the answer?" {
+	if len(f.history) != 2 || len(f.history[1]) != 1 || f.history[1][0].Question != "What is the <answer>?" || !strings.HasPrefix(f.history[1][0].Answer, "**Forty-two.**") {
 		t.Errorf("follow-up context = %+v", f.history)
 	}
 	f.mu.Unlock()
-	// Copy puts the answer on the clipboard.
-	_, body = h.post("/ask/copy", url.Values{"server": {connectServer}, "n": {"1"}})
-	if len(h.copied) != 1 || h.copied[0] != "Forty-two.\n\nSee memo://doc/1." || !strings.Contains(body, "Copied ✓") {
+	if strings.Count(body, "Ask again") != 1 {
+		t.Error("only the newest answer can be asked again")
+	}
+	// Copy puts the answer, as written, on the clipboard.
+	_, body = h.post("/ask/copy", askForm("n", "1"))
+	if len(h.copied) != 1 || h.copied[0] != "**Forty-two.**\n\nSee memo://doc/1 and memo://nowhere/9." || strings.Count(body, "Copied ✓") != 1 {
 		t.Errorf("copied %q", h.copied)
 	}
+	// A cited memory opens in the server's window; the page stays.
+	for _, uri := range []string{"memo://doc/1", "memo://doc/../live", "http://elsewhere/"} {
+		code, _ := h.get(h.s.Origin() + "/ask/open?" + url.Values{"server": {connectServer}, "uri": {uri}}.Encode())
+		if code != http.StatusNoContent || len(h.opened) != 1 {
+			t.Errorf("open %s: %d, opened %q", uri, code, h.opened)
+		}
+	}
+	if h.opened[0] != "memo:"+connectServer+"/doc/1" {
+		t.Errorf("opened %q", h.opened)
+	}
 	// Clear forgets it all.
-	_, body = h.post("/ask/clear", url.Values{"server": {connectServer}})
-	if strings.Contains(body, "Forty-two") || !strings.Contains(body, "Your question") {
+	_, body = h.post("/ask/clear", askForm())
+	if strings.Contains(body, "Forty-two") || !strings.Contains(body, "Ask about work…") {
 		t.Errorf("after clear:\n%s", body)
+	}
+}
+
+func TestAskStopAndRetry(t *testing.T) {
+	h, f := askHarness(t)
+	f.gate = make(chan struct{})
+	h.enter(askPage())
+	// Stop ends the question; what there was of the answer stays, and is
+	// no context for the next one.
+	page := h.follow("/ask", askForm("question", "Slow one?"))
+	page.until("Forty")
+	_, body := h.post("/ask/stop", askForm())
+	lacks(t, "stopped page", body, `<div class="q">Slow one?</div>`, "<p>Forty</p>", "Stopped before the answer was finished.", "Try again", `name="question"`, "1 lookup in the knowledge base")
+	if strings.Contains(body, "Ask again") || strings.Contains(body, "steps</span>") {
+		t.Errorf("stopped page:\n%s", body)
+	}
+	lacks(t, "the page that was following", page.rest(), "Stopped before the answer was finished.", "</body></html>")
+	// Try again asks the same question, in place of the stopped one.
+	f.mu.Lock()
+	f.gate = nil
+	f.mu.Unlock()
+	body = h.follow("/ask/retry", askForm()).rest()
+	lacks(t, "retried page", body, "<p><strong>Forty-two.</strong></p>", "Ask again")
+	f.mu.Lock()
+	if len(f.asked) != 2 || f.asked[1] != "Slow one?" || len(f.history[1]) != 0 {
+		t.Errorf("asked %q with %+v", f.asked, f.history)
+	}
+	f.mu.Unlock()
+	if strings.Count(body, `<div class="q">`) != 1 || strings.Contains(body, "Stopped before") {
+		t.Errorf("the stopped exchange is still there:\n%s", body)
+	}
+	// Clearing stops a question too.
+	f.mu.Lock()
+	f.gate = make(chan struct{})
+	f.mu.Unlock()
+	page = h.follow("/ask", askForm("question", "Another?"))
+	page.until("Forty")
+	h.post("/ask/clear", askForm())
+	page.rest()
+	_, body = h.get(h.s.Origin() + askPage())
+	if strings.Contains(body, "Another?") || strings.Contains(body, "/ask/stop") {
+		t.Errorf("after clearing a running question:\n%s", body)
 	}
 }
 
 func TestAskProblems(t *testing.T) {
 	h, f := askHarness(t)
-	f.err = errors.New("claude: Not logged in")
+	f.err = errors.New("claude: Not <logged> in")
 	h.enter(askPage())
-	h.post("/ask", url.Values{"server": {connectServer}, "question": {"q"}})
-	body := waitFor(t, h, "claude: Not logged in")
-	if !strings.Contains(body, `name="question"`) {
-		t.Error("the form is gone after a failure")
+	body := h.follow("/ask", askForm("question", "q")).rest()
+	lacks(t, "failed page", body, "<b>No answer.</b> claude: Not &lt;logged&gt; in", "Try again", `name="question"`)
+	// Nothing to ask, or nothing to ask again: nothing happens.
+	h.post("/ask/clear", askForm())
+	h.post("/ask", askForm("question", "   "))
+	h.post("/ask/retry", askForm())
+	if _, body = h.post("/ask/stop", askForm()); !strings.Contains(body, "Ask about work…") || len(f.asked) != 1 {
+		t.Errorf("asked %q:\n%s", f.asked, body)
 	}
 	// Claude Code missing: a warning, no form.
 	h.s.d.FindClaude = func(string) (string, error) { return "", ask.ErrNotFound }

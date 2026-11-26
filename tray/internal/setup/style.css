@@ -149,10 +149,110 @@ button.link:hover { text-decoration: underline; }
 form.links { margin-top: 18px; color: var(--muted); font-size: 12px; display: flex; gap: 8px; align-items: center; }
 form.links .sep { color: var(--line); }
 
-/* Ask page */
-section.group.ask .question { font-weight: 600; white-space: pre-wrap; overflow-wrap: anywhere; }
-pre.answer { margin: 0; font: inherit; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-.row.meta { padding: 0; border-top: 0; }
+/* Ask page: a conversation. Three rows: the header, the thread, and the
+   question box. The thread scrolls and, being a reversed column, rests at
+   its end: an answer that grows stays in view without any script. */
+body.chat { height: 100vh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); }
+body.chat header.top { grid-row: 1; padding: 10px 20px; }
+body.chat .mark { width: 28px; height: 28px; border-radius: 8px; }
+body.chat .mark svg { width: 16px; height: 16px; }
+.scroll { grid-row: 2; grid-column: 1; overflow-y: auto; display: flex; flex-direction: column-reverse; }
+.scroll > .fill { flex: 1 1 0; }
+.thread { flex: none; width: 100%; max-width: 760px; margin: 0 auto; padding: 20px 24px 6px; }
+.thread.empty { margin: auto; }
+.bottom { grid-row: 3; grid-column: 1; background: var(--bg); padding: 6px 24px 12px; z-index: 1; }
+.bottom > * { max-width: 712px; margin-left: auto; margin-right: auto; }
+.bottom.stopbar { z-index: 0; }
+
+.welcome { text-align: center; padding: 8px 0 20px; }
+.welcome h1 { font-size: 24px; margin-bottom: 8px; }
+.welcome .lede { margin: 0 auto 20px; }
+.starters { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0 0 22px; }
+.starters button { font-weight: 400; padding: 8px 16px; border-radius: 999px; }
+.starters button:hover { border-color: var(--accent); color: var(--accent); }
+details.how { color: var(--muted); font-size: 12px; max-width: 60ch; margin: 0 auto; }
+details.how summary, details.work summary { cursor: pointer; width: fit-content; }
+details.how summary { margin: 0 auto; }
+details.how p { margin: 8px 0 0; text-align: left; }
+
+.turn { margin: 0 0 26px; scroll-margin-top: 12px; }
+.turn .q {
+  width: fit-content; max-width: 85%; margin: 0 0 14px auto; padding: 8px 13px;
+  background: var(--accent-soft); border-radius: 15px 15px 4px 15px; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.work { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+.step { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; overflow-wrap: anywhere; }
+details.work .step { padding-left: 4px; }
+details.work .step:first-of-type { margin-top: 4px; }
+.step::before { content: "✓"; flex: none; width: 12px; text-align: center; color: var(--accent); }
+.step q { quotes: "“" "”"; }
+.step b { font-weight: 400; }
+.step .what { color: var(--text); }
+/* An answer in the making is still arriving, so nothing in it is ever a
+   "last child" to the browser; what is newest is what nothing follows yet.
+   The newest step is the one going on. The text claude writes shows until
+   something follows it: a step, or the end of the turn, after which the
+   answer comes rendered. A browser too old for :has() shows the steps, all
+   ticked, and then the answer. */
+.draft, .work > .end { display: none; }
+@supports selector(:has(~ *)) {
+  div.work > .step:not(:has(~ *))::before {
+    content: ""; align-self: center; width: 8px; height: 8px; margin: 0 2px; border-radius: 50%;
+    background: var(--accent); animation: pulse 1s ease-in-out infinite alternate;
+  }
+  .draft:not(:has(~ *)) { display: block; }
+}
+.draft { margin: 8px 0 0; color: var(--text); font-size: 13px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.draft::after { content: "▍"; color: var(--accent); animation: pulse .6s ease-in-out infinite alternate; }
+
+.md { line-height: 1.55; overflow-wrap: anywhere; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p, .md ul, .md ol, .md pre, .md table, .md blockquote { margin: 0 0 10px; }
+.md ul, .md ol { padding-left: 22px; }
+.md li { margin: 2px 0; }
+.md li > p { margin: 0; }
+.md h1, .md h2, .md h3, .md h4 { font-size: 14px; font-weight: 600; margin: 16px 0 6px; }
+.md h1 { font-size: 16px; }
+.md code { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+.md pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow-x: auto; white-space: pre; }
+.md pre code { background: none; border: 0; padding: 0; }
+.md blockquote { border-left: 3px solid var(--line); padding: 0 0 0 12px; color: var(--muted); }
+.md table { width: auto; max-width: 100%; display: block; overflow-x: auto; }
+.md th, .md td { padding: 5px 10px; border: 1px solid var(--line); }
+.md th:first-child, .md td:first-child { padding-left: 10px; }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+.md img { max-width: 100%; }
+
+.sources { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 0; font-size: 12px; }
+.sources .label { color: var(--muted); margin-right: 2px; }
+.sources a {
+  max-width: 100%; padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel);
+  color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sources a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.note { margin: 10px 0 0; color: var(--muted); }
+.note.err { background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 8px 12px; overflow-wrap: anywhere; }
+.turn .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+.turn .meta button.link { font-size: 12px; }
+
+.composer {
+  display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 12px;
+  background: var(--field); border: 1px solid var(--line); border-radius: 12px;
+}
+.composer:focus-within { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: -1px; }
+.composer textarea {
+  flex: 1; min-height: 38px; max-height: 40vh; padding: 2px 0; border: 0; border-radius: 0; background: none;
+  font: inherit; line-height: 1.45; resize: none; field-sizing: content;
+}
+.composer textarea:focus { outline: none; }
+.stopbar .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 12px; min-height: 56px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.under { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 7px; color: var(--muted); font-size: 12px; }
+.under .sep { color: var(--line); }
+.under .keys { margin-left: auto; }
 .thinking { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .thinking .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1s ease-in-out infinite alternate; }
 @keyframes pulse { from { opacity: .25; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .thinking .dot, div.work > .step::before, .draft::after { animation: none; }
+}
