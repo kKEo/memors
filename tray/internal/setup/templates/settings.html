@@ -5,29 +5,38 @@
 {{- if .Saved}}<div class="banner ok">Settings saved.</div>{{end}}
 {{- if .Notice}}<div class="banner warn">{{.Notice}}</div>{{end}}
 {{- if .Errors}}<div class="banner err">Nothing was saved:<ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
-<form method="post" action="/settings">
+<form method="post" action="/settings" class="tabbed">
 <input type="hidden" name="rev" value="{{.Rev}}">
 <input type="hidden" name="back" value="{{.Back}}">
+{{- range .Tabs}}
+<input type="radio" class="tab" name="tab" id="tab-{{.Value}}" value="{{.Value}}" data-nav{{if eq .Value $.Data.Tab}} checked{{end}}>
+{{- end}}
+<input type="checkbox" class="tab" name="expert" id="expert"{{if .Expert}} checked{{end}}>
+<nav class="tabs">{{range .Tabs}}<label for="tab-{{.Value}}">{{.Label}}</label>{{end}}<label class="expert" for="expert" title="Show the options most people never change">Advanced options</label></nav>
 
+<div class="panel" id="panel-general">
 <section class="group"><h2>General</h2>
 <div class="row"><label class="check"><input type="checkbox" name="login"{{if .Login}} checked{{end}}> Open MemoRS Tray when you log in</label></div>
 <div class="row"><label class="check"><input type="checkbox" name="stop_on_quit"{{if .StopOnQuit}} checked{{end}}> Stop the servers MemoRS Tray started when it quits</label></div>
 <div class="row"><label class="check"><input type="checkbox" name="check_updates"{{if .CheckUpdates}} checked{{end}}> Check for updates once a day</label>
 <a class="button" href="/updates">Updates…</a></div>
+<div class="row adv"><label class="check"><input type="checkbox" name="debug"{{if .Debug}} checked{{end}}> Allow the Web Inspector in MemoRS Tray's windows</label></div>
 </section>
 
 <section class="group"><h2>memors-mcp</h2>
 <div class="row"><div class="status"><span class="dot{{if not .MemorsOK}} bad{{end}}"></span><span>{{tilde .MemorsStatus}}</span></div>
 <a class="button" href="/wizard/install">{{if .MemorsOK}}Check for updates…{{else}}Install…{{end}}</a></div>
-<div class="row stack"><div class="label">Location</div>
-<label class="check"><input type="radio" name="memors_mode" value="auto"{{if ne .MemorsMode "path"}} checked{{end}}> Find automatically <span class="muted">(~/.local/bin, Homebrew, /usr/local/bin, ~/go/bin)</span></label>
-<label class="check"><input type="radio" name="memors_mode" value="path"{{if eq .MemorsMode "path"}} checked{{end}}> Use this file:</label>
-<input type="text" name="memors_path" value="{{.MemorsPath}}" placeholder="/Users/you/.local/bin/memors-mcp" class="wide" aria-label="memors-mcp file"></div>
 <div class="row"><div><label class="label" for="model">Embedding model</label>
 <div class="hint">Used by every server MemoRS Tray starts. A new model is downloaded when a server next starts, and documents are re-embedded in the background.</div></div>
 {{template "modelselect" .}}</div>
+<div class="row stack adv"><div class="label">Location</div>
+<label class="check"><input type="radio" name="memors_mode" value="auto" data-label="memors-mcp location"{{if ne .MemorsMode "path"}} checked{{end}}> Find automatically <span class="muted">(~/.local/bin, Homebrew, /usr/local/bin, ~/go/bin)</span></label>
+<label class="check"><input type="radio" name="memors_mode" value="path" data-label="memors-mcp location"{{if eq .MemorsMode "path"}} checked{{end}}> Use this file:</label>
+<input type="text" name="memors_path" value="{{.MemorsPath}}" placeholder="/Users/you/.local/bin/memors-mcp" class="wide" aria-label="memors-mcp file" data-label="memors-mcp file"></div>
 </section>
+</div>
 
+<div class="panel" id="panel-servers">
 <section class="group"><h2>Servers</h2>
 <div class="row"><div class="hint">{{if .Servers}}Each knowledge base MemoRS Tray runs a server for.{{else}}No servers yet. Add one and MemoRS Tray starts it for you.{{end}}</div>
 <a class="button" href="/settings/server/new">Add server…</a></div>
@@ -45,13 +54,21 @@
 <div class="row"><div class="hint">An address stays fixed, so the MCP URL your agents use never changes. Removing a server here does not delete its knowledge base. "Token" also keeps other users of this Mac out.</div></div>
 </section>
 
-<section class="group" id="ask"><h2>Ask the knowledge base</h2>
+<section class="group adv"><h2>Environment</h2>
+<div class="row stack"><label class="label" for="env">Environment for servers</label>
+<textarea id="env" name="env" placeholder="MEMORS_PROFILE=precise">{{.Env}}</textarea>
+<div class="hint">One NAME=value per line, passed to every server MemoRS Tray starts. Apps opened from the Dock do not see your terminal's variables.</div></div>
+</section>
+</div>
+
+<div class="panel" id="panel-ask">
+<section class="group"><h2>Claude Code</h2>
 <div class="row"><div class="hint">How <b>Ask the Knowledge Base…</b> runs Claude Code. It always runs with only the server's MCP attached; your own Claude Code settings are not read, so what it needs is set here. Changes apply to the next question.</div></div>
-<div class="row stack"><div class="status"><span class="dot{{if not .ClaudeOK}} bad{{end}}"></span><span>{{tilde .ClaudeStatus}}</span></div>
-<label class="label" for="claude_path">Claude Code location</label>
+<div class="row"><div class="status"><span class="dot{{if not .ClaudeOK}} bad{{end}}"></span><span>{{tilde .ClaudeStatus}}</span></div></div>
+<div class="row stack adv"><label class="label" for="claude_path">Claude Code location</label>
 <input type="text" id="claude_path" name="claude_path" value="{{.ClaudePath}}" placeholder="Find automatically ($PATH, ~/.local/bin, Homebrew, …)" class="wide"></div>
 <div class="row"><div><label class="label" for="ask_auth">Sign in with</label>
-<div class="hint">"Claude Code's own sign-in" is the account you logged in to with <code>claude</code>. An API key is billed to that key's Console account. Bedrock, Vertex AI and Foundry take their region, profile or project from the environment below.</div></div>
+<div class="hint">"Claude Code's own sign-in" is the account you logged in to with <code>claude</code>. An API key is billed to that key's Console account. Bedrock, Vertex AI and Foundry take their region, profile or project from <b>Environment for Claude Code</b>, an advanced option.</div></div>
 <select id="ask_auth" name="ask_auth">{{range .AskAuths}}<option value="{{.Value}}"{{if eq .Value $.Data.AskAuth}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
 <div class="row"><div><label class="label" for="ask_secret">API key or token</label>
 <div class="hint">{{if .AskSecretStored}}{{if eq .AskSecretName "token"}}A token{{else}}An API key{{end}} is stored. Leave this empty to keep it.{{else}}Only for the API key and long-lived token sign-ins.{{end}} Kept in a file only you can read, never shown again, and deleted when you choose another sign-in.</div></div>
@@ -61,30 +78,30 @@
 <input type="text" id="ask_model" name="ask_model" value="{{.AskModel}}" placeholder="default"></div>
 <div class="row"><div><label class="label" for="ask_effort">Effort</label>
 <div class="hint">How hard the model thinks. Lower is faster and cheaper.</div></div>
-<select id="ask_effort" name="ask_effort"><option value="">Default</option>{{range .AskEfforts}}<option value="{{.}}"{{if eq . $.Data.AskEffort}} selected{{end}}>{{.}}</option>{{end}}</select></div>
-<div class="row"><div><label class="label" for="ask_max_turns">Steps per answer</label>
-<div class="hint">The most searches and reads Claude makes for one question.</div></div>
-<input type="text" id="ask_max_turns" name="ask_max_turns" value="{{.AskTurns}}" inputmode="numeric" class="num"></div>
-<div class="row"><div><label class="label" for="ask_timeout">Time limit, seconds</label>
-<div class="hint">A question with no answer after this long is stopped.</div></div>
-<input type="text" id="ask_timeout" name="ask_timeout" value="{{.AskTimeout}}" inputmode="numeric" class="num"></div>
-<div class="row"><div><label class="label" for="ask_budget">Cost limit per question, US dollars</label>
-<div class="hint">Stops a question once it has cost this much. Empty: no limit.</div></div>
-<input type="text" id="ask_budget" name="ask_budget" value="{{.AskBudget}}" inputmode="decimal" placeholder="no limit" class="num"></div>
+<select id="ask_effort" name="ask_effort"><option value=""{{if not .AskEffort}} selected{{end}}>Default</option>{{range .AskEfforts}}<option value="{{.}}"{{if eq . $.Data.AskEffort}} selected{{end}}>{{.}}</option>{{end}}</select></div>
+</section>
+
+<section class="group"><h2>Answers</h2>
 <div class="row stack"><label class="label" for="ask_instructions">Extra instructions</label>
 <textarea id="ask_instructions" name="ask_instructions" maxlength="4000" placeholder="Answer in Polish. Keep answers under ten lines.">{{.AskInstructions}}</textarea>
 <div class="hint">Added to what MemoRS Tray tells Claude: answer from the knowledge base only, concisely.</div></div>
+<div class="row adv"><div><label class="label" for="ask_max_turns">Steps per answer</label>
+<div class="hint">The most searches and reads Claude makes for one question.</div></div>
+<input type="text" id="ask_max_turns" name="ask_max_turns" value="{{.AskTurns}}" inputmode="numeric" class="num"></div>
+<div class="row adv"><div><label class="label" for="ask_timeout">Time limit, seconds</label>
+<div class="hint">A question with no answer after this long is stopped.</div></div>
+<input type="text" id="ask_timeout" name="ask_timeout" value="{{.AskTimeout}}" inputmode="numeric" class="num"></div>
+<div class="row adv"><div><label class="label" for="ask_budget">Cost limit per question, US dollars</label>
+<div class="hint">Stops a question once it has cost this much. Empty: no limit.</div></div>
+<input type="text" id="ask_budget" name="ask_budget" value="{{.AskBudget}}" inputmode="decimal" placeholder="no limit" class="num"></div>
+</section>
+
+<section class="group adv"><h2>Environment</h2>
 <div class="row stack"><label class="label" for="ask_env">Environment for Claude Code</label>
 <textarea id="ask_env" name="ask_env" placeholder="AWS_PROFILE=work&#10;AWS_REGION=eu-central-1">{{.AskEnv}}</textarea>
 <div class="hint">One NAME=value per line, for Claude Code only: a cloud provider's settings, a gateway (<code>ANTHROPIC_BASE_URL</code>), a proxy.</div></div>
 </section>
-
-<section class="group"><h2>Advanced</h2>
-<div class="row stack"><label class="label" for="env">Environment for servers</label>
-<textarea id="env" name="env" placeholder="MEMORS_PROFILE=precise">{{.Env}}</textarea>
-<div class="hint">One NAME=value per line, passed to every server MemoRS Tray starts. Apps opened from the Dock do not see your terminal's variables.</div></div>
-<div class="row"><label class="check"><input type="checkbox" name="debug"{{if .Debug}} checked{{end}}> Allow the Web Inspector in MemoRS Tray's windows</label></div>
-</section>
+</div>
 
 <div class="actions"><button class="primary">Save</button></div>
 </form>

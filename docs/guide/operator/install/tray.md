@@ -140,6 +140,7 @@ the settings pages never undo each other.
 | `stop_on_quit` | Stop the servers MemoRS Tray started when it quits (default `true`) |
 | `check_updates` | Ask GitHub once a day whether a newer MemoRS Tray or memors-mcp exists (default `true`) |
 | `debug` | Enable the web inspector in stats windows |
+| `expert` | Show the advanced options in the settings window (default `false`). It only changes what the window shows; hidden options keep their values |
 
 ## Ask: how Claude Code runs
 

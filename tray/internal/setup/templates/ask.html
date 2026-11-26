@@ -99,7 +99,7 @@ which it covers once it arrives. */}}
 <button class="primary" title="Send (⌘↩)">Ask</button>
 </form>
 {{- end}}
-<div class="under"><span>{{.Setup}}</span><span class="sep">·</span><a href="/settings?back={{.Server}}#ask">Ask settings…</a>
+<div class="under"><span>{{.Setup}}</span><span class="sep">·</span><a href="/settings?back={{.Server}}&amp;tab=ask">Ask settings…</a>
 {{- if .History}}<span class="sep">·</span><button class="link" form="clear">Clear conversation</button>{{end}}
 {{- if .CanAsk}}<span class="keys">⌘↩ to send</span>{{end}}</div>
 </div>

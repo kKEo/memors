@@ -14,7 +14,7 @@
 // Closing a window (its Dismiss button, ⌘W or the close box) first asks
 // whether the page has unsaved form changes. The check is a script the tray
 // evaluates itself, which WebKit allows even with content JavaScript off,
-// and a sheet asks before edits are thrown away.
+// and a sheet names the changed fields and asks before they are thrown away.
 
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
@@ -26,23 +26,68 @@ extern void macwinClosed(char *key);
 
 enum { decideAllow = 0, decideExternal = 1, decideDeny = 2, decideClose = 3 };
 
-// dirtyProbe reports whether any control in a POST form on the page differs
-// from the value it loaded with. GET forms (such as a search box) don't count.
+// dirtyProbe lists the controls of the page's POST forms that differ from
+// the value they loaded with, each by the name the page gives it: its
+// data-label (shown as written), else its aria-label, its label's text or
+// its field name (shown with a capital). Values are left out, so a typed key never reaches the sheet. An
+// empty list means nothing to lose. GET forms (such as a search box) don't
+// count, nor do controls marked data-nav, which only choose what the page
+// shows (the tabs of Settings). A drop-down none of whose options is marked
+// selected loads showing its first one, and that is no change.
 static NSString *const dirtyProbe =
     @"(function(){"
+     "const changed = [];"
+     "const nameOf = (el) => {"
+     "  const own = el.getAttribute('data-label');"
+     "  let s = own || el.getAttribute('aria-label') ||"
+     "    (el.labels && el.labels[0] && el.labels[0].textContent) || el.name || 'A field';"
+     "  s = s.replace(/\\s+/g, ' ').trim().replace(/:$/, '');"
+     "  if (s.length > 60) s = s.slice(0, 59) + '…';"
+     "  return own ? s : s.charAt(0).toUpperCase() + s.slice(1);"
+     "};"
+     "const differs = (el) => {"
+     "  const t = (el.type || '').toLowerCase();"
+     "  if (t === 'checkbox' || t === 'radio') return el.checked !== el.defaultChecked;"
+     "  if (el.tagName === 'SELECT') {"
+     "    const opts = Array.from(el.options);"
+     "    const was = opts.map((o) => o.defaultSelected);"
+     "    if (!el.multiple && el.size <= 1 && opts.length && !was.includes(true)) {"
+     "      const first = opts.findIndex((o) => !o.disabled);"
+     "      was[first < 0 ? 0 : first] = true;"
+     "    }"
+     "    return opts.some((o, i) => o.selected !== was[i]);"
+     "  }"
+     "  return 'defaultValue' in el && el.value !== el.defaultValue;"
+     "};"
      "for (const f of document.querySelectorAll('form')) {"
      "  if (f.method !== 'post') continue;"
      "  for (const el of f.elements) {"
-     "    if (el.disabled) continue;"
+     "    if (el.disabled || el.hasAttribute('data-nav')) continue;"
      "    const t = (el.type || '').toLowerCase();"
      "    if (t === 'hidden' || t === 'submit' || t === 'button' || t === 'reset') continue;"
-     "    if (t === 'checkbox' || t === 'radio') { if (el.checked !== el.defaultChecked) return true; continue; }"
-     "    if (el.tagName === 'SELECT') { for (const o of el.options) if (o.selected !== o.defaultSelected) return true; continue; }"
-     "    if ('defaultValue' in el && el.value !== el.defaultValue) return true;"
+     "    if (!differs(el)) continue;"
+     "    const n = nameOf(el);"
+     "    if (!changed.includes(n)) changed.push(n);"
      "  }"
      "}"
-     "return false;"
+     "return changed;"
      "})()";
+
+// maxChangesShown bounds the changes the sheet lists by name.
+enum { maxChangesShown = 8 };
+
+// changesText is what the sheet says about the changed controls.
+static NSString *changesText(NSArray<NSString *> *changed) {
+	NSMutableString *text = [NSMutableString stringWithString:@"Not saved yet:"];
+	NSUInteger shown = MIN(changed.count, (NSUInteger)maxChangesShown);
+	for (NSUInteger i = 0; i < shown; i++) {
+		[text appendFormat:@"\n• %@", changed[i]];
+	}
+	if (changed.count > shown) {
+		[text appendFormat:@"\n…and %lu more", (unsigned long)(changed.count - shown)];
+	}
+	return text;
+}
 
 // sendForm submits the page's question box, if it has one and the box is
 // filled in as the form requires.
@@ -115,15 +160,22 @@ static int decide(NSString *key, NSURL *url, BOOL clicked) {
 		if (mw == nil) {
 			return;
 		}
-		BOOL dirty = error == nil && [result isKindOfClass:[NSNumber class]] && [result boolValue];
-		if (!dirty) {
+		NSMutableArray<NSString *> *changed = [NSMutableArray array];
+		if (error == nil && [result isKindOfClass:[NSArray class]]) {
+			for (id name in (NSArray *)result) {
+				if ([name isKindOfClass:[NSString class]]) {
+					[changed addObject:name];
+				}
+			}
+		}
+		if (changed.count == 0) {
 			[mw finishClose];
 			return;
 		}
 		NSAlert *alert = [[NSAlert alloc] init];
 		alert.alertStyle = NSAlertStyleWarning;
 		alert.messageText = @"Discard unsaved changes?";
-		alert.informativeText = @"This form has changes that have not been saved.";
+		alert.informativeText = changesText(changed);
 		[alert addButtonWithTitle:@"Keep Editing"];
 		[alert addButtonWithTitle:@"Discard"];
 		[alert beginSheetModalForWindow:mw.window completionHandler:^(NSModalResponse response) {

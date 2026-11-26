@@ -368,6 +368,69 @@ func TestSettingsConflict(t *testing.T) {
 	}
 }
 
+// The form is one page of three tabs; the tab and the advanced options are
+// chosen by controls of the form itself, so both survive a save.
+func TestSettingsTabs(t *testing.T) {
+	h := newHarness(t)
+	body := h.enter("/settings")
+	for _, want := range []string{
+		`id="tab-general" value="general" data-nav checked>`, `id="tab-servers" value="servers" data-nav>`,
+		`id="tab-ask" value="ask" data-nav>`, `name="expert" id="expert">`,
+		`id="panel-general"`, `id="panel-servers"`, `id="panel-ask"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("settings page lacks %q", want)
+		}
+	}
+	if _, body = h.get(h.s.Origin() + "/settings?tab=ask"); !strings.Contains(body, `value="ask" data-nav checked>`) {
+		t.Error("?tab=ask does not open the Ask tab")
+	}
+	if _, body = h.get(h.s.Origin() + "/settings?tab=nope"); !strings.Contains(body, `value="general" data-nav checked>`) {
+		t.Error("an unknown tab does not open the first one")
+	}
+	// Saving keeps the tab and remembers the advanced options.
+	code, got := h.post("/settings", url.Values{"rev": {rev(t, body)}, "tab": {"servers"}, "expert": {"on"}, "stop_on_quit": {"on"}, "check_updates": {"on"}})
+	if code != 200 || !strings.Contains(got, "Settings saved.") || !strings.Contains(got, `value="servers" data-nav checked>`) || !strings.Contains(got, `id="expert" checked>`) {
+		t.Fatalf("save on the Servers tab: %d\n%s", code, got)
+	}
+	if !h.cfg().Expert {
+		t.Error("the advanced options were not saved")
+	}
+	h.post("/settings", url.Values{"rev": {rev(t, got)}, "stop_on_quit": {"on"}, "check_updates": {"on"}})
+	if h.cfg().Expert {
+		t.Error("the advanced options were not turned off")
+	}
+	// A refused form stays on its tab and shows the advanced options, where
+	// the mistake may be.
+	_, body = h.get(h.s.Origin() + "/settings")
+	code, got = h.post("/settings", url.Values{"rev": {rev(t, body)}, "tab": {"ask"}, "ask_max_turns": {"many"}})
+	if code != http.StatusUnprocessableEntity || !strings.Contains(got, `value="ask" data-nav checked>`) || !strings.Contains(got, `id="expert" checked>`) {
+		t.Errorf("refused form: %d", code)
+	}
+}
+
+// The window asks before it closes on a form whose controls differ from
+// what they loaded with (macwin's dirtyProbe). A drop-down with no option
+// marked selected is one more thing that check has to guess about, so
+// every drop-down says which option it loads with.
+func TestSelectsLoadWithASelectedOption(t *testing.T) {
+	h := newHarness(t)
+	old := &config.Config{Servers: []config.Server{{KB: "crportal", Addr: "127.0.0.1:8765"}}}
+	if err := old.Save(config.Path(h.home)); err != nil {
+		t.Fatal(err)
+	}
+	selects := regexp.MustCompile(`(?s)<select[^>]*name="([^"]+)".*?</select>`)
+	found := selects.FindAllStringSubmatch(h.enter("/settings"), -1)
+	if len(found) < 4 {
+		t.Fatalf("found %d drop-downs on the settings page", len(found))
+	}
+	for _, m := range found {
+		if n := strings.Count(m[0], " selected>"); n != 1 {
+			t.Errorf("drop-down %s loads with %d options marked selected, want 1", m[1], n)
+		}
+	}
+}
+
 func TestAddServer(t *testing.T) {
 	h := newHarness(t)
 	old := &config.Config{Servers: []config.Server{{KB: "crportal", Addr: "127.0.0.1:8765"}}}
@@ -414,7 +477,7 @@ func TestAddServer(t *testing.T) {
 		t.Errorf("events = %v", events)
 	}
 	want := `claude mcp add --transport http memors-work 'http://127.0.0.1:8766/mcp' --header "Authorization: Bearer $(memors-mcp http-token)"`
-	if !strings.Contains(body, html.EscapeString(want)) || !strings.Contains(body, `href="/settings"`) {
+	if !strings.Contains(body, html.EscapeString(want)) || !strings.Contains(body, `href="/settings?tab=servers"`) {
 		t.Errorf("added page lacks the command:\n%s", body)
 	}
 	_, body = h.post("/settings/server/copy", url.Values{"kb": {"work"}})

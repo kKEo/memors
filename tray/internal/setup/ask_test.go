@@ -289,13 +289,13 @@ func TestAskSettings(t *testing.T) {
 	}
 	// The Ask window says how Claude Code runs and links to its settings.
 	body := h.enter(askPage())
-	for _, want := range []string{"Claude Code&#39;s own sign-in · default model", `href="/settings?back=` + strings.ToLower(url.QueryEscape(connectServer)) + `#ask"`} {
+	for _, want := range []string{"Claude Code&#39;s own sign-in · default model", `href="/settings?back=` + strings.ToLower(url.QueryEscape(connectServer)) + `&amp;tab=ask"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("ask page lacks %q:\n%s", want, body)
 		}
 	}
 	_, body = h.get(h.s.Origin() + "/settings?" + url.Values{"back": {connectServer}}.Encode())
-	for _, want := range []string{`id="ask"`, "Back to Ask", "Claude Code at /opt/fake/claude", `name="ask_max_turns" value="12"`, `name="ask_timeout" value="180"`, "Only for the API key"} {
+	for _, want := range []string{`id="panel-ask"`, "Back to Ask", "Claude Code at /opt/fake/claude", `name="ask_max_turns" value="12"`, `name="ask_timeout" value="180"`, "Only for the API key"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("settings page lacks %q", want)
 		}

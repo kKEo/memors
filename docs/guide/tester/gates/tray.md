@@ -13,7 +13,7 @@ make tray-test        # cd tray && go vet ./... && go test ./... -race -count=1
 |---|---|
 | `app` | Agents appearing and leaving, unreachable servers, start/stop/restart, autostart, shutdown, a bad config shown to the user, first-run behaviour, the update check and its menu, relaunch after an update |
 | `supervisor` | Starting and stopping the server, crashes, killing a stubborn process, the child's environment, log rotation, stopping a server the tray did not start |
-| `setup` | The setup wizard (install, knowledge base, failure paths), settings (save, refuse bad input, conflicts), access control, connect pages for each client, the updates page, the Dismiss button on every page |
+| `setup` | The setup wizard (install, knowledge base, failure paths), settings (tabs, save, refuse bad input, conflicts), access control, connect pages for each client, the updates page, the Dismiss button on every page |
 | `installer` | Install, refusing bad downloads, release lookup errors, the tray's own install and app bundle |
 | `menu` | How each menu item renders |
 | `discover` | Finding servers, refusing untrusted directories |
@@ -49,11 +49,19 @@ contains both `x86_64` and `arm64`, and runs it with `-version`.
 The Objective-C window layer (`internal/macwin`) has no tests. After a change to it, build the
 app (`make tray && ./tray/memors-tray`) and check by hand:
 
-1. **Settings…** → **Dismiss** with no edits: the window closes at once.
-2. Tick a checkbox, then **Dismiss**: a sheet asks "Discard unsaved changes?". **Keep Editing**
-   leaves the window and the edit in place; **Dismiss** again → **Discard** closes it.
+1. **Settings…** → **Dismiss** with no edits: the window closes at once. The same after
+   opening each tab, and after changing a field and changing it back.
+2. Tick **Open MemoRS Tray when you log in** and change a server's address, then **Dismiss**:
+   a sheet asks "Discard unsaved changes?" and lists both fields by name under "Not saved
+   yet:". **Keep Editing** leaves the window and the edits in place; **Dismiss** again →
+   **Discard** closes it.
 3. Make the same edit, then ⌘W, then the red close box: the same sheet appears each time.
-4. Type in **Environment for servers** and **Save**: the page reloads and **Dismiss** now closes
+4. Tick **Advanced options**, type in **Environment for servers** on the **Servers** tab and
+   **Save**: the page reloads and **Dismiss** now closes
    without asking (the saved values are the new defaults).
 5. The setup assistant, **Updates** and **Configure Your Agent…** pages show the button and close.
-6. **Open Stats Window**, type in the search box, ⌘W: closes without asking (only POST forms count).
+6. **Settings…** → click the **Servers** and **Ask** tabs, then **Dismiss**: closes without asking
+   (choosing a tab is not an edit). Tick **Advanced options**, then **Dismiss**: the sheet asks
+   and names it. Type in **API key or token** on the **Ask** tab, then **Dismiss**: the sheet
+   names the field and does not show what was typed.
+7. **Open Stats Window**, type in the search box, ⌘W: closes without asking (only POST forms count).

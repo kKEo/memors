@@ -45,6 +45,10 @@ type settingsData struct {
 	ConfigPath   string
 	LogsDir      string
 
+	Tab    string   // the tab that shows
+	Tabs   []choice // the tabs, in order
+	Expert bool     // whether the advanced options show
+
 	// The Ask section.
 	Back            string // the server whose Ask window led here, for the way back
 	ClaudePath      string
@@ -75,6 +79,24 @@ var askAuths = []choice{
 	{"bedrock", "Amazon Bedrock"},
 	{"vertex", "Google Vertex AI"},
 	{"foundry", "Microsoft Foundry"},
+}
+
+// settingsTabs are the tabs of the settings form; the first is the one a
+// plain /settings opens on.
+var settingsTabs = []choice{
+	{"general", "General"},
+	{"servers", "Servers"},
+	{"ask", "Ask"},
+}
+
+// settingsTab is tab when it names a tab, else the first one.
+func settingsTab(tab string) string {
+	for _, c := range settingsTabs {
+		if c.Value == tab {
+			return tab
+		}
+	}
+	return settingsTabs[0].Value
 }
 
 // askAuthLabel is the form's name for a sign-in method.
@@ -110,6 +132,7 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
 	d.Rev = rev
 	d.Saved = r.URL.Query().Get("saved") == "1"
 	d.Back = s.backTo(r.URL.Query().Get("back"))
+	d.Tab = settingsTab(r.URL.Query().Get("tab"))
 	if err != nil {
 		d.Errors = append(d.Errors, err.Error()+" (saving this form replaces it)")
 	}
@@ -126,6 +149,7 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 	if r.PostForm.Get("rev") != rev {
 		d := s.settingsFrom(r.Context(), cur)
 		d.Rev, d.Back = rev, s.backTo(r.PostForm.Get("back"))
+		d.Tab = settingsTab(r.PostForm.Get("tab"))
 		d.Notice = "tray.json changed while this form was open (MemoRS Tray adds a server when you start a new knowledge base). Nothing was saved: check the values below and save again."
 		w.WriteHeader(http.StatusConflict)
 		s.render(w, "settings.html", page{Title: "Settings", Data: d})
@@ -157,6 +181,8 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 	if len(errs) > 0 {
 		d := s.settingsFrom(r.Context(), next)
 		d.Rev, d.Errors, d.Back = rev, errs, s.backTo(r.PostForm.Get("back"))
+		d.Tab = settingsTab(r.PostForm.Get("tab"))
+		d.Expert = true // what is wrong may be an advanced option
 		d.MemorsMode, d.MemorsPath = r.PostForm.Get("memors_mode"), r.PostForm.Get("memors_path")
 		d.Env = r.PostForm.Get("env")
 		d.ClaudePath, d.AskEnv = r.PostForm.Get("claude_path"), r.PostForm.Get("ask_env")
@@ -179,6 +205,9 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 	q := url.Values{}
 	if back := s.backTo(r.PostForm.Get("back")); back != "" {
 		q.Set("back", back)
+	}
+	if tab := settingsTab(r.PostForm.Get("tab")); tab != settingsTabs[0].Value {
+		q.Set("tab", tab)
 	}
 	if !saved { // changed between the check above and now
 		http.Redirect(w, r, "/settings?"+q.Encode(), http.StatusSeeOther)
@@ -206,7 +235,7 @@ func (s *Server) backTo(server string) string {
 // servers come in through addServer.
 func (s *Server) fromForm(f url.Values, cur *config.Config) (*config.Config, []string) {
 	var errs []string
-	next := &config.Config{Debug: f.Get("debug") == "on"}
+	next := &config.Config{Debug: f.Get("debug") == "on", Expert: f.Get("expert") == "on"}
 	if f.Get("stop_on_quit") != "on" {
 		no := false
 		next.StopOnQuit = &no
@@ -327,6 +356,9 @@ func (s *Server) settingsFrom(ctx context.Context, cfg *config.Config) settingsD
 		MemorsPath:   cfg.MemorsBinary,
 		Model:        cfg.Env["MEMORS_MODEL"],
 		Debug:        cfg.Debug,
+		Tab:          settingsTabs[0].Value,
+		Tabs:         settingsTabs,
+		Expert:       cfg.Expert,
 		ConfigPath:   config.Path(s.d.Home),
 		LogsDir:      home.LogDir(s.d.Home),
 	}

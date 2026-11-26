@@ -5,6 +5,15 @@ All notable changes. Tags follow semantic versioning; each tag has an eval repor
 
 ## [Unreleased]
 
+- **MemoRS Tray**: Settings is now three tabs, **General**, **Servers** and **Ask**, with one
+  **Save** for all of them. The options most people never change (the memors-mcp and Claude
+  Code locations, the limits on one question, both environment fields, the Web Inspector) are
+  hidden until **Advanced options** is ticked; the choice is kept as `expert` in `tray.json`.
+  Hidden options keep their values. **Ask settings…** opens the Ask tab, and choosing a tab
+  does not count as an unsaved change.
+- **MemoRS Tray**: closing Settings no longer asks "Discard unsaved changes?" when nothing was
+  changed (the **Effort** drop-down counted as changed as soon as the page loaded). When there
+  are changes, the sheet lists the changed fields by name; values are never shown.
 - **The book**: a namespace can now be read from the top down, as an overview, chapters, and
   the summary pages and documents under each chapter. Schema version 6.
   - **Outline**: a namespace gets an ordered list of chapters, each with a scope and the

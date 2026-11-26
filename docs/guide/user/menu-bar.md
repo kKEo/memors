@@ -104,9 +104,10 @@ elsewhere. Servers that require a client certificate (mTLS) cannot be asked this
 ### Choosing the account and the model
 
 The line under the question box shows how Claude Code runs, for example *Claude Code's own
-sign-in · default model*. **Ask settings…** next to it opens the **Ask the knowledge base**
-section of Settings; **‹ Back to Ask** returns to the conversation. What you save applies to
-the next question.
+sign-in · default model*. **Ask settings…** next to it opens the **Ask** tab of Settings;
+**‹ Back to Ask** returns to the conversation. What you save applies to the next question.
+The last three items below show once **Advanced options** is ticked (see
+[Settings](#settings)).
 
 - **Sign in with**: *Claude Code's own sign-in* (the account you logged in to with `claude`),
   an *Anthropic API key*, a *long-lived token* (the one `claude setup-token` prints), or a
@@ -116,10 +117,11 @@ the next question.
   the stored one.
 - **Model** and **Effort**: an alias such as `sonnet` or `haiku`, or a full model name; a
   smaller model and a lower effort answer faster and cost less.
-- **Steps per answer**, **Time limit** and **Cost limit per question**: when a question stops.
-  The defaults are 12 steps, 180 seconds and no cost limit.
 - **Extra instructions**: added to what MemoRS Tray tells Claude, for example the language to
   answer in.
+- **Claude Code location**: the `claude` file to run, when MemoRS Tray does not find it.
+- **Steps per answer**, **Time limit** and **Cost limit per question**: when a question stops.
+  The defaults are 12 steps, 180 seconds and no cost limit.
 - **Environment for Claude Code**: `NAME=value` lines for Claude Code only. A cloud provider
   reads its profile, region or project from here.
 
@@ -168,25 +170,37 @@ If the server asks for a token, the window logs in by itself. There is nothing t
 
 ## Settings
 
-**Settings…** in the menu opens the settings window:
+**Settings…** in the menu opens the settings window. It has three tabs, and one **Save**
+button for all of them:
 
 - **General**: open MemoRS Tray when you log in; stop the servers it started when it quits;
-  check for updates once a day, with **Updates…** (below).
-- **memors-mcp**: which memors-mcp runs and its version, with **Check for updates…**; find it
-  automatically or use a specific file; the embedding model for every server MemoRS Tray starts.
+  check for updates once a day, with **Updates…** (below); which memors-mcp runs and its
+  version, with **Check for updates…**; the embedding model for every server MemoRS Tray
+  starts.
 - **Servers**: each knowledge base MemoRS Tray can start, with its address, whether it needs a
   token, and whether it starts with MemoRS Tray. **Add server…** opens a form; **Save & Run**
   saves the server, starts it and shows the `claude mcp add` command to connect Claude Code
   (plus a link to the guide for other agents). Removing a server never deletes the knowledge base
   itself.
-- **Ask the knowledge base**: where Claude Code is, how it signs in, the model, the limits on
-  one question and extra instructions (see [Ask the knowledge base](#ask-the-knowledge-base)).
-- **Advanced**: extra environment for the servers, and the Web Inspector for MemoRS Tray's
-  windows. Links open `tray.json` and the logs folder.
+- **Ask**: how Claude Code signs in, the model and extra instructions (see
+  [Ask the knowledge base](#ask-the-knowledge-base)).
+
+**Advanced options**, at the right of the tabs, shows the options most people never change;
+the choice is remembered when you save:
+
+- *General*: the Web Inspector for MemoRS Tray's windows; finding memors-mcp automatically or
+  using a specific file.
+- *Servers*: extra environment for the servers.
+- *Ask*: where Claude Code is, the limits on one question, and extra environment for Claude
+  Code.
+
+An option that is hidden keeps its value and still applies. Under the tabs, links open
+`tray.json` and the logs folder.
 
 Every MemoRS Tray window has a **Dismiss** button in its header; ⌘W and the close box do the
-same. If a form has changes you have not saved, the window asks first: **Keep Editing** returns
-to the form, **Discard** closes it and drops the changes.
+same. If a form has changes you have not saved, the window asks first and lists the fields
+you changed (their names, never what you typed): **Keep Editing** returns to the form,
+**Discard** closes it and drops the changes. A window with nothing changed closes at once.
 
 The window shows what is saved in `~/.memors-mcp/tray.json`. You can also edit the file by hand:
 

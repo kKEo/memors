@@ -79,8 +79,8 @@
 <div class="row"><div><label class="label" for="model">Embedding model</label><div class="hint">Downloaded on first start (130–600 MB). The default suits most knowledge bases.</div></div>
 {{template "modelselect" .}}</div>
 <div class="row"><div><div class="label">Access</div><div class="hint">Only this Mac can reach the server either way. A token also keeps other users of this Mac out.</div></div>
-<div class="choices"><label class="check"><input type="radio" name="auth" value="none"{{if ne .Auth "token"}} checked{{end}}> Open on this Mac</label>
-<label class="check"><input type="radio" name="auth" value="token"{{if eq .Auth "token"}} checked{{end}}> Require a token</label></div></div>
+<div class="choices"><label class="check"><input type="radio" name="auth" value="none" data-label="Access"{{if ne .Auth "token"}} checked{{end}}> Open on this Mac</label>
+<label class="check"><input type="radio" name="auth" value="token" data-label="Access"{{if eq .Auth "token"}} checked{{end}}> Require a token</label></div></div>
 <div class="row"><label class="check"><input type="checkbox" name="autostart"{{if .Autostart}} checked{{end}}> Start this server whenever MemoRS Tray starts</label></div>
 </section>
 <div class="actions"><a class="button" href="/wizard/install">Back</a><button class="primary"{{if not .MemorsOK}} disabled{{end}}>Save and start</button></div>
